@@ -2,7 +2,7 @@
 
 Bảng vẽ hình học phẳng và hình không gian cho học sinh cấp 2 – cấp 3, có trợ lý AI nhận lệnh bằng tiếng Việt.
 
-Không thư viện ngoài · một tệp HTML 127 KB · mở bằng trình duyệt là chạy.
+Không thư viện ngoài · một tệp HTML 157 KB · mở bằng trình duyệt là chạy.
 
 ---
 
@@ -21,21 +21,26 @@ npm run dev          # mở http://localhost:5173
 
 ```bash
 npm run bundle       # sinh dist/geoai.html
-npm test             # 36 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 25 bài kiểm thử giao diện
-node tests/snapshot.mjs    # xuất dist/shot-2d.svg và shot-3d.svg để xem lại
+npm test             # 60 bài kiểm thử toán học
+node tests/dom-smoke.mjs   # 30 bài kiểm thử giao diện
+node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
+npm run www          # gộp vào www/ để đóng gói APK
 ```
 
 ---
 
 ## Bật trợ lý AI
 
-1. Lấy khoá miễn phí ở <https://aistudio.google.com/apikey>
-2. Trong ứng dụng bấm **⚙ Cài đặt**, dán khoá, chọn model (`gemini-2.5-flash` là đủ nhanh và miễn phí).
+Bản đang chạy tại <https://quanbughunter.github.io/HinhAI/> đã nối sẵn vào máy chủ trung gian
+Cloudflare của bạn, nên **học sinh không cần khoá, không cần tài khoản** — mở link là chat được.
 
-Khoá chỉ nằm trong `localStorage` của trình duyệt bạn và gửi thẳng tới Google.
+Muốn dùng khoá riêng: lấy miễn phí ở <https://aistudio.google.com/apikey>, rồi bấm **⚙ Cài đặt**
+dán vào. Khoá chỉ nằm trong `localStorage` của trình duyệt bạn.
 
-**Chưa có khoá vẫn dùng được:** bộ luật tiếng Việt cài sẵn hiểu ngay các câu như *"vẽ tam giác ABC vuông tại A, kẻ đường cao AH"*, *"hình chóp S.ABCD"*, *"đường tròn tâm O bán kính 5"*, *"lăng trụ ABC"*.
+> Google chặn gọi thẳng Gemini từ Việt Nam ("User location is not supported"), nên phải đi qua
+> máy chủ trung gian. Cách dựng: [proxy/HUONG-DAN.md](proxy/HUONG-DAN.md).
+
+**Mất mạng vẫn dùng được:** bộ luật tiếng Việt cài sẵn hiểu ngay các câu như *"vẽ tam giác ABC vuông tại A, kẻ đường cao AH"*, *"hình chóp S.ABCD"*, *"đường tròn tâm O bán kính 5"*, *"lăng trụ ABC"*.
 
 ---
 
@@ -86,6 +91,16 @@ duongtronqua(A,B,C)   noitiep(A,B,C)
 tamgiac(A,B,C)   tugiac(A,B,C,D)   dagiac(A,B,C,D,E)
 ```
 
+### Miền nghiệm bất phương trình bậc nhất hai ẩn
+```
+mien 2x+3y<=6                       gõ nhanh, không cần ngoặc kép
+mien x>=0, y>=0, x+y<=4             hệ nhiều bất phương trình, ngăn bằng dấu phẩy
+M = hemien("x>=0","y>=0","x+y<=4")  dạng hàm, dùng khi cần đặt tên
+A = khoang [-1;3]                   biểu diễn đoạn / khoảng trên trục số
+```
+Biên vẽ nét liền khi có dấu bằng (≤, ≥), nét đứt khi ngặt (<, >). Nhiều miền chồng nhau thì
+gạch chéo theo ba hướng khác nhau để nhìn ra phần giao. Hệ vô nghiệm thì báo *(rỗng)*.
+
 ### Đo đạc
 ```
 khoangcach(A,B)   goc(A,B,C)   dientich(t)   chu("ghi chú", 2, 3)
@@ -135,7 +150,7 @@ td=thietdien(K,M,N,P)
 ## Cấu trúc mã
 
 ```
-src/core/   vec.js  model.js  ops2d.js  ops3d.js  dsl.js   ← lõi toán, chạy được trong Node
+src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  dsl.js   ← lõi toán, chạy được trong Node
 src/ui/     render.js  tools.js                            ← camera, vẽ SVG, công cụ
 src/ai/     agent.js                                       ← prompt + Gemini + luật offline
 src/main.js                                                ← điều phối
@@ -143,6 +158,10 @@ src/main.js                                                ← điều phối
 
 Thêm một phép dựng mới cần đúng hai dòng: một dòng trong `ops2d.js` (công thức) và một dòng trong `dsl.js` (tên lệnh tiếng Việt).
 
-Chi tiết kiến trúc, so sánh với GeoGebra/JSXGraph và lộ trình lên Android: xem [ARCHITECTURE.md](ARCHITECTURE.md).
+Chi tiết kiến trúc và so sánh với GeoGebra/JSXGraph: xem [ARCHITECTURE.md](ARCHITECTURE.md).
+
+Lấy tệp APK cho Android (GitHub build hộ, không cần cài Android Studio): xem [LAY-APK.md](LAY-APK.md).
+
+Cho cả lớp dùng chung một khoá Gemini: xem [proxy/HUONG-DAN.md](proxy/HUONG-DAN.md).
 
 Giấy phép: MIT.

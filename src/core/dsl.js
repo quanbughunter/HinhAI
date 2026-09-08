@@ -106,6 +106,12 @@ def(['dientich', 'area'], (A) => ({ op: 'areaM', args: [A[0]] }));
 def(['so', 'number'], (A) => ({ op: 'numberFree', args: [], params: { v: A[0] || 0 } }));
 def(['chu', 'text', 'nhan'], (A) => ({ op: 'text', args: [], params: { s: String(A[0] == null ? '' : A[0]), x: A[1] || 0, y: A[2] || 0 } }));
 
+// --- miền nghiệm
+const chuoiBPT = (A) => A.filter((x) => typeof x === 'string' && x.trim());
+def(['mien', 'miennghiem', 'bpt'], (A) => ({ op: 'region', args: [], params: { bpt: chuoiBPT(A) } }));
+def(['hemien', 'hebpt', 'hpt'], (A) => ({ op: 'region', args: [], params: { bpt: chuoiBPT(A) } }));
+def(['khoang', 'tapso', 'trucso'], (A) => ({ op: 'interval', args: [], params: { k: String(A[0] || '') } }));
+
 // --- 3D
 def(['diem3', 'point3', 'd3'], (A) => ({ op: 'point3', args: [], params: { x: A[0] || 0, y: A[1] || 0, z: A[2] || 0 } }));
 def(['trungdiem3', 'mid3'], (A) => ({ op: 'mid3', args: [A[0], A[1]] }));
@@ -220,7 +226,7 @@ export function runScript(doc, src, opts = {}) {
   const created = [];
   const errors = [];
   let ok = 0;
-  const lines = String(src || '').split(/[\n;]/);
+  const lines = tachDong(src);
   // Giữ chỗ trước cho các tên sẽ được gán, tránh đối tượng phụ tự đặt trùng tên
   const prevReserved = doc.reserved;
   doc.reserved = new Set(lines.map((l) => {
@@ -253,6 +259,26 @@ export function runScript(doc, src, opts = {}) {
           doc.remove(old.id);
         }
       }
+      // Dạng gõ nhanh, không cần ngoặc kép:
+      //   mien 2x+3y<=6        M = hemien x>=0, y>=0, x+y<=4        A = khoang [-1;3]
+      const nhanh = eq.body.match(/^(mien|miennghiem|mien_nghiem|hemien|hebpt|bpt|khoang|tapso|trucso)\s+(.+)$/i);
+      if (nhanh) {
+        const ten = norm(nhanh[1]);
+        const than = nhanh[2].trim();
+        let o;
+        if (ten === 'khoang' || ten === 'tapso' || ten === 'trucso') {
+          o = doc.add({ op: 'interval', args: [], params: { k: than } });
+        } else {
+          const ds = than.split(/[,;]|\bva\b|\bvà\b/i).map((x) => x.trim()).filter(Boolean);
+          o = doc.add({
+            op: 'region', args: [],
+            params: { bpt: ds, hatch: doc.list().filter((z) => z.op === 'region').length % 3 },
+          });
+        }
+        if (eq.name) o.name = eq.name;
+        created.push(o); ok++; continue;
+      }
+
       const p = new Parser(lex(eq.body), doc, ctx);
       const before = doc.order.length;
       const res = p.expr();
@@ -267,6 +293,14 @@ export function runScript(doc, src, opts = {}) {
   doc.recompute();
   doc.touch();
   return { created, errors, ok };
+}
+
+/**
+ * Mỗi dòng một lệnh. Cố tình KHÔNG dùng dấu ; để ngắt lệnh, vì ; là dấu ngăn
+ * quen thuộc trong [-1;3] và trong hệ bất phương trình.
+ */
+function tachDong(src) {
+  return String(src || '').split('\n');
 }
 
 function splitAssign(line) {

@@ -148,8 +148,17 @@ q('#redo').fire('click');
 ok('làm lại', app.doc['2d'].order.length === nBefore);
 
 // mẫu nhanh
-q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: '5' } }) } });
+q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: '7' } }) } });
 ok('mẫu "3 đường cao" chạy được', !!app.doc['2d'].byName('ha') && !!app.doc['2d'].byName('H'));
+
+// mẫu miền nghiệm
+q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: '6' } }) } });
+{
+  const mien = app.doc['2d'].list().filter((o) => o.op === 'region').pop();
+  ok('mẫu hệ bất phương trình vẽ ra miền', !!mien && mien.val && !mien.val.rong && mien.val.pts.length >= 3,
+    mien ? String(mien.val && mien.val.pts.length) : 'không có');
+  ok('SVG có gạch chéo miền nghiệm', /url\(#hatch/.test(svg.innerHTML));
+}
 
 // chuyển sang 3D
 q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '3d' } }) } });

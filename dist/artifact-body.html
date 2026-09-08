@@ -518,11 +518,140 @@ function angleABC(A, B, C) {
   return deg(Math.acos(c));
 }
 
+/* ==== /src/core/bpt.js ==== */
+// ============================================================================
+// bpt.js — Bất phương trình bậc nhất hai ẩn và MIỀN NGHIỆM.
+//
+// Đọc chuỗi kiểu "2x + 3y <= 6" thành nửa mặt phẳng, rồi cắt dần một hình vuông
+// rất lớn bằng từng nửa mặt phẳng để ra miền nghiệm (thuật toán Sutherland–Hodgman).
+// Miền nghiệm của hệ bất phương trình bậc nhất luôn là một đa giác lồi.
+// ============================================================================
+
+const HOP = 400;   // nửa cạnh hình vuông khởi đầu, đủ lớn để coi như vô hạn
+
+/** "3/4" -> 0.75 ; "2" -> 2 ; "" -> 1 ; "-" -> -1 */
+function doHeSo(s) {
+  const t = String(s).trim().replace(/\*$/, '');
+  if (t === '' || t === '+') return 1;
+  if (t === '-') return -1;
+  if (t.includes('/')) {
+    const [p, q] = t.split('/');
+    const v = parseFloat(p) / parseFloat(q);
+    if (!Number.isFinite(v)) throw new Error('Hệ số không hợp lệ: ' + s);
+    return v;
+  }
+  const v = parseFloat(t);
+  if (!Number.isFinite(v)) throw new Error('Hệ số không hợp lệ: ' + s);
+  return v;
+}
+
+/** Đọc một vế: "2x+3y-6" -> {a:2, b:3, c:-6} nghĩa là 2x + 3y − 6 */
+function docVe(bieuThuc) {
+  let a = 0, b = 0, c = 0;
+  const s = String(bieuThuc).replace(/\s+/g, '');
+  if (!s) return { a, b, c };
+  // tách thành các hạng tử kèm dấu
+  const hangTu = s.match(/[+-]?[^+-]+/g) || [];
+  for (const t of hangTu) {
+    if (!t) continue;
+    if (t.includes('x') && t.includes('y')) throw new Error('Mỗi hạng tử chỉ chứa x hoặc y: ' + t);
+    if (t.includes('x')) a += doHeSo(t.replace('x', ''));
+    else if (t.includes('y')) b += doHeSo(t.replace('y', ''));
+    else c += doHeSo(t);
+  }
+  return { a, b, c };
+}
+
+/**
+ * Đọc bất phương trình -> nửa mặt phẳng chuẩn hoá {a, b, c, chat}
+ * với ý nghĩa: giữ phần   a·x + b·y + c ≤ 0   (chat = true nghĩa là dấu < ngặt).
+ */
+function docBPT(chuoi) {
+  let s = String(chuoi).replace(/\s+/g, '')
+    .replace(/≤/g, '<=').replace(/≥/g, '>=').replace(/[−–—]/g, '-')
+    .replace(/,/g, '.');
+  const m = s.match(/(<=|>=|<|>|=)/);
+  if (!m) throw new Error('Thiếu dấu bất đẳng thức trong "' + chuoi + '"');
+  const dau = m[1];
+  const i = s.indexOf(dau);
+  const trai = docVe(s.slice(0, i));
+  const phai = docVe(s.slice(i + dau.length));
+
+  // đưa hết về vế trái:  (trai - phai)  dau  0
+  let a = trai.a - phai.a, b = trai.b - phai.b, c = trai.c - phai.c;
+  if (Math.abs(a) < 1e-12 && Math.abs(b) < 1e-12) {
+    throw new Error('"' + chuoi + '" không phải bất phương trình bậc nhất hai ẩn');
+  }
+  let chat = dau === '<' || dau === '>';
+  // đổi mọi thứ về dạng  ≤ 0
+  if (dau === '>' || dau === '>=') { a = -a; b = -b; c = -c; }
+  if (dau === '=') chat = false;
+  return { a, b, c, chat, gocVan: String(chuoi).trim() };
+}
+
+/** Cắt đa giác, giữ phần a·x + b·y + c ≤ 0 */
+function catNua(poly, h) {
+  const f = (p) => h.a * p.x + h.b * p.y + h.c;
+  const ra = [];
+  const n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const P = poly[i], Q = poly[(i + 1) % n];
+    const fp = f(P), fq = f(Q);
+    if (fp <= 1e-9) ra.push(P);
+    if ((fp < -1e-9 && fq > 1e-9) || (fp > 1e-9 && fq < -1e-9)) {
+      const t = fp / (fp - fq);
+      ra.push({ x: P.x + (Q.x - P.x) * t, y: P.y + (Q.y - P.y) * t });
+    }
+  }
+  return ra;
+}
+
+/**
+ * Miền nghiệm của một hệ bất phương trình.
+ * @param {string[]} dsChuoi  ví dụ ['x>=0','y>=0','x+y<=4']
+ * @returns {{t:'mien', pts:Array, hp:Array, rong:boolean}}
+ */
+function mienNghiem(dsChuoi) {
+  const hp = dsChuoi.map(docBPT);
+  let poly = [
+    { x: -HOP, y: -HOP }, { x: HOP, y: -HOP }, { x: HOP, y: HOP }, { x: -HOP, y: HOP },
+  ];
+  for (const h of hp) {
+    poly = catNua(poly, h);
+    if (poly.length < 3) return { t: 'mien', pts: [], hp, rong: true };
+  }
+  return { t: 'mien', pts: poly, hp, rong: false };
+}
+
+/** Điểm (x,y) có thuộc miền không — dùng để kiểm thử */
+function thuocMien(mien, x, y) {
+  return mien.hp.every((h) => h.a * x + h.b * y + h.c <= 1e-9);
+}
+
+/** Các đỉnh của miền nằm trong khung nhìn (bỏ các đỉnh ở "vô cực") */
+function dinhHuuHan(mien, gioiHan = HOP * 0.98) {
+  return mien.pts.filter((p) => Math.abs(p.x) < gioiHan && Math.abs(p.y) < gioiHan);
+}
+
+// ---------------------------------------------------------------- Trục số
+/** Đọc "[-1,3]" hoặc "(-2;5]" -> {a, b, dongA, dongB} */
+function docKhoang(chuoi) {
+  const s = String(chuoi).replace(/\s+/g, '').replace(/[−–—]/g, '-');
+  const m = s.match(/^([[\](])(-?[\d./]+|-?vc|-?inf)[;,](-?[\d./]+|vc|inf|\+vc)([[\])])$/i);
+  if (!m) throw new Error('Khoảng phải viết dạng [-1;3] hoặc (2;5]');
+  const so = (t) => {
+    if (/vc|inf/i.test(t)) return t.startsWith('-') ? -1e6 : 1e6;
+    return t.includes('/') ? doHeSo(t) : parseFloat(t);
+  };
+  return { t: 'khoang', a: so(m[2]), b: so(m[3]), dongA: m[1] === '[', dongB: m[4] === ']' };
+}
+
 /* ==== /src/core/ops2d.js ==== */
 // ============================================================================
 // ops2d.js — Bảng phép dựng hình phẳng.
 // Mỗi phép: { type, style?, fn(vals, params, obj, doc) -> value, drag?(obj,pos,doc) }
 // ============================================================================
+
 
 
 const PT = { color: '#1f3f8f', size: 4.6 };
@@ -778,6 +907,22 @@ const OPS = {
     type: 'number', style: NUM,
     fn: (_, p) => num(p.v == null ? 1 : p.v, null),
   },
+  // ---------------- Miền nghiệm ----------------
+  region: {   // miền nghiệm của một hệ bất phương trình bậc nhất hai ẩn
+    type: 'mien', style: { color: '#b3261e', width: 1.8, fill: 'rgba(179,38,30,.10)' },
+    fn: (_, p) => {
+      const ds = (p.bpt || []).filter((x) => String(x).trim());
+      if (!ds.length) return null;
+      const m = mienNghiem(ds);
+      m.hatch = p.hatch || 0;
+      return m;
+    },
+  },
+  interval: {   // biểu diễn một khoảng / đoạn trên trục số
+    type: 'khoang', style: { color: '#b3261e', width: 2.2 },
+    fn: (_, p) => (p.k ? docKhoang(p.k) : null),
+  },
+
   text: {
     type: 'text', style: { color: '#16233d' },
     fn: (_, p) => ({ t: 'text', s: p.s || '', x: p.x || 0, y: p.y || 0 }),
@@ -1275,6 +1420,12 @@ def(['dientich', 'area'], (A) => ({ op: 'areaM', args: [A[0]] }));
 def(['so', 'number'], (A) => ({ op: 'numberFree', args: [], params: { v: A[0] || 0 } }));
 def(['chu', 'text', 'nhan'], (A) => ({ op: 'text', args: [], params: { s: String(A[0] == null ? '' : A[0]), x: A[1] || 0, y: A[2] || 0 } }));
 
+// --- miền nghiệm
+const chuoiBPT = (A) => A.filter((x) => typeof x === 'string' && x.trim());
+def(['mien', 'miennghiem', 'bpt'], (A) => ({ op: 'region', args: [], params: { bpt: chuoiBPT(A) } }));
+def(['hemien', 'hebpt', 'hpt'], (A) => ({ op: 'region', args: [], params: { bpt: chuoiBPT(A) } }));
+def(['khoang', 'tapso', 'trucso'], (A) => ({ op: 'interval', args: [], params: { k: String(A[0] || '') } }));
+
 // --- 3D
 def(['diem3', 'point3', 'd3'], (A) => ({ op: 'point3', args: [], params: { x: A[0] || 0, y: A[1] || 0, z: A[2] || 0 } }));
 def(['trungdiem3', 'mid3'], (A) => ({ op: 'mid3', args: [A[0], A[1]] }));
@@ -1389,7 +1540,7 @@ function runScript(doc, src, opts = {}) {
   const created = [];
   const errors = [];
   let ok = 0;
-  const lines = String(src || '').split(/[\n;]/);
+  const lines = tachDong(src);
   // Giữ chỗ trước cho các tên sẽ được gán, tránh đối tượng phụ tự đặt trùng tên
   const prevReserved = doc.reserved;
   doc.reserved = new Set(lines.map((l) => {
@@ -1422,6 +1573,26 @@ function runScript(doc, src, opts = {}) {
           doc.remove(old.id);
         }
       }
+      // Dạng gõ nhanh, không cần ngoặc kép:
+      //   mien 2x+3y<=6        M = hemien x>=0, y>=0, x+y<=4        A = khoang [-1;3]
+      const nhanh = eq.body.match(/^(mien|miennghiem|mien_nghiem|hemien|hebpt|bpt|khoang|tapso|trucso)\s+(.+)$/i);
+      if (nhanh) {
+        const ten = norm(nhanh[1]);
+        const than = nhanh[2].trim();
+        let o;
+        if (ten === 'khoang' || ten === 'tapso' || ten === 'trucso') {
+          o = doc.add({ op: 'interval', args: [], params: { k: than } });
+        } else {
+          const ds = than.split(/[,;]|\bva\b|\bvà\b/i).map((x) => x.trim()).filter(Boolean);
+          o = doc.add({
+            op: 'region', args: [],
+            params: { bpt: ds, hatch: doc.list().filter((z) => z.op === 'region').length % 3 },
+          });
+        }
+        if (eq.name) o.name = eq.name;
+        created.push(o); ok++; continue;
+      }
+
       const p = new Parser(lex(eq.body), doc, ctx);
       const before = doc.order.length;
       const res = p.expr();
@@ -1436,6 +1607,14 @@ function runScript(doc, src, opts = {}) {
   doc.recompute();
   doc.touch();
   return { created, errors, ok };
+}
+
+/**
+ * Mỗi dòng một lệnh. Cố tình KHÔNG dùng dấu ; để ngắt lệnh, vì ; là dấu ngăn
+ * quen thuộc trong [-1;3] và trong hệ bất phương trình.
+ */
+function tachDong(src) {
+  return String(src || '').split('\n');
 }
 
 function splitAssign(line) {
@@ -1549,6 +1728,30 @@ const fmt = (v) => {
   return Number.isInteger(r) ? String(r) : String(r);
 };
 
+/** Cắt đa giác theo khung nhìn (toạ độ thế giới) để tìm chỗ đặt nhãn cho gọn */
+function catTheoKhung(pts, cam) {
+  const tl = cam.u({ x: 0, y: 0 }), br = cam.u({ x: cam.w, y: cam.h });
+  const canh = [
+    (p) => p.x - tl.x, (p) => br.x - p.x, (p) => p.y - br.y, (p) => tl.y - p.y,
+  ];
+  let poly = pts;
+  for (const g of canh) {
+    const ra = [];
+    for (let i = 0; i < poly.length; i++) {
+      const P = poly[i], Q = poly[(i + 1) % poly.length];
+      const gp = g(P), gq = g(Q);
+      if (gp >= 0) ra.push(P);
+      if ((gp < 0 && gq > 0) || (gp > 0 && gq < 0)) {
+        const t = gp / (gp - gq);
+        ra.push({ x: P.x + (Q.x - P.x) * t, y: P.y + (Q.y - P.y) * t });
+      }
+    }
+    poly = ra;
+    if (!poly.length) return [];
+  }
+  return poly;
+}
+
 // ---------------------------------------------------------------- Vẽ 2D
 function lineEndpoints(L, cam) {
   const big = (cam.w + cam.h) * 1.5 / cam.scale;
@@ -1570,6 +1773,62 @@ function render2(doc, cam, opt) {
   const labels = [];
   const sel = opt.selected || new Set();
   const hl = opt.hover;
+
+  // 0) miền nghiệm & khoảng trên trục số — nằm dưới cùng
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val) continue;
+
+    if (o.val.t === 'mien') {
+      const m = o.val;
+      const chon = sel.has(o.id);
+      const mau = chon ? '#d98324' : (o.style.color || '#b3261e');
+      if (!m.rong && m.pts.length >= 3) {
+        const d = m.pts.map((p) => cam.s(p)).map((p) => `${f(p.x)},${f(p.y)}`).join(' ');
+        out.push(`<polygon points="${d}" fill="${o.style.fill || 'rgba(179,38,30,.10)'}" stroke="none"/>`);
+        out.push(`<polygon points="${d}" fill="url(#hatch${(m.hatch || 0) % 3})" stroke="none"/>`);
+      }
+      // đường biên của từng bất phương trình: nét liền nếu lấy cả biên, nét đứt nếu không
+      const big = (cam.w + cam.h) * 1.5 / cam.scale;
+      for (const h of m.hp) {
+        const n2 = h.a * h.a + h.b * h.b;
+        if (n2 < 1e-12) continue;
+        const P = { x: -h.a * h.c / n2, y: -h.b * h.c / n2 };
+        const u = vNorm({ x: -h.b, y: h.a });
+        const A = cam.s({ x: P.x - u.x * big, y: P.y - u.y * big });
+        const B = cam.s({ x: P.x + u.x * big, y: P.y + u.y * big });
+        out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" stroke="${mau}" stroke-width="${(o.style.width || 1.8) * (chon ? 1.6 : 1)}"${h.chat ? ' stroke-dasharray="7 5"' : ''} stroke-linecap="round"/>`);
+      }
+      if (o.showLabel) {
+        const trong = m.rong ? [] : catTheoKhung(m.pts, cam);
+        if (trong.length) {
+          const c = trong.reduce((a, p) => vAdd(a, p), { x: 0, y: 0 });
+          labels.push(lab(o, cam.s(vMul(c, 1 / trong.length)), o.name, mau, 0, 0));
+        }
+      }
+      continue;
+    }
+
+    if (o.val.t === 'khoang') {
+      const k = o.val;
+      const chon = sel.has(o.id);
+      const mau = chon ? '#d98324' : (o.style.color || '#b3261e');
+      const tl = cam.u({ x: 0, y: 0 }), br = cam.u({ x: cam.w, y: cam.h });
+      const a = Math.max(k.a, tl.x - 1), b = Math.min(k.b, br.x + 1);
+      if (b <= a) continue;
+      const A = cam.s({ x: a, y: 0 }), B = cam.s({ x: b, y: 0 });
+      out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" stroke="${mau}" stroke-width="${chon ? 5 : 3.4}" stroke-linecap="butt"/>`);
+      // gạch chéo phía trên cho dễ nhìn, đúng kiểu vẽ trên bảng
+      const g = [];
+      for (let x = A.x; x <= B.x; x += 9) g.push(`M${f(x)} ${f(A.y)}l7 -11`);
+      out.push(`<path d="${g.join('')}" stroke="${mau}" stroke-width="1" opacity=".55" fill="none"/>`);
+      // đầu mút: chấm đặc = lấy, chấm rỗng = không lấy
+      const mut = (X, dong) => `<circle cx="${f(X)}" cy="${f(A.y)}" r="5" fill="${dong ? mau : 'var(--panel,#fff)'}" stroke="${mau}" stroke-width="2.2"/>`;
+      if (k.a >= tl.x - 1) out.push(mut(cam.s({ x: k.a, y: 0 }).x, k.dongA));
+      if (k.b <= br.x + 1) out.push(mut(cam.s({ x: k.b, y: 0 }).x, k.dongB));
+      if (o.showLabel) labels.push(lab(o, { x: (A.x + B.x) / 2, y: A.y }, o.name, mau, 0, -18));
+      continue;
+    }
+  }
 
   // 1) đa giác
   for (const o of doc.list()) {
@@ -1800,6 +2059,12 @@ function pick(doc, cam, px, mode, tol = 13) {
     } else if (!is3 && o.type === 'circle') {
       const c = cam.s(o.val.c);
       d = Math.abs(Math.hypot(px.x - c.x, px.y - c.y) - o.val.r * cam.scale);
+    } else if (!is3 && o.val.t === 'mien') {
+      if (o.val.pts.length >= 3) {
+        d = Math.min(...o.val.pts.map((p, i) => distSegPx(cam.s(p), cam.s(o.val.pts[(i + 1) % o.val.pts.length]), px)));
+      }
+    } else if (!is3 && o.val.t === 'khoang') {
+      d = distSegPx(cam.s({ x: o.val.a, y: 0 }), cam.s({ x: o.val.b, y: 0 }), px);
     } else if (!is3 && o.type === 'polygon') {
       d = Math.min(...o.val.pts.map((p, i) => distSegPx(cam.s(p), cam.s(o.val.pts[(i + 1) % o.val.pts.length]), px)));
     } else if (is3 && o.val.t === 's3') {
@@ -1862,6 +2127,8 @@ const ICONS = {
   sph: I('<circle cx="12" cy="12" r="8"/><ellipse cx="12" cy="12" rx="8" ry="3.2" stroke-dasharray="3 2.5"/>'),
   sect: I('<path d="M6 19V8l6-4 6 4v11z"/><path d="M4 14l16-4" stroke="currentColor" stroke-dasharray="0"/>'),
   rot: I('<path d="M20 12a8 8 0 11-2.4-5.7M20 4v4h-4"/>'),
+  mien: I('<path d="M3 17L21 5"/><path d="M5 19l3-3M9 19l5-5M13 19l6-6M17 19l4-4" stroke-width="1.1"/>'),
+  khoang: I('<path d="M3 12h18M7 8v8M17 8v8"/>' + DOT(7, 12, 2.6) + DOT(17, 12, 2.6)),
 };
 
 // pick kinds: 'point' | 'curve' (đường/đường tròn) | 'any' | 'solid' | 'p3'
@@ -1895,6 +2162,12 @@ const TOOLS_2D = [
     { id: 'perpbi', name: 'Trung trực', icon: ICONS.perpbi, n: 2, kinds: ['point', 'point'], op: 'perpBisector', hint: 'Chọn 2 điểm.' },
     { id: 'bisec', name: 'Phân giác', icon: ICONS.bisec, n: 3, kinds: ['point', 'point', 'point'], op: 'bisector', hint: 'Chọn 3 điểm, điểm GIỮA là đỉnh góc.' },
     { id: 'refl', name: 'Đối xứng', icon: ICONS.refl, n: 2, kinds: ['point', 'any'], op: 'reflectPt', hint: 'Chọn điểm cần lấy đối xứng, rồi chọn trục (đường thẳng) hoặc tâm (điểm).' },
+  ]},
+  { g: 'Miền nghiệm', t: [
+    { id: 'mien', name: 'Miền nghiệm BPT', icon: ICONS.mien, n: 0,
+      hint: 'Bấm để nhập bất phương trình, ví dụ 2x+3y<=6. Nhiều bất phương trình thì ngăn bằng dấu phẩy.' },
+    { id: 'khoang', name: 'Khoảng trên trục số', icon: ICONS.khoang, n: 0,
+      hint: 'Bấm rồi nhập khoảng, ví dụ [-1;3] hoặc (2;5].' },
   ]},
   { g: 'Đo', t: [
     { id: 'dist', name: 'Khoảng cách', icon: ICONS.dist, n: 2, kinds: ['point', 'point'], op: 'distance', hint: 'Chọn 2 điểm.' },
@@ -1933,6 +2206,8 @@ const QUICK_2D = [
   ['Tam giác đều', 'A=(-3,-2)\nB=(3,-2)\nC=(0,3.196)\nt=tamgiac(A,B,C)'],
   ['Đường tròn', 'O=(0,0)\nA=(4,0)\nc=duongtron(O,A)'],
   ['Hình vuông', 'A=(-3,-3)\nB=(3,-3)\nC=(3,3)\nD=(-3,3)\nt=tugiac(A,B,C,D)'],
+  ['Miền nghiệm', 'mien 2x+3y<=6'],
+  ['Hệ BPT', 'mien x>=0, y>=0, x+y<=4, 2x+y<=6'],
   ['3 đường cao', 'A=(-4,-2)\nB=(5,-2)\nC=(1,4)\nt=tamgiac(A,B,C)\nha=duongcao(A,B,C)\nhb=duongcao(B,C,A)\nhc=duongcao(C,A,B)\nH=tructam(A,B,C)'],
 ];
 const QUICK_3D = [
@@ -1945,6 +2220,7 @@ const QUICK_3D = [
 ];
 
 const CHIPS = [
+  'Vẽ miền nghiệm của hệ x≥0, y≥0, x+y≤4, 2x+y≤6',
   'Vẽ tam giác ABC vuông tại A, kẻ đường cao AH',
   'Vẽ đường tròn tâm O bán kính 5 và một dây AB',
   'Tam giác ABC nội tiếp đường tròn tâm O, kẻ ba đường cao',
@@ -1987,6 +2263,12 @@ TOẠ ĐỘ & ĐIỂM (2D)
   tamgiac(A,B,C)   tugiac(A,B,C,D)   dagiac(A,B,C,D,E)
   khoangcach(A,B)   goc(A,B,C)   dientich(t)   chu("nội dung", x, y)
 
+MIỀN NGHIỆM BẤT PHƯƠNG TRÌNH BẬC NHẤT HAI ẨN
+  m = mien("2x+3y<=6")                     miền nghiệm một bất phương trình
+  m = hemien("x>=0","y>=0","x+y<=4")       miền nghiệm của HỆ (giao các nửa mặt phẳng)
+  A = khoang("[-1;3]")                     biểu diễn khoảng/đoạn trên trục số, dùng [ ] hoặc ( )
+  Biên vẽ nét liền khi có dấu bằng (≤, ≥), nét đứt khi ngặt (<, >) — app tự lo.
+
 HÌNH KHÔNG GIAN (3D)
   A = (x,y,z)                    điểm 3D (3 số)
   doan3(A,B)   duongthang3(A,B)  mat(A,B,C,D)
@@ -2017,7 +2299,8 @@ QUY TẮC BẮT BUỘC
 5. Vẽ luôn cả hình phụ mà đề bài nhắc tới (đường cao, trung tuyến, đường tròn ngoại tiếp...).
 6. Chỉ tạo thêm đối tượng mới; đối tượng đã có trong danh sách hiện tại thì dùng lại tên, đừng định nghĩa lại.
 7. Với hình không gian: dùng toạ độ 3 thành phần và lệnh nhóm 3D. Đáy thường nằm ở z = 0.
-8. Không giải thích trong script. Giải thích ngắn (1-2 câu tiếng Việt) đặt ở trường "giai_thich".
+8. Bài "tìm miền nghiệm" hay "biểu diễn miền nghiệm" thì dùng mien/hemien, KHÔNG tự vẽ tay bằng đường thẳng.
+9. Không giải thích trong script. Giải thích ngắn (1-2 câu tiếng Việt) đặt ở trường "giai_thich".
 
 Trả lời DUY NHẤT một đối tượng JSON: {"giai_thich": "...", "script": "..."}`;
 
@@ -2280,7 +2563,10 @@ function render() {
   const cam = C();
   cam.w = Math.max(1, r.width); cam.h = Math.max(1, r.height);
   const mk = (id, c) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`;
-  const defs = `<defs>${mk('arw', '#16233d')}${mk('arwr', '#b3261e')}${mk('arwg', '#1f7a5a')}${mk('arwb', '#22468f')}</defs>`;
+  // hoa văn gạch chéo cho miền nghiệm — ba hướng khác nhau để phân biệt nhiều miền
+  const hatch = (i, goc, mau) => `<pattern id="hatch${i}" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(${goc})"><line x1="0" y1="0" x2="0" y2="9" stroke="${mau}" stroke-width="1.15" opacity=".75"/></pattern>`;
+  const defs = `<defs>${mk('arw', '#16233d')}${mk('arwr', '#b3261e')}${mk('arwg', '#1f7a5a')}${mk('arwb', '#22468f')}`
+    + `${hatch(0, 45, '#b3261e')}${hatch(1, -45, '#22468f')}${hatch(2, 0, '#1f7a5a')}</defs>`;
   const opt = { ...app.opts, selected: app.sel, hover: app.hover };
   svg.innerHTML = defs + (is3() ? render3(D(), cam, opt) : render2(D(), cam, opt));
   renderObjList();
@@ -2321,6 +2607,8 @@ function describe(o) {
   else if (v && v.t === 'num') extra = ` = ${r2(v.v)}`;
   else if (v && v.t === 'angle') extra = ` = ${r2(v.v)}°`;
   else if (v && v.t === 'solid') extra = ` ${v.v.length} đỉnh`;
+  else if (v && v.t === 'mien') extra = ' ' + (v.rong ? '(rỗng)' : (o.params.bpt || []).join('  ·  '));
+  else if (v && v.t === 'khoang') extra = ` ${v.dongA ? '[' : '('}${r2(v.a)}; ${r2(v.b)}${v.dongB ? ']' : ')'}`;
   return `${VN[o.op] || o.op}${A ? '(' + A + ')' : ''}${extra}`;
 }
 const r2 = (v) => (Number.isFinite(v) ? Math.round(v * 100) / 100 : '?');
@@ -2334,7 +2622,7 @@ const VN = {
   centroid: 'trọng tâm', circumcenter: 'tâm ngoại tiếp', incenter: 'tâm nội tiếp', orthocenter: 'trực tâm',
   foot: 'hình chiếu', footBC: 'chân đ.cao', reflectPt: 'đối xứng', rotatePt: 'quay', dilatePt: 'vị tự',
   translatePt: 'tịnh tiến', pyramid: 'hình chóp', prism: 'lăng trụ', box: 'hình hộp', sphere: 'mặt cầu',
-  face: 'mặt', plane3: 'mặt phẳng', section: 'thiết diện', meet3: 'giao với mp', text: 'ghi chú', numberFree: 'số',
+  face: 'mặt', plane3: 'mặt phẳng', section: 'thiết diện', meet3: 'giao với mp', text: 'ghi chú', numberFree: 'số', region: 'miền nghiệm', interval: 'khoảng',
 };
 
 // ---------------------------------------------------------------- Undo
@@ -2500,6 +2788,22 @@ function clickTool(px) {
   if (t.id === 'del') {
     const hit = pick(D(), C(), px, app.mode);
     if (hit) { snap(); D().remove(hit.id); render(); }
+    return;
+  }
+  if (t.id === 'mien') {
+    const q = prompt('Nhập bất phương trình (nhiều cái thì ngăn bằng dấu phẩy):', '2x + 3y <= 6');
+    if (q && q.trim()) {
+      const r = exec('mien ' + q.trim());
+      if (r.errors.length) flash(r.errors[0]);
+    }
+    return;
+  }
+  if (t.id === 'khoang') {
+    const q = prompt('Nhập khoảng trên trục số:', '[-1;3]');
+    if (q && q.trim()) {
+      const r = exec('khoang ' + q.trim());
+      if (r.errors.length) flash(r.errors[0]);
+    }
     return;
   }
   if (t.id === 'text') {

@@ -1,0 +1,20 @@
+{
+  "appId": "vn.hinhai.app",
+  "appName": "HinhAI",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0d1424"
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 700,
+      "backgroundColor": "#0d1424",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
+}

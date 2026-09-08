@@ -3,6 +3,7 @@ import { GeoDoc } from '../src/core/model.js';
 import { runScript } from '../src/core/dsl.js';
 import { angleABC, vDist } from '../src/core/vec.js';
 import { p3dist } from '../src/core/ops3d.js';
+import { docBPT, mienNghiem, thuocMien, dinhHuuHan, docKhoang } from '../src/core/bpt.js';
 
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => {
@@ -212,6 +213,62 @@ T('Lăng trụ & giao đường thẳng với mặt phẳng', () => {
     `${L.v.length}/${L.faces.length}/${L.edges.length}`);
   const I = d.byName('I').val;
   ok('giao XY với mp(ABC) tại z=0', I && near(I.z, 0) && near(I.x, 1) && near(I.y, 1), JSON.stringify(I));
+});
+
+// ---------------------------------------------------------------- Miền nghiệm
+T('Đọc bất phương trình bậc nhất hai ẩn', () => {
+  const h = docBPT('2x + 3y <= 6');
+  ok('2x+3y≤6 → giữ 2x+3y−6 ≤ 0', near(h.a, 2) && near(h.b, 3) && near(h.c, -6) && !h.chat);
+  // y > 2x−1  ⟺  2x − y − 1 < 0
+  const g = docBPT('y > 2x - 1');
+  ok('y>2x−1 → chuẩn hoá thành 2x−y−1 ≤ 0, biên ngặt', near(g.a, 2) && near(g.b, -1) && near(g.c, -1) && g.chat,
+    JSON.stringify(g));
+  const mg = mienNghiem(['y > 2x - 1']);
+  ok('gốc toạ độ thoả y>2x−1', thuocMien(mg, 0, 0));
+  ok('(3,0) không thoả y>2x−1', !thuocMien(mg, 3, 0));
+  ok('hệ số phân số 3/2 đọc được', near(docBPT('3/2 x + y <= 5').a, 1.5));
+  ok('dấu ≤ ≥ kiểu toán học đọc được', near(docBPT('x ≥ 2').a, -1));
+  let loi = false;
+  try { docBPT('x + y'); } catch (_) { loi = true; }
+  ok('thiếu dấu bất đẳng thức thì báo lỗi', loi);
+});
+
+T('Miền nghiệm của hệ', () => {
+  const m = mienNghiem(['x>=0', 'y>=0', 'x+y<=4']);
+  const d = dinhHuuHan(m);
+  ok('tam giác OAB có đúng 3 đỉnh', d.length === 3, 'có ' + d.length);
+  const co = (x, y) => d.some((p) => near(p.x, x, 1e-6) && near(p.y, y, 1e-6));
+  ok('ba đỉnh là (0,0), (4,0), (0,4)', co(0, 0) && co(4, 0) && co(0, 4));
+  ok('(1,1) nằm trong miền', thuocMien(m, 1, 1));
+  ok('(5,0) nằm ngoài miền', !thuocMien(m, 5, 0));
+  ok('(0,0) trên biên vẫn tính là thuộc', thuocMien(m, 0, 0));
+
+  const rong = mienNghiem(['x>=2', 'x<=1']);
+  ok('hệ vô nghiệm cho miền rỗng', rong.rong === true);
+
+  const nua = mienNghiem(['2x+3y<=6']);
+  ok('một bất phương trình cho nửa mặt phẳng', !nua.rong && nua.pts.length >= 3);
+  ok('gốc toạ độ thuộc 2x+3y≤6', thuocMien(nua, 0, 0));
+  ok('(3,3) không thuộc 2x+3y≤6', !thuocMien(nua, 3, 3));
+});
+
+T('Khoảng trên trục số', () => {
+  const a = docKhoang('[-1;3]');
+  ok('[-1;3] là đoạn đóng hai đầu', a.a === -1 && a.b === 3 && a.dongA && a.dongB);
+  const b = docKhoang('(2;5]');
+  ok('(2;5] mở trái đóng phải', b.a === 2 && b.b === 5 && !b.dongA && b.dongB);
+});
+
+T('Miền nghiệm qua DSL và lưu/mở lại', () => {
+  const d = new GeoDoc();
+  const r = runScript(d, 'M = mien 2x+3y<=6\nH = hemien x>=0, y>=0, x+y<=4\nA = khoang [-1;3]');
+  ok('ba lệnh chạy không lỗi', r.errors.length === 0, JSON.stringify(r.errors));
+  ok('M là miền nghiệm', d.byName('M').val.t === 'mien');
+  ok('H là tam giác 3 đỉnh', dinhHuuHan(d.byName('H').val).length === 3);
+  ok('A là đoạn [-1;3]', d.byName('A').val.a === -1 && d.byName('A').val.b === 3);
+  const d2 = GeoDoc.fromJSON(JSON.parse(JSON.stringify(d.toJSON())));
+  ok('mở lại vẫn đúng miền', dinhHuuHan(d2.byName('H').val).length === 3);
+  ok('mở lại vẫn đúng đoạn', d2.byName('A').val.b === 3);
 });
 
 console.log(`\n===== ${pass} đạt / ${fail} lỗi =====`);

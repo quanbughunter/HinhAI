@@ -37,6 +37,8 @@ export const ICONS = {
   sph: I('<circle cx="12" cy="12" r="8"/><ellipse cx="12" cy="12" rx="8" ry="3.2" stroke-dasharray="3 2.5"/>'),
   sect: I('<path d="M6 19V8l6-4 6 4v11z"/><path d="M4 14l16-4" stroke="currentColor" stroke-dasharray="0"/>'),
   rot: I('<path d="M20 12a8 8 0 11-2.4-5.7M20 4v4h-4"/>'),
+  mien: I('<path d="M3 17L21 5"/><path d="M5 19l3-3M9 19l5-5M13 19l6-6M17 19l4-4" stroke-width="1.1"/>'),
+  khoang: I('<path d="M3 12h18M7 8v8M17 8v8"/>' + DOT(7, 12, 2.6) + DOT(17, 12, 2.6)),
 };
 
 // pick kinds: 'point' | 'curve' (đường/đường tròn) | 'any' | 'solid' | 'p3'
@@ -70,6 +72,12 @@ export const TOOLS_2D = [
     { id: 'perpbi', name: 'Trung trực', icon: ICONS.perpbi, n: 2, kinds: ['point', 'point'], op: 'perpBisector', hint: 'Chọn 2 điểm.' },
     { id: 'bisec', name: 'Phân giác', icon: ICONS.bisec, n: 3, kinds: ['point', 'point', 'point'], op: 'bisector', hint: 'Chọn 3 điểm, điểm GIỮA là đỉnh góc.' },
     { id: 'refl', name: 'Đối xứng', icon: ICONS.refl, n: 2, kinds: ['point', 'any'], op: 'reflectPt', hint: 'Chọn điểm cần lấy đối xứng, rồi chọn trục (đường thẳng) hoặc tâm (điểm).' },
+  ]},
+  { g: 'Miền nghiệm', t: [
+    { id: 'mien', name: 'Miền nghiệm BPT', icon: ICONS.mien, n: 0,
+      hint: 'Bấm để nhập bất phương trình, ví dụ 2x+3y<=6. Nhiều bất phương trình thì ngăn bằng dấu phẩy.' },
+    { id: 'khoang', name: 'Khoảng trên trục số', icon: ICONS.khoang, n: 0,
+      hint: 'Bấm rồi nhập khoảng, ví dụ [-1;3] hoặc (2;5].' },
   ]},
   { g: 'Đo', t: [
     { id: 'dist', name: 'Khoảng cách', icon: ICONS.dist, n: 2, kinds: ['point', 'point'], op: 'distance', hint: 'Chọn 2 điểm.' },
@@ -108,6 +116,8 @@ export const QUICK_2D = [
   ['Tam giác đều', 'A=(-3,-2)\nB=(3,-2)\nC=(0,3.196)\nt=tamgiac(A,B,C)'],
   ['Đường tròn', 'O=(0,0)\nA=(4,0)\nc=duongtron(O,A)'],
   ['Hình vuông', 'A=(-3,-3)\nB=(3,-3)\nC=(3,3)\nD=(-3,3)\nt=tugiac(A,B,C,D)'],
+  ['Miền nghiệm', 'mien 2x+3y<=6'],
+  ['Hệ BPT', 'mien x>=0, y>=0, x+y<=4, 2x+y<=6'],
   ['3 đường cao', 'A=(-4,-2)\nB=(5,-2)\nC=(1,4)\nt=tamgiac(A,B,C)\nha=duongcao(A,B,C)\nhb=duongcao(B,C,A)\nhc=duongcao(C,A,B)\nH=tructam(A,B,C)'],
 ];
 export const QUICK_3D = [
@@ -120,6 +130,7 @@ export const QUICK_3D = [
 ];
 
 export const CHIPS = [
+  'Vẽ miền nghiệm của hệ x≥0, y≥0, x+y≤4, 2x+y≤6',
   'Vẽ tam giác ABC vuông tại A, kẻ đường cao AH',
   'Vẽ đường tròn tâm O bán kính 5 và một dây AB',
   'Tam giác ABC nội tiếp đường tròn tâm O, kẻ ba đường cao',

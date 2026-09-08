@@ -43,7 +43,10 @@ function render() {
   const cam = C();
   cam.w = Math.max(1, r.width); cam.h = Math.max(1, r.height);
   const mk = (id, c) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`;
-  const defs = `<defs>${mk('arw', '#16233d')}${mk('arwr', '#b3261e')}${mk('arwg', '#1f7a5a')}${mk('arwb', '#22468f')}</defs>`;
+  // hoa văn gạch chéo cho miền nghiệm — ba hướng khác nhau để phân biệt nhiều miền
+  const hatch = (i, goc, mau) => `<pattern id="hatch${i}" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(${goc})"><line x1="0" y1="0" x2="0" y2="9" stroke="${mau}" stroke-width="1.15" opacity=".75"/></pattern>`;
+  const defs = `<defs>${mk('arw', '#16233d')}${mk('arwr', '#b3261e')}${mk('arwg', '#1f7a5a')}${mk('arwb', '#22468f')}`
+    + `${hatch(0, 45, '#b3261e')}${hatch(1, -45, '#22468f')}${hatch(2, 0, '#1f7a5a')}</defs>`;
   const opt = { ...app.opts, selected: app.sel, hover: app.hover };
   svg.innerHTML = defs + (is3() ? render3(D(), cam, opt) : render2(D(), cam, opt));
   renderObjList();
@@ -84,6 +87,8 @@ function describe(o) {
   else if (v && v.t === 'num') extra = ` = ${r2(v.v)}`;
   else if (v && v.t === 'angle') extra = ` = ${r2(v.v)}°`;
   else if (v && v.t === 'solid') extra = ` ${v.v.length} đỉnh`;
+  else if (v && v.t === 'mien') extra = ' ' + (v.rong ? '(rỗng)' : (o.params.bpt || []).join('  ·  '));
+  else if (v && v.t === 'khoang') extra = ` ${v.dongA ? '[' : '('}${r2(v.a)}; ${r2(v.b)}${v.dongB ? ']' : ')'}`;
   return `${VN[o.op] || o.op}${A ? '(' + A + ')' : ''}${extra}`;
 }
 const r2 = (v) => (Number.isFinite(v) ? Math.round(v * 100) / 100 : '?');
@@ -97,7 +102,7 @@ const VN = {
   centroid: 'trọng tâm', circumcenter: 'tâm ngoại tiếp', incenter: 'tâm nội tiếp', orthocenter: 'trực tâm',
   foot: 'hình chiếu', footBC: 'chân đ.cao', reflectPt: 'đối xứng', rotatePt: 'quay', dilatePt: 'vị tự',
   translatePt: 'tịnh tiến', pyramid: 'hình chóp', prism: 'lăng trụ', box: 'hình hộp', sphere: 'mặt cầu',
-  face: 'mặt', plane3: 'mặt phẳng', section: 'thiết diện', meet3: 'giao với mp', text: 'ghi chú', numberFree: 'số',
+  face: 'mặt', plane3: 'mặt phẳng', section: 'thiết diện', meet3: 'giao với mp', text: 'ghi chú', numberFree: 'số', region: 'miền nghiệm', interval: 'khoảng',
 };
 
 // ---------------------------------------------------------------- Undo
@@ -263,6 +268,22 @@ function clickTool(px) {
   if (t.id === 'del') {
     const hit = pick(D(), C(), px, app.mode);
     if (hit) { snap(); D().remove(hit.id); render(); }
+    return;
+  }
+  if (t.id === 'mien') {
+    const q = prompt('Nhập bất phương trình (nhiều cái thì ngăn bằng dấu phẩy):', '2x + 3y <= 6');
+    if (q && q.trim()) {
+      const r = exec('mien ' + q.trim());
+      if (r.errors.length) flash(r.errors[0]);
+    }
+    return;
+  }
+  if (t.id === 'khoang') {
+    const q = prompt('Nhập khoảng trên trục số:', '[-1;3]');
+    if (q && q.trim()) {
+      const r = exec('khoang ' + q.trim());
+      if (r.errors.length) flash(r.errors[0]);
+    }
     return;
   }
   if (t.id === 'text') {

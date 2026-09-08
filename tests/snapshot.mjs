@@ -11,8 +11,11 @@ const CSS = `<style>
 .lbl{font-size:15px;font-weight:600;font-family:serif;font-style:italic;paint-order:stroke;stroke:#fff;stroke-width:3.5px;stroke-linejoin:round}
 .lbl.plain{font-style:normal;font-family:sans-serif;font-size:12.5px}
 </style>`;
-const DEFS = ['arw|#16233d', 'arwr|#b3261e', 'arwg|#1f7a5a', 'arwb|#22468f']
+const HATCH = [[0,45,'#b3261e'],[1,-45,'#22468f'],[2,0,'#1f7a5a']]
+  .map(([i,g,c]) => `<pattern id="hatch${i}" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(${g})"><line x1="0" y1="0" x2="0" y2="9" stroke="${c}" stroke-width="1.15" opacity=".75"/></pattern>`).join('');
+const DEFS0 = ['arw|#16233d', 'arwr|#b3261e', 'arwg|#1f7a5a', 'arwb|#22468f']
   .map((s) => s.split('|')).map(([id, c]) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`).join('');
+const DEFS = DEFS0 + HATCH;
 
 function fitCam2(doc, cam) {
   const pts = [];
@@ -37,7 +40,9 @@ function shot(name, script, mode) {
   if (r.errors.length) console.log('  ! lỗi:', r.errors.join(' | '));
   const cam = mode === '3d' ? new Cam3() : new Cam2();
   cam.w = 820; cam.h = 560;
-  if (mode === '3d') { cam.scale = 48; cam.oy = 40; } else fitCam2(doc, cam);
+  if (mode === '3d') { cam.scale = 48; cam.oy = 40; }
+  else if (doc.list().some((o) => o.val && (o.val.t === 'mien' || o.val.t === 'khoang'))) { cam.cx = 2; cam.cy = 1.5; cam.scale = 52; }
+  else fitCam2(doc, cam);
   const body = mode === '3d'
     ? render3(doc, cam, { grid: true, axes: true, selected: new Set() })
     : render2(doc, cam, { grid: true, axes: true, selected: new Set() });
@@ -60,6 +65,15 @@ c=duongtronqua(A,B,C)
 M=trungdiem(B,C)
 m=trungtruc(A,B)
 d=khoangcach(A,B)
+`, '2d');
+
+shot('shot-mien', `
+mien 2x+3y<=6
+`, '2d');
+
+shot('shot-hemien', `
+H = hemien x>=0, y>=0, x+y<=4, 2x+y<=6
+A = khoang [-1;3]
 `, '2d');
 
 shot('shot-3d', `

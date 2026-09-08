@@ -33,6 +33,12 @@ TOẠ ĐỘ & ĐIỂM (2D)
   tamgiac(A,B,C)   tugiac(A,B,C,D)   dagiac(A,B,C,D,E)
   khoangcach(A,B)   goc(A,B,C)   dientich(t)   chu("nội dung", x, y)
 
+MIỀN NGHIỆM BẤT PHƯƠNG TRÌNH BẬC NHẤT HAI ẨN
+  m = mien("2x+3y<=6")                     miền nghiệm một bất phương trình
+  m = hemien("x>=0","y>=0","x+y<=4")       miền nghiệm của HỆ (giao các nửa mặt phẳng)
+  A = khoang("[-1;3]")                     biểu diễn khoảng/đoạn trên trục số, dùng [ ] hoặc ( )
+  Biên vẽ nét liền khi có dấu bằng (≤, ≥), nét đứt khi ngặt (<, >) — app tự lo.
+
 HÌNH KHÔNG GIAN (3D)
   A = (x,y,z)                    điểm 3D (3 số)
   doan3(A,B)   duongthang3(A,B)  mat(A,B,C,D)
@@ -63,7 +69,8 @@ QUY TẮC BẮT BUỘC
 5. Vẽ luôn cả hình phụ mà đề bài nhắc tới (đường cao, trung tuyến, đường tròn ngoại tiếp...).
 6. Chỉ tạo thêm đối tượng mới; đối tượng đã có trong danh sách hiện tại thì dùng lại tên, đừng định nghĩa lại.
 7. Với hình không gian: dùng toạ độ 3 thành phần và lệnh nhóm 3D. Đáy thường nằm ở z = 0.
-8. Không giải thích trong script. Giải thích ngắn (1-2 câu tiếng Việt) đặt ở trường "giai_thich".
+8. Bài "tìm miền nghiệm" hay "biểu diễn miền nghiệm" thì dùng mien/hemien, KHÔNG tự vẽ tay bằng đường thẳng.
+9. Không giải thích trong script. Giải thích ngắn (1-2 câu tiếng Việt) đặt ở trường "giai_thich".
 
 Trả lời DUY NHẤT một đối tượng JSON: {"giai_thich": "...", "script": "..."}`;
 

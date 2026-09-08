@@ -9,6 +9,7 @@ import {
   intersectAny, centroid3, circumcenter3, incenter3, inradius3, orthocenter3,
   polyArea, angleABC, deg, rad, okPt,
 } from './vec.js';
+import { mienNghiem, docKhoang } from './bpt.js';
 
 const PT = { color: '#1f3f8f', size: 4.6 };
 const LN = { color: '#16233d', width: 1.8 };
@@ -263,6 +264,22 @@ export const OPS = {
     type: 'number', style: NUM,
     fn: (_, p) => num(p.v == null ? 1 : p.v, null),
   },
+  // ---------------- Miền nghiệm ----------------
+  region: {   // miền nghiệm của một hệ bất phương trình bậc nhất hai ẩn
+    type: 'mien', style: { color: '#b3261e', width: 1.8, fill: 'rgba(179,38,30,.10)' },
+    fn: (_, p) => {
+      const ds = (p.bpt || []).filter((x) => String(x).trim());
+      if (!ds.length) return null;
+      const m = mienNghiem(ds);
+      m.hatch = p.hatch || 0;
+      return m;
+    },
+  },
+  interval: {   // biểu diễn một khoảng / đoạn trên trục số
+    type: 'khoang', style: { color: '#b3261e', width: 2.2 },
+    fn: (_, p) => (p.k ? docKhoang(p.k) : null),
+  },
+
   text: {
     type: 'text', style: { color: '#16233d' },
     fn: (_, p) => ({ t: 'text', s: p.s || '', x: p.x || 0, y: p.y || 0 }),

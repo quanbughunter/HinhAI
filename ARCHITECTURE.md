@@ -54,6 +54,7 @@ Chi phí: `O(n)` mỗi khung hình. Kéo một điểm trong hình 100 đối t�
 | `src/core/model.js` | ~150 | `GeoDoc`: thêm/xoá/tính lại/lưu/mở, xoá dây chuyền |
 | `src/core/ops2d.js` | ~280 | 45 phép dựng hình phẳng |
 | `src/core/ops3d.js` | ~200 | Khối đa diện, mặt phẳng, **thiết diện**, giao đường–mặt |
+| `src/core/bpt.js` | ~140 | Bất phương trình bậc nhất hai ẩn, cắt nửa mặt phẳng, **miền nghiệm** |
 | `src/core/dsl.js` | ~250 | Tách từ, phân tích cú pháp lồng nhau, alias tiếng Việt |
 | `src/ui/render.js` | ~330 | Camera 2D/3D, sinh chuỗi SVG, dò trúng đối tượng |
 | `src/ui/tools.js` | ~140 | Khai báo công cụ + biểu tượng |
@@ -104,8 +105,11 @@ Bản chạy trên claude.ai dùng khả năng `sample` của Artifact nên **kh
 
 ## 4. Lộ trình
 
-### Đã xong (v0.1)
-Lõi dựng hình 2D/3D · 24 công cụ · DSL tiếng Việt · chat AI + tự sửa lỗi · thiết diện · hoàn tác · lưu/mở/xuất PNG · giao diện sáng-tối · 61 bài kiểm thử tự động.
+### Đã xong
+Lõi dựng hình 2D/3D · 26 công cụ · DSL tiếng Việt · chat AI qua proxy dùng chung ·
+thiết diện · **miền nghiệm bất phương trình** · kéo nhãn tự do · giao diện điện thoại
+với chat dạng bong bóng · hoàn tác · lưu/mở/xuất PNG · 90 bài kiểm thử tự động ·
+đóng gói APK tự động bằng GitHub Actions.
 
 ### Nên làm tiếp (theo thứ tự đáng giá / công sức)
 
@@ -114,7 +118,7 @@ Lõi dựng hình 2D/3D · 24 công cụ · DSL tiếng Việt · chat AI + tự
 | ★★★ | **Quỹ tích** (`quytich(P, M)`) | Kéo M chạy trên đường, vẽ vết của P. Khoảng 40 dòng, giá trị sư phạm rất lớn. |
 | ★★★ | **Thanh trượt tham số** | `a = truot(0, 10)` để khảo sát hình động. |
 | ★★☆ | **Đường conic** (parabol, elip, hypebol) | Thêm kiểu `conic` vào `ops2d.js` + giao đường thẳng–conic. |
-| ★★☆ | **Đồ thị hàm số** `f(x) = x^2 - 3x` | Cần thêm bộ tính biểu thức (~80 dòng). |
+| ★★☆ | **Đồ thị hàm số** `f(x) = x^2 - 3x` | Cần thêm bộ tính biểu thức (~80 dòng). Bộ đọc biểu thức tuyến tính trong `bpt.js` là điểm khởi đầu. |
 | ★★☆ | **Xuất TikZ / LaTeX** | Giáo viên soạn đề rất cần. Từ `doc` sinh thẳng mã TikZ. |
 | ★☆☆ | Đánh dấu cạnh bằng nhau, góc bằng nhau | Ký hiệu \|, \|\|, ///  trên cạnh. |
 | ★☆☆ | Kiểm tra tính chất | "AB có bằng AC không?" — kiểm bằng số rồi báo. |

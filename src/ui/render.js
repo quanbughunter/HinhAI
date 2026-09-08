@@ -103,6 +103,30 @@ const fmt = (v) => {
   return Number.isInteger(r) ? String(r) : String(r);
 };
 
+/** Cắt đa giác theo khung nhìn (toạ độ thế giới) để tìm chỗ đặt nhãn cho gọn */
+function catTheoKhung(pts, cam) {
+  const tl = cam.u({ x: 0, y: 0 }), br = cam.u({ x: cam.w, y: cam.h });
+  const canh = [
+    (p) => p.x - tl.x, (p) => br.x - p.x, (p) => p.y - br.y, (p) => tl.y - p.y,
+  ];
+  let poly = pts;
+  for (const g of canh) {
+    const ra = [];
+    for (let i = 0; i < poly.length; i++) {
+      const P = poly[i], Q = poly[(i + 1) % poly.length];
+      const gp = g(P), gq = g(Q);
+      if (gp >= 0) ra.push(P);
+      if ((gp < 0 && gq > 0) || (gp > 0 && gq < 0)) {
+        const t = gp / (gp - gq);
+        ra.push({ x: P.x + (Q.x - P.x) * t, y: P.y + (Q.y - P.y) * t });
+      }
+    }
+    poly = ra;
+    if (!poly.length) return [];
+  }
+  return poly;
+}
+
 // ---------------------------------------------------------------- Vẽ 2D
 function lineEndpoints(L, cam) {
   const big = (cam.w + cam.h) * 1.5 / cam.scale;
@@ -124,6 +148,62 @@ export function render2(doc, cam, opt) {
   const labels = [];
   const sel = opt.selected || new Set();
   const hl = opt.hover;
+
+  // 0) miền nghiệm & khoảng trên trục số — nằm dưới cùng
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val) continue;
+
+    if (o.val.t === 'mien') {
+      const m = o.val;
+      const chon = sel.has(o.id);
+      const mau = chon ? '#d98324' : (o.style.color || '#b3261e');
+      if (!m.rong && m.pts.length >= 3) {
+        const d = m.pts.map((p) => cam.s(p)).map((p) => `${f(p.x)},${f(p.y)}`).join(' ');
+        out.push(`<polygon points="${d}" fill="${o.style.fill || 'rgba(179,38,30,.10)'}" stroke="none"/>`);
+        out.push(`<polygon points="${d}" fill="url(#hatch${(m.hatch || 0) % 3})" stroke="none"/>`);
+      }
+      // đường biên của từng bất phương trình: nét liền nếu lấy cả biên, nét đứt nếu không
+      const big = (cam.w + cam.h) * 1.5 / cam.scale;
+      for (const h of m.hp) {
+        const n2 = h.a * h.a + h.b * h.b;
+        if (n2 < 1e-12) continue;
+        const P = { x: -h.a * h.c / n2, y: -h.b * h.c / n2 };
+        const u = vNorm({ x: -h.b, y: h.a });
+        const A = cam.s({ x: P.x - u.x * big, y: P.y - u.y * big });
+        const B = cam.s({ x: P.x + u.x * big, y: P.y + u.y * big });
+        out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" stroke="${mau}" stroke-width="${(o.style.width || 1.8) * (chon ? 1.6 : 1)}"${h.chat ? ' stroke-dasharray="7 5"' : ''} stroke-linecap="round"/>`);
+      }
+      if (o.showLabel) {
+        const trong = m.rong ? [] : catTheoKhung(m.pts, cam);
+        if (trong.length) {
+          const c = trong.reduce((a, p) => vAdd(a, p), { x: 0, y: 0 });
+          labels.push(lab(o, cam.s(vMul(c, 1 / trong.length)), o.name, mau, 0, 0));
+        }
+      }
+      continue;
+    }
+
+    if (o.val.t === 'khoang') {
+      const k = o.val;
+      const chon = sel.has(o.id);
+      const mau = chon ? '#d98324' : (o.style.color || '#b3261e');
+      const tl = cam.u({ x: 0, y: 0 }), br = cam.u({ x: cam.w, y: cam.h });
+      const a = Math.max(k.a, tl.x - 1), b = Math.min(k.b, br.x + 1);
+      if (b <= a) continue;
+      const A = cam.s({ x: a, y: 0 }), B = cam.s({ x: b, y: 0 });
+      out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" stroke="${mau}" stroke-width="${chon ? 5 : 3.4}" stroke-linecap="butt"/>`);
+      // gạch chéo phía trên cho dễ nhìn, đúng kiểu vẽ trên bảng
+      const g = [];
+      for (let x = A.x; x <= B.x; x += 9) g.push(`M${f(x)} ${f(A.y)}l7 -11`);
+      out.push(`<path d="${g.join('')}" stroke="${mau}" stroke-width="1" opacity=".55" fill="none"/>`);
+      // đầu mút: chấm đặc = lấy, chấm rỗng = không lấy
+      const mut = (X, dong) => `<circle cx="${f(X)}" cy="${f(A.y)}" r="5" fill="${dong ? mau : 'var(--panel,#fff)'}" stroke="${mau}" stroke-width="2.2"/>`;
+      if (k.a >= tl.x - 1) out.push(mut(cam.s({ x: k.a, y: 0 }).x, k.dongA));
+      if (k.b <= br.x + 1) out.push(mut(cam.s({ x: k.b, y: 0 }).x, k.dongB));
+      if (o.showLabel) labels.push(lab(o, { x: (A.x + B.x) / 2, y: A.y }, o.name, mau, 0, -18));
+      continue;
+    }
+  }
 
   // 1) đa giác
   for (const o of doc.list()) {
@@ -354,6 +434,12 @@ export function pick(doc, cam, px, mode, tol = 13) {
     } else if (!is3 && o.type === 'circle') {
       const c = cam.s(o.val.c);
       d = Math.abs(Math.hypot(px.x - c.x, px.y - c.y) - o.val.r * cam.scale);
+    } else if (!is3 && o.val.t === 'mien') {
+      if (o.val.pts.length >= 3) {
+        d = Math.min(...o.val.pts.map((p, i) => distSegPx(cam.s(p), cam.s(o.val.pts[(i + 1) % o.val.pts.length]), px)));
+      }
+    } else if (!is3 && o.val.t === 'khoang') {
+      d = distSegPx(cam.s({ x: o.val.a, y: 0 }), cam.s({ x: o.val.b, y: 0 }), px);
     } else if (!is3 && o.type === 'polygon') {
       d = Math.min(...o.val.pts.map((p, i) => distSegPx(cam.s(p), cam.s(o.val.pts[(i + 1) % o.val.pts.length]), px)));
     } else if (is3 && o.val.t === 's3') {

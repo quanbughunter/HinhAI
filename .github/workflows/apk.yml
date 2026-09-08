@@ -1,0 +1,67 @@
+name: Đóng gói APK
+
+# Chạy bằng tay: vào tab Actions → "Đóng gói APK" → Run workflow.
+# Hoặc tự chạy khi bạn đẩy một tag dạng v0.1, v0.2...
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cài Java 21 (Capacitor 7 cần bản này)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cài thư viện
+        run: npm install
+
+      - name: Gộp mã và dựng thư mục www
+        run: npm run www
+
+      - name: Tạo dự án Android
+        run: npx cap add android
+
+      - name: Sinh icon và màn hình chờ
+        run: npx @capacitor/assets generate --android
+        continue-on-error: true      # thiếu icon vẫn build được, chỉ là dùng icon mặc định
+
+      - name: Đồng bộ mã web vào dự án Android
+        run: npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Đổi tên tệp cho dễ nhận
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/app-debug.apk "out/HinhAI-$(date +%Y%m%d).apk"
+          ls -la out
+
+      - name: Tải APK lên (vào mục Artifacts của lần chạy này)
+        uses: actions/upload-artifact@v4
+        with:
+          name: HinhAI-APK
+          path: out/*.apk
+          retention-days: 60
+
+      - name: Đính kèm APK vào bản phát hành (chỉ khi đẩy tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.apk
