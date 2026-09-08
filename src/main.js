@@ -358,8 +358,8 @@ function flash(msg, ms = 2600) {
 }
 
 // ---------------------------------------------------------------- Chat AI
-function addMsg(role, text, code, cls) {
-  app.chat.push({ role, text });
+function addMsg(role, text, code, cls, ghiNho = true) {
+  if (ghiNho) app.chat.push({ role, text });
   const el = document.createElement('div');
   el.className = 'msg ' + (cls || (role === 'user' ? 'me' : 'ai'));
   el.innerHTML = esc(text) + (code ? `<span class="code">${esc(code)}</span>` : '');
@@ -367,7 +367,7 @@ function addMsg(role, text, code, cls) {
   $('#chatlog').scrollTop = 1e9;
   return el;
 }
-function sysMsg(t) { return addMsg('sys', t, null, 'sys'); }
+function sysMsg(t) { return addMsg('sys', t, null, 'sys', false); }
 
 async function sendChat() {
   const inp = $('#chatin');
@@ -375,11 +375,15 @@ async function sendChat() {
   if (!text || app.busy) return;
   inp.value = ''; inp.style.height = 'auto';
   addMsg('user', text);
+  // Lịch sử phải chốt ở đây: các tin báo trạng thái/lỗi phía dưới không được lọt vào,
+  // vì Gemini từ chối cuộc hội thoại kết thúc bằng lượt của máy.
+  const hist = app.chat.filter((m) => m.role === 'user' || m.role === 'assistant').slice(-8);
+  while (hist.length && hist[hist.length - 1].role !== 'user') hist.pop();
+  while (hist.length && hist[0].role !== 'user') hist.shift();
   app.busy = true; $('#chatsend').disabled = true;
-  const thinking = addMsg('assistant', 'Đang dựng hình…');
+  const thinking = addMsg('assistant', 'Đang dựng hình…', null, null, false);
   try {
     const key = LS.get('key', '');
-    const hist = app.chat.filter((m) => m.role !== 'sys').slice(-8);
     let out = null, via = '';
     // Bản chạy trên claude.ai: dùng thẳng trợ lý Claude (không cần khoá, và trang này
     // không được phép gọi ra máy chủ ngoài nên khoá Gemini sẽ không dùng được ở đây).
@@ -387,20 +391,20 @@ async function sendChat() {
       try {
         out = await askClaudeRuntime({ sample: app.sampler, history: hist, context: describeDoc(D(), app.mode) });
         via = 'Claude';
-      } catch (e) { addMsg('assistant', 'Trợ lý Claude lỗi: ' + (e.message || e.code || e), null, 'err'); }
+      } catch (e) { addMsg('assistant', 'Trợ lý Claude lỗi: ' + (e.message || e.code || e), null, 'err', false); }
     }
     const proxy = LS.get('proxy', '') || DEFAULT_PROXY;
     if (!out && proxy) {
       try {
         out = await askViaProxy({ url: proxy, history: hist, context: describeDoc(D(), app.mode) });
         via = 'Gemini';
-      } catch (e) { addMsg('assistant', 'Máy chủ trung gian báo lỗi: ' + e.message, null, 'err'); }
+      } catch (e) { addMsg('assistant', 'Máy chủ trung gian báo lỗi: ' + e.message, null, 'err', false); }
     }
     if (!out && key) {
       try {
         out = await askGemini({ key, model: LS.get('model', 'gemini-3.6-flash'), history: hist, context: describeDoc(D(), app.mode) });
         via = 'Gemini';
-      } catch (e) { addMsg('assistant', 'Gemini báo lỗi: ' + e.message, null, 'err'); }
+      } catch (e) { addMsg('assistant', 'Gemini báo lỗi: ' + e.message, null, 'err', false); }
     }
     if (!out) {
       const loc = localParse(text, D());
@@ -431,10 +435,10 @@ async function sendChat() {
     }
     const okCount = res.created.length;
     addMsg('assistant', (out.giai_thich || 'Đã dựng hình.') + (via ? ` · ${via}` : '') + (okCount ? `\nĐã tạo ${okCount} đối tượng.` : ''), out.script);
-    if (res.errors.length) addMsg('assistant', 'Một số dòng chưa chạy được:\n' + res.errors.join('\n'), null, 'err');
+    if (res.errors.length) addMsg('assistant', 'Một số dòng chưa chạy được:\n' + res.errors.join('\n'), null, 'err', false);
   } catch (e) {
     if (thinking.isConnected) thinking.remove();
-    addMsg('assistant', 'Lỗi: ' + (e.message || e), null, 'err');
+    addMsg('assistant', 'Lỗi: ' + (e.message || e), null, 'err', false);
   } finally {
     app.busy = false; $('#chatsend').disabled = false;
   }

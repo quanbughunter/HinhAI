@@ -98,7 +98,11 @@ export const DEFAULT_PROXY = 'https://hinhai-proxy.nguyendinhquan7788266.workers
 
 /** Dựng phần thân yêu cầu gửi cho Gemini (dùng chung cho cả hai đường đi) */
 function geminiBody(history, context) {
-  const contents = history.map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+  // Gemini yêu cầu hội thoại bắt đầu và kết thúc bằng lượt của người dùng
+  const h = history.filter((m) => m && m.text);
+  while (h.length && h[h.length - 1].role !== 'user') h.pop();
+  while (h.length && h[0].role !== 'user') h.shift();
+  const contents = h.map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
   if (contents.length) contents[contents.length - 1].parts[0].text = `[TÌNH TRẠNG BẢNG VẼ]\n${context}\n\n[YÊU CẦU]\n${contents[contents.length - 1].parts[0].text}`;
   return {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
