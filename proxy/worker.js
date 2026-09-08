@@ -62,13 +62,28 @@ export default {
     const model = env.GEMINI_MODEL || MODEL_MAC_DINH;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(khoa)}`;
 
+    const duPhong = env.GEMINI_MODEL_FALLBACK || 'gemini-flash-latest';
+    const goiModel = (ten) => fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ten)}:generateContent?key=${encodeURIComponent(khoa)}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(goi) },
+    );
+    const quaTai = (st, t) => st === 429 || st === 503 || /high demand|overload|unavailable/i.test(t);
+
     try {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(goi),
-      });
-      const text = await r.text();
+      let r = await goiModel(model);
+      let text = await r.text();
+
+      // Google đôi khi báo quá tải — chờ một nhịp rồi thử lại
+      if (quaTai(r.status, text)) {
+        await new Promise((s) => setTimeout(s, 1200));
+        r = await goiModel(model);
+        text = await r.text();
+      }
+      // vẫn quá tải thì đổi tạm sang model dự phòng
+      if (quaTai(r.status, text) && duPhong && duPhong !== model) {
+        r = await goiModel(duPhong);
+        text = await r.text();
+      }
       return new Response(text, { status: r.status, headers: { ...cors, 'Content-Type': 'application/json' } });
     } catch (e) {
       return traLoi({ error: { message: 'Không gọi được Gemini: ' + e.message } }, 502, cors);

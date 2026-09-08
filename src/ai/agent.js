@@ -111,6 +111,34 @@ function geminiBody(history, context) {
   };
 }
 
+/** Lỗi tạm thời phía Google: đáng thử lại sau vài giây */
+const QUA_TAI = /high demand|overload|unavailable|try again later|rate limit|resource_exhausted|too many requests/i;
+
+/** Dịch mấy thông báo hay gặp sang tiếng Việt cho dễ hiểu */
+function dichLoi(msg) {
+  const m = String(msg);
+  if (QUA_TAI.test(m)) return 'Model đang quá tải, mình đã thử lại vài lần vẫn chưa được. Đợi khoảng nửa phút rồi gửi lại nhé.';
+  if (/user location is not supported/i.test(m)) return 'Google chặn gọi trực tiếp từ vị trí này. Hãy dùng máy chủ trung gian (xem ⚙ Cài đặt).';
+  if (/api key not valid|api_key_invalid/i.test(m)) return 'Khoá API không hợp lệ hoặc đã bị xoá.';
+  if (/quota|billing/i.test(m)) return 'Đã hết hạn mức miễn phí của Gemini cho hôm nay.';
+  if (/no longer available/i.test(m)) return 'Tên model đã cũ, cần đổi sang model mới hơn. ' + m;
+  if (/failed to fetch|load failed|networkerror/i.test(m)) return 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.';
+  return m;
+}
+
+/** Gọi lại tối đa 3 lần khi gặp lỗi quá tải, giãn dần 1,2s rồi 2,4s */
+async function thuLai(fn, soLan = 3) {
+  let loiCuoi;
+  for (let i = 0; i < soLan; i++) {
+    try { return await fn(); } catch (e) {
+      loiCuoi = e;
+      if (!QUA_TAI.test(e.message || '')) break;
+      if (i < soLan - 1) await new Promise((r) => setTimeout(r, 1200 * (i + 1)));
+    }
+  }
+  throw new Error(dichLoi(loiCuoi && loiCuoi.message));
+}
+
 async function docKetQua(res) {
   if (!res.ok) {
     let msg = `Lỗi ${res.status}`;
@@ -125,20 +153,18 @@ async function docKetQua(res) {
 /** Gọi thẳng Gemini bằng khoá riêng của người dùng */
 export async function askGemini({ key, model, history, context }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
-  return docKetQua(await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(geminiBody(history, context)),
-  }));
+  const goi = JSON.stringify(geminiBody(history, context));
+  return thuLai(async () => docKetQua(await fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: goi,
+  })));
 }
 
 /** Gọi qua proxy — người dùng không cần khoá, khoá nằm ở phía máy chủ */
 export async function askViaProxy({ url, history, context }) {
-  return docKetQua(await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(geminiBody(history, context)),
-  }));
+  const goi = JSON.stringify(geminiBody(history, context));
+  return thuLai(async () => docKetQua(await fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: goi,
+  })));
 }
 
 // ------------------------------------------------- Claude runtime (bản Artifact)
