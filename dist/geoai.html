@@ -1,0 +1,2751 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HìnhAI</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+/* ===================================================================
+   Bảng màu lấy từ vở học trò Việt Nam:
+   mực xanh đen (hình chính) · chì than (compa) · chì nhạt (đường phụ) · mực đỏ (số đo, thiết diện)
+   =================================================================== */
+:root{
+  --bg:#f4f5f9; --panel:#ffffff; --ink:#16233d; --muted:#6b7794; --line:#dfe3f0;
+  --accent:#22468f; --accent-soft:#e9eefb; --warn:#d98324; --ok:#1f7a5a; --danger:#b3261e;
+  --rail:64px; --side:340px; --radius:12px;
+  --grid:#e3e7f4; --grid2:#eef0f8; --axis:#8c96b2; --labelhalo:#ffffff;
+  --errbg:#fdf1f0; --errline:#f0c4bf; --errink:#8f2018;
+  --shadow:0 1px 2px rgba(22,35,61,.06),0 8px 24px -12px rgba(22,35,61,.20);
+  --font-ui:'Be Vietnam Pro',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --font-math:'Cambria','Times New Roman',Georgia,serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1424; --panel:#141c2e; --ink:#e6eaf4; --muted:#8f9cbb; --line:#243048;
+    --accent:#7ba3f0; --accent-soft:#1a2745; --warn:#e0a458; --danger:#e8776b;
+    --grid:#1e2942; --grid2:#182135; --axis:#5b688a; --labelhalo:#141c2e;
+    --errbg:#2b1614; --errline:#5c2a25; --errink:#f0a79e;
+    --shadow:0 1px 2px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1424; --panel:#141c2e; --ink:#e6eaf4; --muted:#8f9cbb; --line:#243048;
+  --accent:#7ba3f0; --accent-soft:#1a2745; --warn:#e0a458; --danger:#e8776b;
+  --grid:#1e2942; --grid2:#182135; --axis:#5b688a; --labelhalo:#141c2e;
+    --errbg:#2b1614; --errline:#5c2a25; --errink:#f0a79e;
+  --shadow:0 1px 2px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font:14px/1.5 var(--font-ui);
+  background:var(--bg); color:var(--ink); overflow:hidden; -webkit-tap-highlight-color:transparent;
+}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+#app{display:flex;flex-direction:column;height:100%}
+
+/* ===================== Thanh trên ===================== */
+.top{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex:0 0 auto}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:-.2px;margin-right:4px}
+.brand .dot{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#22468f,#4338a8);display:grid;place-items:center;color:#fff;font-size:12px}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:2px}
+.seg button{padding:5px 12px;border-radius:7px;font-weight:600;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--panel);color:var(--accent);box-shadow:var(--shadow)}
+.tbtn{padding:6px 10px;border-radius:8px;border:1px solid transparent;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:6px}
+.tbtn:hover{background:var(--bg);color:var(--ink)}
+.spacer{flex:1}
+
+/* ===================== Bố cục ===================== */
+.body{flex:1;display:flex;min-height:0}
+.rail{width:var(--rail);flex:0 0 auto;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:6px 0;scrollbar-width:thin}
+.rail .grp{padding:6px 0;border-bottom:1px solid var(--line)}
+.rail .grp:last-child{border:0}
+.rail .glabel{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);text-align:center;margin:2px 0 4px}
+.tool{width:48px;height:42px;margin:2px auto;display:grid;place-items:center;border-radius:10px;color:var(--muted);position:relative}
+.tool svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tool:hover{background:var(--bg);color:var(--ink)}
+.tool.on{background:var(--accent-soft);color:var(--accent)}
+.tool[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:54px;top:50%;transform:translateY(-50%);background:#16233d;color:#f4f5f9;padding:5px 9px;border-radius:7px;white-space:nowrap;font-size:12px;z-index:60;pointer-events:none;box-shadow:var(--shadow)}
+
+.stage{flex:1;position:relative;min-width:0;background:var(--panel)}
+#svg{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#svg .grid{stroke:var(--grid);stroke-width:1;fill:none}
+#svg .grid2{stroke:var(--grid2);stroke-width:.7;fill:none}
+#svg .axis{stroke:var(--axis);stroke-width:1.2;fill:none}
+#svg .tick{font-size:10.5px;fill:var(--muted);text-anchor:middle;font-family:var(--font-ui);font-variant-numeric:tabular-nums}
+#svg .lbl{font-size:15px;font-weight:600;font-family:var(--font-math);font-style:italic;paint-order:stroke;stroke:var(--labelhalo);stroke-width:3.5px;stroke-linejoin:round}
+#svg .lbl.plain{font-style:normal;font-family:var(--font-ui);font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums}
+
+.hud{position:absolute;left:12px;top:12px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-size:12.5px;color:var(--muted);box-shadow:var(--shadow);max-width:60%;pointer-events:none}
+.hud b{color:var(--accent)}
+.zoombar{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:var(--shadow)}
+.zoombar button{width:30px;height:28px;border-radius:7px;color:var(--muted);font-size:15px;display:grid;place-items:center}
+.zoombar button:hover{background:var(--bg);color:var(--ink)}
+.quick{position:absolute;left:12px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap;max-width:70%}
+.quick button{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12.5px;color:var(--muted);box-shadow:var(--shadow)}
+.quick button:hover{color:var(--accent);border-color:var(--accent)}
+
+/* ===================== Panel phải ===================== */
+.side{width:var(--side);flex:0 0 auto;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side.hide{display:none}
+.tabs{display:flex;border-bottom:1px solid var(--line);flex:0 0 auto}
+.tabs button{flex:1;padding:9px 0;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent}
+.tabs button.on{color:var(--accent);border-color:var(--accent)}
+.pane{flex:1;display:none;flex-direction:column;min-height:0}
+.pane.on{display:flex}
+
+#chatlog{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:92%;padding:8px 11px;border-radius:12px;font-size:13.5px;white-space:pre-wrap;word-break:break-word}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--panel);border-bottom-right-radius:4px}
+.msg.ai{align-self:flex-start;background:var(--bg);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.sys{align-self:center;font-size:12px;color:var(--muted);background:none;padding:2px}
+.msg .code{display:block;margin-top:7px;font-family:var(--font-mono);font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 9px;white-space:pre;overflow-x:auto;color:var(--muted)}
+.msg.err{background:var(--errbg);border:1px solid var(--errline);color:var(--errink)}
+.composer{flex:0 0 auto;border-top:1px solid var(--line);padding:9px;display:flex;gap:7px;align-items:flex-end}
+.composer textarea{flex:1;resize:none;min-height:38px;max-height:120px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--bg);outline:none}
+.composer textarea:focus{border-color:var(--accent)}
+.send{width:38px;height:38px;border-radius:10px;background:var(--accent);color:var(--panel);display:grid;place-items:center;flex:0 0 auto}
+.send:disabled{opacity:.5}
+.chips{display:flex;gap:6px;padding:0 9px 9px;flex-wrap:wrap}
+.chips button{font-size:12px;border:1px solid var(--line);border-radius:16px;padding:4px 10px;color:var(--muted)}
+.chips button:hover{color:var(--accent);border-color:var(--accent)}
+
+#objlist{flex:1;overflow-y:auto;padding:6px}
+.obj{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:13px}
+.obj:hover{background:var(--bg)}
+.obj .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+.obj .nm{font-weight:700;font-family:var(--font-math);font-style:italic;font-size:15px}
+.obj .de{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.obj .x{color:var(--muted);opacity:0;padding:2px 5px;border-radius:6px}
+.obj:hover .x{opacity:1}
+.obj .x:hover{background:var(--danger);color:var(--panel)}
+
+#cmdpane{padding:10px;overflow-y:auto;gap:8px}
+#cmdpane textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);font-family:var(--font-mono);font-size:12.5px;outline:none;resize:vertical}
+.help{font-size:11.5px;color:var(--muted);white-space:pre-wrap;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px;max-height:40vh;overflow:auto;margin-top:8px}
+.btn{background:var(--accent);color:var(--panel);border-radius:9px;padding:8px 14px;font-weight:600;font-size:13px}
+.btn.ghost{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+
+/* ===================== Thanh lệnh dưới ===================== */
+.cmdbar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--panel);border-top:1px solid var(--line)}
+.cmdbar .pfx{color:var(--accent);font-family:var(--font-mono);font-weight:700}
+.cmdbar input{flex:1;border:0;outline:none;background:none;font-family:var(--font-mono);font-size:13px}
+.cmdbar .st{font-size:12px;color:var(--muted)}
+
+/* ===================== Hộp thoại ===================== */
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;place-items:center;z-index:100;padding:16px}
+.modal.on{display:grid}
+.card{background:var(--panel);border-radius:16px;box-shadow:0 24px 64px -12px rgba(0,0,0,.4);width:min(520px,100%);max-height:86vh;overflow:auto;padding:20px}
+.card h3{margin:0 0 4px;font-size:17px}
+.card p.sub{margin:0 0 16px;color:var(--muted);font-size:13px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.field input,.field select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);outline:none}
+.field input:focus{border-color:var(--accent)}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.note{font-size:12px;color:var(--muted);background:var(--bg);border-radius:9px;padding:9px 11px;line-height:1.55}
+.note a{color:var(--accent)}
+
+/* ===================== Điện thoại ===================== */
+@media (max-width:820px){
+  :root{--rail:100%;--side:100%}
+  .body{flex-direction:column}
+  .rail{width:100%;height:auto;display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:4px 6px;order:2}
+  .rail .grp{display:flex;border-bottom:0;border-right:1px solid var(--line);padding:0 4px;gap:2px}
+  .rail .glabel{display:none}
+  .tool{width:44px;height:40px;flex:0 0 auto}
+  .tool[data-tip]:hover::after{display:none}
+  .stage{order:1;min-height:52vh}
+  .side{order:3;position:fixed;inset:auto 0 0 0;height:72vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.18);z-index:50}
+  .side.hide{display:none}
+  .quick{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand"><span class="dot">△</span><span>HìnhAI</span></div>
+    <div class="seg" id="modeseg">
+      <button data-mode="2d" class="on">Hình phẳng</button>
+      <button data-mode="3d">Không gian</button>
+    </div>
+    <button class="tbtn" id="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
+    <button class="tbtn" id="redo" title="Làm lại (Ctrl+Y)">↷</button>
+    <div class="spacer"></div>
+    <button class="tbtn" id="btnGrid">▦ Lưới</button>
+    <button class="tbtn" id="btnOpen">Mở</button>
+    <button class="tbtn" id="btnSave">Lưu</button>
+    <button class="tbtn" id="btnPng">Ảnh PNG</button>
+    <button class="tbtn" id="btnTheme">◐</button>
+    <button class="tbtn" id="btnSet">⚙ Cài đặt</button>
+    <button class="tbtn" id="btnSide">☰</button>
+  </header>
+
+  <div class="body">
+    <nav class="rail" id="rail"></nav>
+
+    <main class="stage">
+      <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="hud" id="hint">Chọn công cụ rồi bấm lên bảng vẽ</div>
+      <div class="quick" id="quick"></div>
+      <div class="zoombar">
+        <button id="zin">+</button><button id="zout">−</button><button id="zfit" title="Vừa khung">⤢</button>
+      </div>
+    </main>
+
+    <aside class="side" id="side">
+      <div class="tabs">
+        <button data-pane="chat" class="on">Trợ lý AI</button>
+        <button data-pane="obj">Đối tượng</button>
+        <button data-pane="cmd">Lệnh</button>
+      </div>
+
+      <section class="pane on" id="pane-chat">
+        <div id="chatlog"></div>
+        <div class="chips" id="chips"></div>
+        <div class="composer">
+          <textarea id="chatin" rows="1" placeholder="Ví dụ: vẽ tam giác ABC vuông tại A, kẻ đường cao AH…"></textarea>
+          <button class="send" id="chatsend">➤</button>
+        </div>
+      </section>
+
+      <section class="pane" id="pane-obj"><div id="objlist"></div></section>
+
+      <section class="pane" id="pane-cmd">
+        <div id="cmdpane">
+          <textarea id="scriptbox" placeholder="A = (0,0)&#10;B = (6,0)&#10;C = (2,5)&#10;t = tamgiac(A,B,C)"></textarea>
+          <div class="row" style="justify-content:flex-start;margin-top:8px">
+            <button class="btn" id="runscript">Chạy script</button>
+            <button class="btn ghost" id="dumpscript">Lấy script của hình</button>
+          </div>
+          <div class="help" id="dslhelp"></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="cmdbar">
+    <span class="pfx">›</span>
+    <input id="cmd" placeholder="Nhập lệnh nhanh:  M = trungdiem(A,B)   —   Enter để chạy, ↑ để lấy lệnh cũ">
+    <span class="st" id="status"></span>
+  </div>
+</div>
+
+<div class="modal" id="setmodal">
+  <div class="card">
+    <h3>Cài đặt trợ lý AI</h3>
+    <p class="sub">Khoá API được lưu trong trình duyệt của bạn và chỉ gửi thẳng tới Google, không qua máy chủ nào khác.</p>
+    <div class="field">
+      <label>Google Gemini API key</label>
+      <input id="apikey" type="password" placeholder="AIza…" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Model</label>
+      <select id="model">
+        <option value="gemini-2.5-flash">gemini-2.5-flash (nhanh, miễn phí)</option>
+        <option value="gemini-2.5-pro">gemini-2.5-pro (suy luận tốt hơn)</option>
+        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+        <option value="gemini-flash-latest">gemini-flash-latest</option>
+      </select>
+    </div>
+    <div class="note">Lấy key miễn phí tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+    Chưa có key vẫn dùng được: trợ lý sẽ chạy bộ luật tiếng Việt cài sẵn cho các câu quen thuộc.</div>
+    <div class="row">
+      <button class="btn ghost" id="setcancel">Đóng</button>
+      <button class="btn" id="setsave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileopen" accept=".json,.geo" style="display:none">
+<script type="module">
+
+/* ==== /src/core/vec.js ==== */
+// ============================================================================
+// vec.js — Toán vector 2D & các phép giao cơ bản. Thuần hàm, không phụ thuộc DOM.
+// ============================================================================
+
+const EPS = 1e-9;
+
+const V = (x, y) => ({ x, y });
+const vAdd = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
+const vSub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
+const vMul = (a, k) => ({ x: a.x * k, y: a.y * k });
+const vDot = (a, b) => a.x * b.x + a.y * b.y;
+const vCross = (a, b) => a.x * b.y - a.y * b.x;
+const vLen = (a) => Math.hypot(a.x, a.y);
+const vDist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const vPerp = (a) => ({ x: -a.y, y: a.x });
+const vLerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+const vMid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+function vNorm(a) {
+  const l = vLen(a);
+  return l < EPS ? { x: 0, y: 0 } : { x: a.x / l, y: a.y / l };
+}
+function vRot(a, ang) {
+  const c = Math.cos(ang), s = Math.sin(ang);
+  return { x: a.x * c - a.y * s, y: a.x * s + a.y * c };
+}
+const deg = (r) => (r * 180) / Math.PI;
+const rad = (d) => (d * Math.PI) / 180;
+const isNum = (t) => typeof t === 'number' && Number.isFinite(t);
+const okPt = (p) => !!p && isNum(p.x) && isNum(p.y);
+
+// --- Đường: { kind:'line'|'ray'|'seg', p:{x,y} (điểm gốc), d:{x,y} (vector chỉ phương đơn vị), a, b } ---
+function mkLine(a, b, kind = 'line') {
+  const d = vNorm(vSub(b, a));
+  return { t: 'line', kind, p: { ...a }, d, a: { ...a }, b: { ...b } };
+}
+/** Đường qua điểm p, chỉ phương d (chưa cần chuẩn hoá) */
+function mkLineDir(p, d, kind = 'line') {
+  const u = vNorm(d);
+  return { t: 'line', kind, p: { ...p }, d: u, a: vAdd(p, vMul(u, -1)), b: vAdd(p, u) };
+}
+const mkCircle = (c, r) => ({ t: 'circle', c: { ...c }, r });
+
+/** Tham số t của điểm p trên đường (chiếu vuông góc) */
+const lineParam = (L, p) => vDot(vSub(p, L.p), L.d);
+const linePointAt = (L, t) => vAdd(L.p, vMul(L.d, t));
+
+/** Chiếu vuông góc điểm p xuống đường L, có kẹp biên với đoạn/tia */
+function projectOnLine(L, p, clamp = true) {
+  let t = lineParam(L, p);
+  if (clamp) {
+    if (L.kind === 'seg') {
+      const t0 = lineParam(L, L.a), t1 = lineParam(L, L.b);
+      t = Math.max(Math.min(t0, t1), Math.min(Math.max(t0, t1), t));
+    } else if (L.kind === 'ray') {
+      const t0 = lineParam(L, L.a);
+      t = Math.max(t0, t);
+    }
+  }
+  return linePointAt(L, t);
+}
+function projectOnCircle(C, p) {
+  const d = vSub(p, C.c);
+  const l = vLen(d);
+  if (l < EPS) return { x: C.c.x + C.r, y: C.c.y };
+  return vAdd(C.c, vMul(d, C.r / l));
+}
+
+/** Khoảng cách từ điểm tới đối tượng (dùng cho hit-test) */
+function distToLine(L, p) {
+  return vDist(p, projectOnLine(L, p, true));
+}
+function distToCircle(C, p) {
+  return Math.abs(vDist(p, C.c) - C.r);
+}
+
+// --- Giao điểm -------------------------------------------------------------
+
+/** Giao 2 đường thẳng. Trả về mảng 0 hoặc 1 điểm. */
+function interLineLine(L1, L2) {
+  const den = vCross(L1.d, L2.d);
+  if (Math.abs(den) < 1e-12) return [];
+  const t = vCross(vSub(L2.p, L1.p), L2.d) / den;
+  return [linePointAt(L1, t)];
+}
+
+/** Giao đường thẳng & đường tròn. Trả về 0..2 điểm, sắp theo tham số t tăng dần. */
+function interLineCircle(L, C) {
+  const f = vSub(L.p, C.c);
+  const b = vDot(f, L.d);          // hệ số bậc 1 (a = 1 vì d đơn vị)
+  const c = vDot(f, f) - C.r * C.r;
+  let disc = b * b - c;
+  if (disc < -1e-12) return [];
+  disc = Math.max(0, disc);
+  const s = Math.sqrt(disc);
+  const ts = s < 1e-12 ? [-b] : [-b - s, -b + s];
+  return ts.map((t) => linePointAt(L, t));
+}
+
+/** Giao 2 đường tròn. Trả về 0..2 điểm. */
+function interCircleCircle(C1, C2) {
+  const d = vDist(C1.c, C2.c);
+  if (d < EPS) return [];
+  if (d > C1.r + C2.r + 1e-9) return [];
+  if (d < Math.abs(C1.r - C2.r) - 1e-9) return [];
+  const a = (C1.r * C1.r - C2.r * C2.r + d * d) / (2 * d);
+  const h2 = C1.r * C1.r - a * a;
+  const h = Math.sqrt(Math.max(0, h2));
+  const dir = vMul(vSub(C2.c, C1.c), 1 / d);
+  const m = vAdd(C1.c, vMul(dir, a));
+  if (h < 1e-12) return [m];
+  const n = vPerp(dir);
+  return [vSub(m, vMul(n, h)), vAdd(m, vMul(n, h))];
+}
+
+/** Giao tổng quát giữa 2 đối tượng bất kỳ (line/circle). */
+function intersectAny(o1, o2) {
+  if (!o1 || !o2) return [];
+  if (o1.t === 'line' && o2.t === 'line') return interLineLine(o1, o2);
+  if (o1.t === 'line' && o2.t === 'circle') return interLineCircle(o1, o2);
+  if (o1.t === 'circle' && o2.t === 'line') return interLineCircle(o2, o1);
+  if (o1.t === 'circle' && o2.t === 'circle') return interCircleCircle(o1, o2);
+  return [];
+}
+
+// --- Tam giác --------------------------------------------------------------
+
+const centroid3 = (A, B, C) => ({ x: (A.x + B.x + C.x) / 3, y: (A.y + B.y + C.y) / 3 });
+
+function circumcenter3(A, B, C) {
+  const d = 2 * (A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y));
+  if (Math.abs(d) < 1e-12) return null;
+  const a2 = A.x * A.x + A.y * A.y, b2 = B.x * B.x + B.y * B.y, c2 = C.x * C.x + C.y * C.y;
+  return {
+    x: (a2 * (B.y - C.y) + b2 * (C.y - A.y) + c2 * (A.y - B.y)) / d,
+    y: (a2 * (C.x - B.x) + b2 * (A.x - C.x) + c2 * (B.x - A.x)) / d,
+  };
+}
+function incenter3(A, B, C) {
+  const a = vDist(B, C), b = vDist(C, A), c = vDist(A, B);
+  const s = a + b + c;
+  if (s < EPS) return null;
+  return { x: (a * A.x + b * B.x + c * C.x) / s, y: (a * A.y + b * B.y + c * C.y) / s };
+}
+function inradius3(A, B, C) {
+  const a = vDist(B, C), b = vDist(C, A), c = vDist(A, B);
+  const s = (a + b + c) / 2;
+  if (s < EPS) return 0;
+  return Math.abs(vCross(vSub(B, A), vSub(C, A))) / 2 / s;
+}
+function orthocenter3(A, B, C) {
+  const O = circumcenter3(A, B, C);
+  if (!O) return null;
+  // H = A + B + C - 2O  (vì OH = OA+OB+OC)
+  return { x: A.x + B.x + C.x - 2 * O.x, y: A.y + B.y + C.y - 2 * O.y };
+}
+function polyArea(pts) {
+  let s = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    s += p.x * q.y - q.x * p.y;
+  }
+  return Math.abs(s) / 2;
+}
+/** Góc ABC (đỉnh B) theo độ, trong [0,180] */
+function angleABC(A, B, C) {
+  const u = vSub(A, B), w = vSub(C, B);
+  const lu = vLen(u), lw = vLen(w);
+  if (lu < EPS || lw < EPS) return 0;
+  let c = vDot(u, w) / (lu * lw);
+  c = Math.max(-1, Math.min(1, c));
+  return deg(Math.acos(c));
+}
+
+/* ==== /src/core/ops2d.js ==== */
+// ============================================================================
+// ops2d.js — Bảng phép dựng hình phẳng.
+// Mỗi phép: { type, style?, fn(vals, params, obj, doc) -> value, drag?(obj,pos,doc) }
+// ============================================================================
+
+
+const PT = { color: '#1f3f8f', size: 4.6 };
+const LN = { color: '#16233d', width: 1.8 };
+const CR = { color: '#8a5a2b', width: 1.8 };
+const PG = { color: '#4338a8', width: 1.8, fill: 'rgba(67,56,168,.09)' };
+const NUM = { color: '#b3261e' };
+const AUX = { color: '#7a869a', width: 1.4, dash: '5 4' };
+
+const num = (v, anchor) => ({ t: 'num', v, anchor: anchor || null });
+const poly = (pts) => ({ t: 'poly', pts });
+
+/** Lấy điểm tuỳ ý trên đối tượng theo tham số t (dùng cho "điểm thuộc") */
+function pointOnAt(o, t) {
+  if (!o) return null;
+  if (o.t === 'line') {
+    if (o.kind === 'seg') return vLerp(o.a, o.b, Math.max(0, Math.min(1, t)));
+    if (o.kind === 'ray') return linePointAt(mkLine(o.a, o.b, 'ray'), Math.max(0, t) * vDist(o.a, o.b));
+    return linePointAt(o, t);
+  }
+  if (o.t === 'circle') return vAdd(o.c, { x: o.r * Math.cos(t), y: o.r * Math.sin(t) });
+  if (o.t === 'poly') {
+    const n = o.pts.length;
+    const s = ((t % n) + n) % n;
+    const i = Math.floor(s);
+    return vLerp(o.pts[i], o.pts[(i + 1) % n], s - i);
+  }
+  return null;
+}
+/** Tham số t ứng với vị trí p (nghịch đảo của pointOnAt) */
+function paramOf(o, p) {
+  if (!o) return 0;
+  if (o.t === 'line') {
+    if (o.kind === 'seg') {
+      const L = mkLine(o.a, o.b, 'seg');
+      const t = lineParam(L, p) / Math.max(EPS, vDist(o.a, o.b));
+      return Math.max(0, Math.min(1, t));
+    }
+    if (o.kind === 'ray') {
+      const L = mkLine(o.a, o.b, 'ray');
+      return Math.max(0, lineParam(L, p) / Math.max(EPS, vDist(o.a, o.b)));
+    }
+    return lineParam(o, p);
+  }
+  if (o.t === 'circle') return Math.atan2(p.y - o.c.y, p.x - o.c.x);
+  if (o.t === 'poly') {
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < o.pts.length; i++) {
+      const a = o.pts[i], b = o.pts[(i + 1) % o.pts.length];
+      const L = mkLine(a, b, 'seg');
+      const q = projectOnLine(L, p, true);
+      const d = vDist(q, p);
+      if (d < bd) { bd = d; best = i + Math.min(1, Math.max(0, lineParam(L, q) / Math.max(EPS, vDist(a, b)))); }
+    }
+    return best;
+  }
+  return 0;
+}
+
+const asLine = (x) => (x && x.t === 'line' ? x : null);
+const twoPtsLine = (A, B, kind) => (okPt(A) && okPt(B) && vDist(A, B) > EPS ? mkLine(A, B, kind) : null);
+
+const OPS = {
+  // ---------------- Điểm ----------------
+  point: {
+    type: 'point', style: PT,
+    fn: (_, p) => ({ x: p.x, y: p.y }),
+    drag: (o, pos) => { o.params.x = pos.x; o.params.y = pos.y; },
+  },
+  pointOn: {
+    type: 'point', style: { ...PT, color: '#2f7fa8' },
+    fn: ([o], p) => pointOnAt(o, p.t),
+    drag: (o, pos, doc) => {
+      const par = doc.get(o.args[0]);
+      o.params.t = paramOf(par && par.val, pos);
+    },
+  },
+  intersect: {
+    type: 'point', style: PT,
+    fn: ([a, b], p) => {
+      const arr = intersectAny(a, b);
+      if (!arr.length) return null;
+      return arr[Math.min(p.i || 0, arr.length - 1)];
+    },
+  },
+  midpoint: {
+    type: 'point', style: PT,
+    fn: ([a, b]) => {
+      if (a && a.t === 'line' && !b) return vMid(a.a, a.b);
+      return okPt(a) && okPt(b) ? vMid(a, b) : null;
+    },
+  },
+  ratioPoint: { // chia đoạn AB theo tỉ số t (t=0 -> A, t=1 -> B)
+    type: 'point', style: PT,
+    fn: ([a, b], p) => (okPt(a) && okPt(b) ? vLerp(a, b, p.t) : null),
+  },
+  centroid: { type: 'point', style: PT, fn: ([a, b, c]) => (okPt(a) && okPt(b) && okPt(c) ? centroid3(a, b, c) : null) },
+  circumcenter: { type: 'point', style: PT, fn: ([a, b, c]) => (okPt(a) && okPt(b) && okPt(c) ? circumcenter3(a, b, c) : null) },
+  incenter: { type: 'point', style: PT, fn: ([a, b, c]) => (okPt(a) && okPt(b) && okPt(c) ? incenter3(a, b, c) : null) },
+  orthocenter: { type: 'point', style: PT, fn: ([a, b, c]) => (okPt(a) && okPt(b) && okPt(c) ? orthocenter3(a, b, c) : null) },
+  foot: { // chân đường vuông góc hạ từ P xuống đường L
+    type: 'point', style: PT,
+    fn: ([p, L]) => (okPt(p) && asLine(L) ? projectOnLine(L, p, false) : null),
+  },
+  footBC: { // chân đường cao từ A trong tam giác ABC
+    type: 'point', style: PT,
+    fn: ([a, b, c]) => {
+      if (!okPt(a) || !okPt(b) || !okPt(c)) return null;
+      const L = twoPtsLine(b, c, 'line');
+      return L ? projectOnLine(L, a, false) : null;
+    },
+  },
+  reflectPt: { // đối xứng qua điểm hoặc qua đường
+    type: 'point', style: PT,
+    fn: ([p, m]) => {
+      if (!okPt(p) || !m) return null;
+      if (m.t === 'line') { const q = projectOnLine(m, p, false); return vAdd(p, vMul(vSub(q, p), 2)); }
+      if (okPt(m)) return { x: 2 * m.x - p.x, y: 2 * m.y - p.y };
+      return null;
+    },
+  },
+  rotatePt: {
+    type: 'point', style: PT,
+    fn: ([p, o], pr) => (okPt(p) && okPt(o) ? vAdd(o, vRot(vSub(p, o), rad(pr.ang || 0))) : null),
+  },
+  translatePt: {
+    type: 'point', style: PT,
+    fn: ([p, u], pr) => {
+      if (!okPt(p)) return null;
+      if (u && u.t === 'line') return vAdd(p, vSub(u.b, u.a));
+      return vAdd(p, { x: pr.dx || 0, y: pr.dy || 0 });
+    },
+  },
+  dilatePt: {
+    type: 'point', style: PT,
+    fn: ([p, o], pr) => (okPt(p) && okPt(o) ? vAdd(o, vMul(vSub(p, o), pr.k == null ? 1 : pr.k)) : null),
+  },
+
+  // ---------------- Đường ----------------
+  segment: { type: 'line', style: LN, fn: ([a, b]) => twoPtsLine(a, b, 'seg') },
+  line: { type: 'line', style: LN, fn: ([a, b]) => twoPtsLine(a, b, 'line') },
+  ray: { type: 'line', style: LN, fn: ([a, b]) => twoPtsLine(a, b, 'ray') },
+  vector: {
+    type: 'line', style: { ...LN, color: '#c0271c', arrow: true },
+    fn: ([a, b]) => { const L = twoPtsLine(a, b, 'seg'); if (L) L.arrow = true; return L; },
+  },
+  perpLine: { // đường thẳng qua P vuông góc với L
+    type: 'line', style: AUX,
+    fn: ([L, p]) => (asLine(L) && okPt(p) ? mkLineDir(p, vPerp(L.d), 'line') : null),
+  },
+  paraLine: {
+    type: 'line', style: AUX,
+    fn: ([L, p]) => (asLine(L) && okPt(p) ? mkLineDir(p, L.d, 'line') : null),
+  },
+  perpBisector: { // trung trực AB
+    type: 'line', style: AUX,
+    fn: ([a, b]) => (okPt(a) && okPt(b) && vDist(a, b) > EPS ? mkLineDir(vMid(a, b), vPerp(vSub(b, a)), 'line') : null),
+  },
+  bisector: { // phân giác góc ABC (đỉnh B)
+    type: 'line', style: AUX,
+    fn: ([a, b, c]) => {
+      if (!okPt(a) || !okPt(b) || !okPt(c)) return null;
+      const u = vNorm(vSub(a, b)), w = vNorm(vSub(c, b));
+      let d = vAdd(u, w);
+      if (vLen(d) < 1e-9) d = vPerp(u);
+      return mkLineDir(b, d, 'line');
+    },
+  },
+  altitude: { // đường cao từ A của tam giác ABC
+    type: 'line', style: AUX,
+    fn: ([a, b, c]) => {
+      if (!okPt(a) || !okPt(b) || !okPt(c)) return null;
+      const L = twoPtsLine(b, c, 'line');
+      return L ? mkLineDir(a, vPerp(L.d), 'line') : null;
+    },
+  },
+  median: { // trung tuyến từ A của tam giác ABC
+    type: 'line', style: AUX,
+    fn: ([a, b, c]) => (okPt(a) && okPt(b) && okPt(c) ? twoPtsLine(a, vMid(b, c), 'seg') : null),
+  },
+  tangent: { // tiếp tuyến từ điểm P tới đường tròn (i = 0/1)
+    type: 'line', style: AUX,
+    fn: ([C, p], pr) => {
+      if (!C || C.t !== 'circle' || !okPt(p)) return null;
+      const d = vDist(p, C.c);
+      if (d < C.r - 1e-9) return null;
+      if (Math.abs(d - C.r) < 1e-9) return mkLineDir(p, vPerp(vSub(p, C.c)), 'line');
+      const mid = vMid(p, C.c);
+      const arr = intersectAny(mkCircle(mid, d / 2), C);
+      if (!arr.length) return null;
+      const T = arr[Math.min(pr.i || 0, arr.length - 1)];
+      return twoPtsLine(p, T, 'line');
+    },
+  },
+
+  // ---------------- Đường tròn ----------------
+  circleCP: { // tâm O đi qua A
+    type: 'circle', style: CR,
+    fn: ([o, a]) => (okPt(o) && okPt(a) ? mkCircle(o, vDist(o, a)) : null),
+  },
+  circleR: { // tâm O bán kính r (số hoặc đối tượng số)
+    type: 'circle', style: CR,
+    fn: ([o, n], p) => {
+      if (!okPt(o)) return null;
+      const r = n && n.t === 'num' ? n.v : p.r;
+      return r > 0 ? mkCircle(o, r) : null;
+    },
+  },
+  circle3: { // đường tròn ngoại tiếp / qua 3 điểm
+    type: 'circle', style: CR,
+    fn: ([a, b, c]) => {
+      if (!okPt(a) || !okPt(b) || !okPt(c)) return null;
+      const o = circumcenter3(a, b, c);
+      return o ? mkCircle(o, vDist(o, a)) : null;
+    },
+  },
+  incircle: {
+    type: 'circle', style: CR,
+    fn: ([a, b, c]) => {
+      if (!okPt(a) || !okPt(b) || !okPt(c)) return null;
+      const i = incenter3(a, b, c);
+      return i ? mkCircle(i, inradius3(a, b, c)) : null;
+    },
+  },
+
+  // ---------------- Đa giác ----------------
+  polygon: {
+    type: 'polygon', style: PG,
+    fn: (vals) => { const pts = vals.filter(okPt); return pts.length >= 3 ? poly(pts) : null; },
+  },
+
+  // ---------------- Đo đạc ----------------
+  distance: {
+    type: 'number', style: NUM,
+    fn: ([a, b]) => {
+      if (a && a.t === 'line' && !b) return num(vDist(a.a, a.b), vMid(a.a, a.b));
+      if (a && a.t === 'line' && okPt(b)) return num(vDist(b, projectOnLine(a, b, false)), vMid(b, projectOnLine(a, b, false)));
+      return okPt(a) && okPt(b) ? num(vDist(a, b), vMid(a, b)) : null;
+    },
+  },
+  angleM: {
+    type: 'angle', style: { color: '#b3261e' },
+    fn: ([a, b, c]) => {
+      if (!okPt(a) || !okPt(b) || !okPt(c)) return null;
+      return { t: 'angle', at: b, from: a, to: c, v: angleABC(a, b, c) };
+    },
+  },
+  areaM: {
+    type: 'number', style: NUM,
+    fn: ([p]) => (p && p.t === 'poly' ? num(polyArea(p.pts), centroidOf(p.pts)) : null),
+  },
+  numberFree: {
+    type: 'number', style: NUM,
+    fn: (_, p) => num(p.v == null ? 1 : p.v, null),
+  },
+  text: {
+    type: 'text', style: { color: '#16233d' },
+    fn: (_, p) => ({ t: 'text', s: p.s || '', x: p.x || 0, y: p.y || 0 }),
+    drag: (o, pos) => { o.params.x = pos.x; o.params.y = pos.y; },
+  },
+};
+
+function centroidOf(pts) {
+  const s = pts.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
+  return { x: s.x / pts.length, y: s.y / pts.length };
+}
+
+/* ==== /src/core/ops3d.js ==== */
+// ============================================================================
+// ops3d.js — Hình không gian: điểm/đoạn/mặt/khối, mặt phẳng và THIẾT DIỆN.
+// Chiếu trực giao (đúng kiểu hình vẽ SGK), nét khuất tự động.
+// ============================================================================
+
+const P3 = (x, y, z) => ({ t: 'p3', x, y, z });
+const p3add = (a, b) => P3(a.x + b.x, a.y + b.y, a.z + b.z);
+const p3sub = (a, b) => P3(a.x - b.x, a.y - b.y, a.z - b.z);
+const p3mul = (a, k) => P3(a.x * k, a.y * k, a.z * k);
+const p3dot = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+const p3cross = (a, b) => P3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+const p3len = (a) => Math.hypot(a.x, a.y, a.z);
+const p3dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+const p3norm = (a) => { const l = p3len(a); return l < 1e-12 ? P3(0, 0, 0) : p3mul(a, 1 / l); };
+const p3lerp = (a, b, t) => P3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+const isP3 = (p) => !!p && p.t === 'p3' && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z);
+
+const S3 = { color: '#16233d', width: 1.7 };
+const F3 = { color: '#4338a8', width: 1.6, fill: 'rgba(67,56,168,.12)' };
+const K3 = { color: '#16233d', width: 1.7, fill: 'rgba(31,63,143,.07)' };
+
+const seg3 = (a, b, kind = 'seg') => ({ t: 's3', a, b, kind });
+const face3 = (pts) => ({ t: 'f3', pts });
+
+/** Khối đa diện: v = đỉnh, faces = vòng chỉ số (đã định hướng ra ngoài), edges = cặp chỉ số */
+function solid(v, faces) {
+  const c = v.reduce((a, p) => p3add(a, p), P3(0, 0, 0));
+  const ctr = p3mul(c, 1 / v.length);
+  const F = faces.map((f) => orientOut(v, f, ctr));
+  const es = new Set();
+  const edges = [];
+  for (const f of F) {
+    for (let i = 0; i < f.length; i++) {
+      const a = f[i], b = f[(i + 1) % f.length];
+      const k = a < b ? a + '-' + b : b + '-' + a;
+      if (!es.has(k)) { es.add(k); edges.push([a, b]); }
+    }
+  }
+  return { t: 'solid', v, faces: F, edges, ctr };
+}
+function faceNormal(v, f) {
+  let n = P3(0, 0, 0);
+  for (let i = 0; i < f.length; i++) {
+    const a = v[f[i]], b = v[f[(i + 1) % f.length]];
+    n = p3add(n, P3((a.y - b.y) * (a.z + b.z), (a.z - b.z) * (a.x + b.x), (a.x - b.x) * (a.y + b.y)));
+  }
+  return p3norm(n);
+}
+function orientOut(v, f, ctr) {
+  const n = faceNormal(v, f);
+  const c = f.reduce((a, i) => p3add(a, v[i]), P3(0, 0, 0));
+  const fc = p3mul(c, 1 / f.length);
+  return p3dot(n, p3sub(fc, ctr)) < 0 ? [...f].reverse() : f;
+}
+
+/** Mặt phẳng qua 3 điểm */
+function planeFrom3(A, B, C) {
+  const n = p3norm(p3cross(p3sub(B, A), p3sub(C, A)));
+  if (p3len(n) < 1e-9) return null;
+  return { t: 'plane', p: A, n };
+}
+const sd = (pl, p) => p3dot(pl.n, p3sub(p, pl.p)); // khoảng cách có dấu
+
+/** THIẾT DIỆN: cắt khối bởi mặt phẳng -> đa giác (mảng điểm đã sắp vòng) */
+function sectionOf(sol, pl) {
+  if (!sol || sol.t !== 'solid' || !pl) return null;
+  const tol = 1e-7;
+  const segs = [];
+  for (const f of sol.faces) {
+    const hits = [];
+    for (let i = 0; i < f.length; i++) {
+      const A = sol.v[f[i]], B = sol.v[f[(i + 1) % f.length]];
+      const da = sd(pl, A), db = sd(pl, B);
+      if (Math.abs(da) <= tol) pushU(hits, A);
+      if (Math.abs(da) > tol && Math.abs(db) > tol && da * db < 0) {
+        pushU(hits, p3lerp(A, B, da / (da - db)));
+      }
+    }
+    if (hits.length >= 2) segs.push([hits[0], hits[hits.length - 1]]);
+  }
+  if (segs.length < 3) return null;
+  // nối các đoạn thành vòng kín
+  const used = new Array(segs.length).fill(false);
+  used[0] = true;
+  const loop = [segs[0][0], segs[0][1]];
+  for (let guard = 0; guard < segs.length + 2; guard++) {
+    const tail = loop[loop.length - 1];
+    let found = false;
+    for (let i = 0; i < segs.length; i++) {
+      if (used[i]) continue;
+      if (near(segs[i][0], tail)) { loop.push(segs[i][1]); used[i] = true; found = true; break; }
+      if (near(segs[i][1], tail)) { loop.push(segs[i][0]); used[i] = true; found = true; break; }
+    }
+    if (!found) break;
+  }
+  if (near(loop[0], loop[loop.length - 1])) loop.pop();
+  return loop.length >= 3 ? face3(loop) : null;
+}
+const near = (a, b) => p3dist(a, b) < 1e-6;
+function pushU(arr, p) { if (!arr.some((q) => near(q, p))) arr.push(p); }
+
+/** Giao đường thẳng (2 điểm) với mặt phẳng */
+function lineMeetPlane(A, B, pl) {
+  const u = p3sub(B, A);
+  const den = p3dot(pl.n, u);
+  if (Math.abs(den) < 1e-12) return null;
+  return p3lerp(A, B, p3dot(pl.n, p3sub(pl.p, A)) / den);
+}
+
+
+const OPS3 = {
+  point3: {
+    type: 'p3', style: { color: '#1f3f8f', size: 4.6 },
+    fn: (_, p) => P3(p.x || 0, p.y || 0, p.z || 0),
+    drag: (o, pos) => { o.params.x = pos.x; o.params.y = pos.y; if (pos.z != null) o.params.z = pos.z; },
+  },
+  mid3: { type: 'p3', style: { color: '#1f3f8f', size: 4.6 }, fn: ([a, b]) => (isP3(a) && isP3(b) ? p3lerp(a, b, 0.5) : null) },
+  ratio3: { type: 'p3', style: { color: '#1f3f8f', size: 4.6 }, fn: ([a, b], p) => (isP3(a) && isP3(b) ? p3lerp(a, b, p.t == null ? 0.5 : p.t) : null) },
+  segment3: { type: 's3', style: S3, fn: ([a, b]) => (isP3(a) && isP3(b) ? seg3(a, b) : null) },
+  line3: { type: 's3', style: { ...S3, dash: '6 4' }, fn: ([a, b]) => (isP3(a) && isP3(b) ? seg3(a, b, 'line') : null) },
+  face: { type: 'f3', style: F3, fn: (vals) => { const pts = vals.filter(isP3); return pts.length >= 3 ? face3(pts) : null; } },
+
+  pyramid: { // đáy = các đỉnh đầu, đỉnh chóp = đối số cuối
+    type: 'solid', style: K3,
+    fn: (vals) => {
+      const pts = vals.filter(isP3);
+      if (pts.length < 4) return null;
+      const apex = pts[pts.length - 1];
+      const base = pts.slice(0, -1);
+      const v = [...base, apex];
+      const n = base.length;
+      const faces = [base.map((_, i) => i)];
+      for (let i = 0; i < n; i++) faces.push([i, (i + 1) % n, n]);
+      return solid(v, faces);
+    },
+  },
+  prism: { // lăng trụ: đáy + vector tịnh tiến (mặc định thẳng đứng cao h)
+    type: 'solid', style: K3,
+    fn: (vals, p) => {
+      const base = vals.filter(isP3);
+      if (base.length < 3) return null;
+      const u = P3(p.dx || 0, p.dy || 0, p.dz == null ? (p.h == null ? 4 : p.h) : p.dz);
+      const n = base.length;
+      const v = [...base, ...base.map((q) => p3add(q, u))];
+      const faces = [base.map((_, i) => i), base.map((_, i) => n + i)];
+      for (let i = 0; i < n; i++) faces.push([i, (i + 1) % n, n + ((i + 1) % n), n + i]);
+      return solid(v, faces);
+    },
+  },
+  box: { // hình hộp chữ nhật từ 1 đỉnh + 3 kích thước
+    type: 'solid', style: K3,
+    fn: ([a], p) => {
+      const A = isP3(a) ? a : P3(0, 0, 0);
+      const dx = p.a == null ? 4 : p.a, dy = p.b == null ? 3 : p.b, dz = p.c == null ? 3 : p.c;
+      const v = [
+        P3(A.x, A.y, A.z), P3(A.x + dx, A.y, A.z), P3(A.x + dx, A.y + dy, A.z), P3(A.x, A.y + dy, A.z),
+        P3(A.x, A.y, A.z + dz), P3(A.x + dx, A.y, A.z + dz), P3(A.x + dx, A.y + dy, A.z + dz), P3(A.x, A.y + dy, A.z + dz),
+      ];
+      return solid(v, [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]]);
+    },
+  },
+  sphere: {
+    type: 'sph', style: { color: '#2b6a8c', width: 1.7, fill: 'rgba(43,106,140,.08)' },
+    fn: ([o, a], p) => {
+      if (!isP3(o)) return null;
+      const r = isP3(a) ? p3dist(o, a) : (p.r == null ? 3 : p.r);
+      return r > 0 ? { t: 'sph', c: o, r } : null;
+    },
+  },
+  plane3: { type: 'plane', style: { color: '#1f7a5a' }, fn: ([a, b, c]) => (isP3(a) && isP3(b) && isP3(c) ? planeFrom3(a, b, c) : null) },
+  section: { // thiết diện của khối cắt bởi mặt phẳng (hoặc bởi 3 điểm)
+    type: 'f3', style: { color: '#c0271c', width: 2.1, fill: 'rgba(192,39,28,.14)' },
+    fn: ([s, a, b, c]) => {
+      if (!s || s.t !== 'solid') return null;
+      let pl = a && a.t === 'plane' ? a : null;
+      if (!pl && isP3(a) && isP3(b) && isP3(c)) pl = planeFrom3(a, b, c);
+      return pl ? sectionOf(s, pl) : null;
+    },
+  },
+  meet3: { // giao của đường thẳng AB với mặt phẳng
+    type: 'p3', style: { color: '#c0271c', size: 4.6 },
+    fn: ([a, b, pl]) => {
+      if (!isP3(a) || !isP3(b)) return null;
+      let P = pl && pl.t === 'plane' ? pl : null;
+      if (!P) return null;
+      return lineMeetPlane(a, b, P);
+    },
+  },
+  dist3: {
+    type: 'number', style: { color: '#b3261e' },
+    fn: ([a, b]) => {
+      if (a && a.t === 's3') return { t: 'num', v: p3dist(a.a, a.b), anchor3: p3lerp(a.a, a.b, 0.5) };
+      return isP3(a) && isP3(b) ? { t: 'num', v: p3dist(a, b), anchor3: p3lerp(a, b, 0.5) } : null;
+    },
+  },
+};
+
+/* ==== /src/core/model.js ==== */
+// ============================================================================
+// model.js — Mô hình đối tượng + đồ thị phụ thuộc.
+// Nguyên tắc: mỗi đối tượng chỉ là một "công thức dựng hình" trỏ tới cha của nó.
+// Kéo 1 điểm tự do -> tính lại toàn bộ theo thứ tự tạo (đã là thứ tự tô-pô).
+// ============================================================================
+
+
+
+const ALL_OPS = { ...OPS, ...OPS3 };
+
+const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const LOWER = 'abcdefghijklmnopqrstuvwxyz';
+
+class GeoDoc {
+  constructor() {
+    this.objs = new Map();   // id -> obj
+    this.order = [];         // id theo thứ tự tạo = thứ tự tính toán
+    this.seq = 0;
+    this.onChange = null;
+    this.reserved = null;   // tên sẽ được gán ở các dòng sau của script -> không tự đặt trùng
+  }
+
+  // --- tiện ích ---
+  get(id) { return this.objs.get(id); }
+  byName(name) {
+    if (name == null) return null;
+    for (const id of this.order) {
+      const o = this.objs.get(id);
+      if (o.name === name) return o;
+    }
+    return null;
+  }
+  list() { return this.order.map((id) => this.objs.get(id)); }
+  points() { return this.list().filter((o) => o.type === 'point'); }
+
+  nextName(type) {
+    const used = new Set(this.list().map((o) => o.name));
+    if (this.reserved) for (const r of this.reserved) used.add(r);
+    const pool = type === 'point' || type === 'p3' ? UPPER : LOWER;
+    for (let k = 0; k < 40; k++) {
+      for (const ch of pool) {
+        const n = k === 0 ? ch : ch + k;
+        if (!used.has(n)) return n;
+      }
+    }
+    return 'o' + ++this.seq;
+  }
+
+  /** Tạo đối tượng mới. spec: {op, args:[obj|id|name], params, name, style, visible} */
+  add(spec) {
+    const def = ALL_OPS[spec.op];
+    if (!def) throw new Error('Phép dựng không tồn tại: ' + spec.op);
+    const args = (spec.args || []).map((a) => {
+      if (a == null) return null;
+      if (typeof a === 'object') return a.id;
+      if (this.objs.has(a)) return a;
+      const o = this.byName(a);
+      if (!o) throw new Error('Không tìm thấy đối tượng: ' + a);
+      return o.id;
+    });
+    const id = 'o' + ++this.seq;
+    const type = typeof def.type === 'function'
+      ? def.type(args.map((a) => this.get(a)), spec.params || {})
+      : def.type;
+    const obj = {
+      id,
+      name: spec.name || this.nextName(type),
+      type,
+      op: spec.op,
+      args,
+      params: { ...(spec.params || {}) },
+      val: null,
+      visible: spec.visible !== false,
+      showLabel: spec.showLabel !== false,
+      style: { ...(def.style || {}), ...(spec.style || {}) },
+      fixed: !!spec.fixed,
+    };
+    this.objs.set(id, obj);
+    this.order.push(id);
+    this.evalOne(obj);
+    this.touch();
+    return obj;
+  }
+
+  evalOne(obj) {
+    const def = ALL_OPS[obj.op];
+    try {
+      const vals = obj.args.map((a) => {
+        const p = this.objs.get(a);
+        return p ? p.val : null;
+      });
+      obj.val = def.fn(vals, obj.params, obj, this);
+    } catch (e) {
+      obj.val = null;
+    }
+    return obj.val;
+  }
+
+  recompute() {
+    for (const id of this.order) this.evalOne(this.objs.get(id));
+  }
+
+  /** Tập id phụ thuộc (con cháu) của id đã cho, kể cả chính nó. */
+  descendants(id) {
+    const out = new Set([id]);
+    for (const oid of this.order) {
+      const o = this.objs.get(oid);
+      if (o.args.some((a) => out.has(a))) out.add(oid);
+    }
+    return out;
+  }
+
+  remove(id) {
+    const kill = this.descendants(id);
+    for (const k of kill) this.objs.delete(k);
+    this.order = this.order.filter((x) => !kill.has(x));
+    this.touch();
+    return kill.size;
+  }
+
+  clear() {
+    this.objs.clear();
+    this.order = [];
+    this.seq = 0;
+    this.touch();
+  }
+
+  /** Di chuyển 1 đối tượng "tự do" tới vị trí mới (kéo chuột). */
+  moveTo(obj, pos) {
+    if (!obj || obj.fixed) return false;
+    const def = ALL_OPS[obj.op];
+    if (!def.drag) return false;
+    def.drag(obj, pos, this);
+    this.recompute();
+    this.touch();
+    return true;
+  }
+
+  isDraggable(obj) {
+    const def = ALL_OPS[obj.op];
+    return !!(def && def.drag) && !obj.fixed;
+  }
+
+  touch() { if (this.onChange) this.onChange(); }
+
+  // --- lưu / mở ---
+  toJSON() {
+    return {
+      v: 1,
+      seq: this.seq,
+      objs: this.order.map((id) => {
+        const o = this.objs.get(id);
+        return {
+          id: o.id, name: o.name, op: o.op, args: o.args, params: o.params,
+          visible: o.visible, showLabel: o.showLabel, style: o.style, fixed: o.fixed,
+        };
+      }),
+    };
+  }
+  static fromJSON(data) {
+    const d = new GeoDoc();
+    d.seq = data.seq || 0;
+    for (const s of data.objs) {
+      const def = ALL_OPS[s.op];
+      if (!def) continue;
+      const type = typeof def.type === 'function'
+        ? def.type(s.args.map((a) => d.objs.get(a)), s.params || {})
+        : def.type;
+      const o = { ...s, type, val: null, style: { ...(def.style || {}), ...(s.style || {}) } };
+      d.objs.set(o.id, o);
+      d.order.push(o.id);
+    }
+    d.recompute();
+    return d;
+  }
+}
+
+/* ==== /src/core/dsl.js ==== */
+// ============================================================================
+// dsl.js — Ngôn ngữ lệnh dựng hình (tiếng Việt không dấu + alias tiếng Anh).
+// Đây vừa là "command line" cho người dùng, vừa là API mà AI agent sinh ra.
+// ============================================================================
+
+// ---- Tokenizer -------------------------------------------------------------
+function lex(src) {
+  const ts = [];
+  let i = 0;
+  const isId = (c) => /[A-Za-z0-9_'À-ỹ]/.test(c);
+  while (i < src.length) {
+    const c = src[i];
+    if (c === ' ' || c === '\t') { i++; continue; }
+    if (c === '"' || c === "'") {
+      let j = i + 1, s = '';
+      while (j < src.length && src[j] !== c) { s += src[j]; j++; }
+      ts.push({ k: 'str', v: s }); i = j + 1; continue;
+    }
+    if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1] || ''))) {
+      let j = i, s = '';
+      while (j < src.length && /[0-9.eE]/.test(src[j])) { s += src[j]; j++; }
+      ts.push({ k: 'num', v: parseFloat(s) }); i = j; continue;
+    }
+    if (isId(c) && !/[0-9]/.test(c)) {
+      let j = i, s = '';
+      while (j < src.length && isId(src[j])) { s += src[j]; j++; }
+      ts.push({ k: 'id', v: s }); i = j; continue;
+    }
+    if ('(),=;+-*/'.includes(c)) { ts.push({ k: c }); i++; continue; }
+    i++; // bỏ ký tự lạ
+  }
+  return ts;
+}
+
+const norm = (s) => String(s).toLowerCase()
+  .replace(/đ/g, 'd')
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[_\s]/g, '');
+
+// ---- Bảng hàm --------------------------------------------------------------
+// mỗi hàm: (A = danh sách đối số đã eval, ctx) -> spec {op,args,params} | obj
+const F = {};
+const def = (names, fn) => names.forEach((n) => { F[norm(n)] = fn; });
+
+const isObj = (x) => x && typeof x === 'object' && x.id;
+const isN = (x) => typeof x === 'number';
+const need = (x, what) => { if (!isObj(x)) throw new Error('Cần ' + what); return x; };
+
+// --- điểm 2D
+def(['diem', 'point', 'd'], (A) => ({ op: 'point', args: [], params: { x: A[0] || 0, y: A[1] || 0 } }));
+def(['trungdiem', 'midpoint', 'td'], (A) => ({ op: 'midpoint', args: A.filter(isObj) }));
+def(['giao', 'giaodiem', 'intersect'], (A) => ({ op: 'intersect', args: [A[0], A[1]], params: { i: isN(A[2]) ? A[2] : 0 } }));
+def(['diemtren', 'pointon', 'thuoc'], (A) => ({ op: 'pointOn', args: [A[0]], params: { t: isN(A[1]) ? A[1] : 0.5 } }));
+def(['chia', 'ratio', 'diemchia'], (A) => ({ op: 'ratioPoint', args: [A[0], A[1]], params: { t: isN(A[2]) ? A[2] : 0.5 } }));
+def(['trongtam', 'centroid', 'g'], (A) => ({ op: 'centroid', args: A.slice(0, 3) }));
+def(['tamngoaitiep', 'circumcenter'], (A) => ({ op: 'circumcenter', args: A.slice(0, 3) }));
+def(['tamnoitiep', 'incenter'], (A) => ({ op: 'incenter', args: A.slice(0, 3) }));
+def(['tructam', 'orthocenter'], (A) => ({ op: 'orthocenter', args: A.slice(0, 3) }));
+def(['chan', 'hinhchieu', 'foot', 'projection'], (A) => ({ op: 'foot', args: [A[0], A[1]] }));
+def(['chanduongcao', 'footaltitude'], (A) => ({ op: 'footBC', args: A.slice(0, 3) }));
+def(['doixung', 'reflect', 'dx'], (A) => ({ op: 'reflectPt', args: [A[0], A[1]] }));
+def(['quay', 'rotate'], (A) => ({ op: 'rotatePt', args: [A[0], A[1]], params: { ang: isN(A[2]) ? A[2] : 90 } }));
+def(['tinhtien', 'translate'], (A) => (isObj(A[1])
+  ? { op: 'translatePt', args: [A[0], A[1]] }
+  : { op: 'translatePt', args: [A[0]], params: { dx: A[1] || 0, dy: A[2] || 0 } }));
+def(['vitu', 'dilate'], (A) => ({ op: 'dilatePt', args: [A[0], A[1]], params: { k: isN(A[2]) ? A[2] : 2 } }));
+
+// --- đường 2D
+def(['doan', 'doanthang', 'segment', 'seg'], (A) => ({ op: 'segment', args: [A[0], A[1]] }));
+def(['duongthang', 'dt', 'line'], (A) => ({ op: 'line', args: [A[0], A[1]] }));
+def(['tia', 'ray'], (A) => ({ op: 'ray', args: [A[0], A[1]] }));
+def(['vecto', 'vector'], (A) => ({ op: 'vector', args: [A[0], A[1]] }));
+def(['vuonggoc', 'perp', 'perpendicular'], (A) => ({ op: 'perpLine', args: orderLP(A) }));
+def(['songsong', 'para', 'parallel'], (A) => ({ op: 'paraLine', args: orderLP(A) }));
+def(['trungtruc', 'perpbisector', 'tt'], (A) => ({ op: 'perpBisector', args: [A[0], A[1]] }));
+def(['phangiac', 'bisector', 'pg'], (A) => ({ op: 'bisector', args: A.slice(0, 3) }));
+def(['duongcao', 'altitude', 'dc'], (A) => ({ op: 'altitude', args: A.slice(0, 3) }));
+def(['trungtuyen', 'median'], (A) => ({ op: 'median', args: A.slice(0, 3) }));
+def(['tieptuyen', 'tangent'], (A) => ({ op: 'tangent', args: [A[0], A[1]], params: { i: isN(A[2]) ? A[2] : 0 } }));
+
+// đối số có thể viết (P, d) hoặc (d, P) — tự sắp lại thành (đường, điểm)
+function orderLP(A) {
+  const a = A[0], b = A[1];
+  if (isObj(a) && a.type === 'point') return [b, a];
+  return [a, b];
+}
+
+// --- đường tròn
+def(['duongtron', 'circle', 'dtr'], (A) => (isN(A[1])
+  ? { op: 'circleR', args: [A[0]], params: { r: A[1] } }
+  : (isObj(A[1]) && A[1].type === 'number'
+    ? { op: 'circleR', args: [A[0], A[1]] }
+    : { op: 'circleCP', args: [A[0], A[1]] })));
+def(['duongtronqua', 'ngoaitiep', 'circle3', 'circumcircle'], (A) => ({ op: 'circle3', args: A.slice(0, 3) }));
+def(['duongtronnoitiep', 'noitiep', 'incircle'], (A) => ({ op: 'incircle', args: A.slice(0, 3) }));
+
+// --- đa giác
+def(['dagiac', 'polygon'], (A) => ({ op: 'polygon', args: A.filter(isObj) }));
+def(['tamgiac', 'triangle'], (A) => ({ op: 'polygon', args: A.slice(0, 3) }));
+def(['tugiac', 'quad'], (A) => ({ op: 'polygon', args: A.slice(0, 4) }));
+
+// --- đo đạc
+def(['khoangcach', 'dist', 'distance', 'kc'], (A) => ({ op: 'distance', args: [A[0], A[1]].filter((x) => x != null) }));
+def(['goc', 'angle'], (A) => ({ op: 'angleM', args: A.slice(0, 3) }));
+def(['dientich', 'area'], (A) => ({ op: 'areaM', args: [A[0]] }));
+def(['so', 'number'], (A) => ({ op: 'numberFree', args: [], params: { v: A[0] || 0 } }));
+def(['chu', 'text', 'nhan'], (A) => ({ op: 'text', args: [], params: { s: String(A[0] == null ? '' : A[0]), x: A[1] || 0, y: A[2] || 0 } }));
+
+// --- 3D
+def(['diem3', 'point3', 'd3'], (A) => ({ op: 'point3', args: [], params: { x: A[0] || 0, y: A[1] || 0, z: A[2] || 0 } }));
+def(['trungdiem3', 'mid3'], (A) => ({ op: 'mid3', args: [A[0], A[1]] }));
+def(['chia3', 'ratio3'], (A) => ({ op: 'ratio3', args: [A[0], A[1]], params: { t: isN(A[2]) ? A[2] : 0.5 } }));
+def(['doan3', 'segment3', 'canh'], (A) => ({ op: 'segment3', args: [A[0], A[1]] }));
+def(['duongthang3', 'line3'], (A) => ({ op: 'line3', args: [A[0], A[1]] }));
+def(['mat', 'face'], (A) => ({ op: 'face', args: A.filter(isObj) }));
+def(['chop', 'hinhchop', 'pyramid'], (A) => ({ op: 'pyramid', args: A.filter(isObj) }));
+def(['langtru', 'prism'], (A) => {
+  const objs = A.filter(isObj); const nums = A.filter(isN);
+  return { op: 'prism', args: objs, params: { h: nums[0] == null ? 4 : nums[0] } };
+});
+def(['hop', 'hinhhop', 'box'], (A) => ({ op: 'box', args: [A[0]].filter(isObj), params: { a: A[1] == null ? 4 : A[1], b: A[2] == null ? 3 : A[2], c: A[3] == null ? 3 : A[3] } }));
+def(['matcau', 'sphere', 'mc'], (A) => (isN(A[1])
+  ? { op: 'sphere', args: [A[0]], params: { r: A[1] } }
+  : { op: 'sphere', args: [A[0], A[1]] }));
+def(['mp', 'matphang', 'plane'], (A) => ({ op: 'plane3', args: A.slice(0, 3) }));
+def(['thietdien', 'section'], (A) => ({ op: 'section', args: A.filter(isObj).slice(0, 4) }));
+def(['giao3', 'meet3'], (A) => ({ op: 'meet3', args: A.slice(0, 3) }));
+def(['kc3', 'dist3'], (A) => ({ op: 'dist3', args: [A[0], A[1]].filter((x) => x != null) }));
+
+const FUNC_NAMES = Object.keys(F);
+
+// ---- Parser / Interpreter --------------------------------------------------
+class Parser {
+  constructor(ts, doc, ctx) { this.ts = ts; this.i = 0; this.doc = doc; this.ctx = ctx; }
+  peek(k = 0) { return this.ts[this.i + k]; }
+  eat(k) { const t = this.ts[this.i]; if (t && t.k === k) { this.i++; return t; } return null; }
+
+  expr() {
+    // số có dấu / phép toán đơn giản trên số
+    let v = this.atom();
+    while (this.peek() && '+-*/'.includes(this.peek().k)) {
+      const op = this.ts[this.i].k; this.i++;
+      const r = this.atom();
+      if (isN(v) && isN(r)) v = op === '+' ? v + r : op === '-' ? v - r : op === '*' ? v * r : v / r;
+      else throw new Error('Phép toán chỉ áp dụng cho số');
+    }
+    return v;
+  }
+
+  atom() {
+    const t = this.peek();
+    if (!t) throw new Error('Thiếu đối số');
+    if (t.k === '-') { this.i++; const v = this.atom(); if (!isN(v)) throw new Error('Dấu trừ cần số'); return -v; }
+    if (t.k === 'num') { this.i++; return t.v; }
+    if (t.k === 'str') { this.i++; return t.v; }
+    if (t.k === '(') { // bộ (x,y) hoặc (x,y,z)
+      this.i++;
+      const xs = [];
+      while (!this.eat(')')) {
+        xs.push(this.expr());
+        this.eat(',');
+        if (!this.peek()) throw new Error('Thiếu )');
+      }
+      if (xs.length === 2) return this.mk({ op: 'point', args: [], params: { x: xs[0], y: xs[1] } });
+      if (xs.length === 3) return this.mk({ op: 'point3', args: [], params: { x: xs[0], y: xs[1], z: xs[2] } });
+      throw new Error('Toạ độ phải có 2 hoặc 3 số');
+    }
+    if (t.k === 'id') {
+      this.i++;
+      const name = t.v;
+      if (this.peek() && this.peek().k === '(') {
+        this.i++;
+        const args = [];
+        while (!this.eat(')')) {
+          args.push(this.expr());
+          this.eat(',');
+          if (!this.peek()) throw new Error('Thiếu ) sau ' + name);
+        }
+        const f = F[norm(name)];
+        if (!f) throw new Error('Không có lệnh "' + name + '"');
+        return this.mk(f(args, this.ctx));
+      }
+      // tên đối tượng đã có
+      const o = this.doc.byName(name);
+      if (o) return o;
+      throw new Error('Chưa có đối tượng "' + name + '"');
+    }
+    throw new Error('Cú pháp sai');
+  }
+
+  mk(spec) {
+    if (isObj(spec)) return spec;
+    const args = (spec.args || []).filter((a) => a != null).map((a) => {
+      if (isObj(a)) return a;
+      throw new Error('Đối số không hợp lệ trong ' + spec.op);
+    });
+    return this.doc.add({ ...spec, args, style: this.ctx.style });
+  }
+}
+
+// ---- Câu lệnh đặc biệt -----------------------------------------------------
+const STMT = {
+  xoa: (doc, a) => { const o = doc.byName(a[0]); if (o) doc.remove(o.id); },
+  an: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.visible = false; doc.touch(); } },
+  hien: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.visible = true; doc.touch(); } },
+  mau: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, color: a[1] }; doc.touch(); } },
+  net: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, dash: a[1] === 'dut' || a[1] === 'dash' ? '6 5' : null }; doc.touch(); } },
+  to: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, width: parseFloat(a[1]) || 2 }; doc.touch(); } },
+  doiten: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.name = a[1]; doc.touch(); } },
+  xoahet: (doc) => doc.clear(),
+};
+STMT.delete = STMT.xoa; STMT.hide = STMT.an; STMT.show = STMT.hien;
+STMT.color = STMT.mau; STMT.clear = STMT.xoahet; STMT.rename = STMT.doiten;
+
+/**
+ * Chạy một script DSL.
+ * @returns {{created:Array, errors:Array<string>, ok:number}}
+ */
+function runScript(doc, src, opts = {}) {
+  const created = [];
+  const errors = [];
+  let ok = 0;
+  const lines = String(src || '').split(/[\n;]/);
+  // Giữ chỗ trước cho các tên sẽ được gán, tránh đối tượng phụ tự đặt trùng tên
+  const prevReserved = doc.reserved;
+  doc.reserved = new Set(lines.map((l) => {
+    const m = l.replace(/\/\/.*$/, '').match(/^\s*([A-Za-z][A-Za-z0-9_'À-ỹ]*)\s*=/);
+    return m ? m[1] : null;
+  }).filter(Boolean));
+  for (let raw of lines) {
+    const line = raw.replace(/\/\/.*$/, '').replace(/^\s*#.*$/, '').trim();
+    if (!line) continue;
+    try {
+      // câu lệnh dạng "xoa A", "mau d #ff0000"
+      const w = line.split(/\s+/);
+      const head = norm(w[0]);
+      if (STMT[head] && !line.includes('(') && !line.includes('=')) {
+        STMT[head](doc, w.slice(1).map((s) => s.replace(/^["']|["']$/g, '')));
+        ok++; continue;
+      }
+      const eq = splitAssign(line);
+      const ctx = { style: opts.style };
+      // Định nghĩa lại tên đã có: nếu cùng là điểm tự do thì chỉ dời điểm (giữ nguyên hình phụ thuộc)
+      if (eq.name) {
+        const old = doc.byName(eq.name);
+        if (old) {
+          const m = eq.body.match(/^\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*(?:,\s*(-?[\d.]+)\s*)?\)$/);
+          if (m && (old.op === 'point' || old.op === 'point3')) {
+            old.params.x = parseFloat(m[1]); old.params.y = parseFloat(m[2]);
+            if (m[3] != null) old.params.z = parseFloat(m[3]);
+            doc.recompute(); ok++; continue;
+          }
+          doc.remove(old.id);
+        }
+      }
+      const p = new Parser(lex(eq.body), doc, ctx);
+      const before = doc.order.length;
+      const res = p.expr();
+      if (isObj(res) && eq.name && res.name !== eq.name) { res.name = eq.name; }
+      for (let k = before; k < doc.order.length; k++) created.push(doc.get(doc.order[k]));
+      ok++;
+    } catch (e) {
+      errors.push(line + '  →  ' + (e && e.message ? e.message : String(e)));
+    }
+  }
+  doc.reserved = prevReserved;
+  doc.recompute();
+  doc.touch();
+  return { created, errors, ok };
+}
+
+function splitAssign(line) {
+  const m = line.match(/^\s*([A-Za-z][A-Za-z0-9_'À-ỹ]*)\s*=\s*(.+)$/);
+  if (m) return { name: m[1], body: m[2] };
+  return { name: null, body: line };
+}
+
+/* ==== /src/ui/render.js ==== */
+// ============================================================================
+// render.js — Camera 2D/3D + vẽ toàn bộ khung hình ra chuỗi SVG.
+// Vẽ lại toàn bộ mỗi khung: đơn giản, không bug đồng bộ, đủ nhanh (<1ms/100 đối tượng).
+// ============================================================================
+
+
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const f = (n) => (Math.abs(n) < 1e-4 ? 0 : Math.round(n * 100) / 100);
+
+// ---------------------------------------------------------------- Camera 2D
+class Cam2 {
+  constructor() { this.cx = 0; this.cy = 0; this.scale = 40; this.w = 800; this.h = 600; }
+  s(p) { return { x: this.w / 2 + (p.x - this.cx) * this.scale, y: this.h / 2 - (p.y - this.cy) * this.scale }; }
+  u(p) { return { x: this.cx + (p.x - this.w / 2) / this.scale, y: this.cy - (p.y - this.h / 2) / this.scale }; }
+  zoomAt(px, k) {
+    const before = this.u(px);
+    this.scale = Math.max(2, Math.min(4000, this.scale * k));
+    const after = this.u(px);
+    this.cx += before.x - after.x; this.cy += before.y - after.y;
+  }
+  panPx(dx, dy) { this.cx -= dx / this.scale; this.cy += dy / this.scale; }
+}
+
+// ---------------------------------------------------------------- Camera 3D
+class Cam3 {
+  constructor() { this.yaw = -1.05; this.pitch = 0.32; this.scale = 34; this.ox = 0; this.oy = 0; this.w = 800; this.h = 600; }
+  basis() {
+    const ca = Math.cos(this.yaw), sa = Math.sin(this.yaw), cb = Math.cos(this.pitch), sb = Math.sin(this.pitch);
+    return {
+      right: P3(-sa, ca, 0),
+      up: P3(-ca * sb, -sa * sb, cb),
+      fwd: P3(ca * cb, sa * cb, sb),   // hướng về phía người xem
+    };
+  }
+  s(p) {
+    const b = this.basis();
+    return { x: this.w / 2 + this.ox + p3dot(p, b.right) * this.scale, y: this.h / 2 + this.oy - p3dot(p, b.up) * this.scale };
+  }
+  depth(p) { return p3dot(p, this.basis().fwd); }
+  /** Đưa điểm màn hình về mặt phẳng z = z0 (dùng khi kéo điểm 3D) */
+  u(px, z0 = 0) {
+    const b = this.basis();
+    const X = (px.x - this.w / 2 - this.ox) / this.scale;
+    const Y = -(px.y - this.h / 2 - this.oy) / this.scale;
+    // P = X*right + Y*up + t*fwd, cần P.z = z0
+    const zc = b.right.z * X + b.up.z * Y;
+    const t = Math.abs(b.fwd.z) < 1e-6 ? 0 : (z0 - zc) / b.fwd.z;
+    const P = p3add(p3add(p3mul(b.right, X), p3mul(b.up, Y)), p3mul(b.fwd, t));
+    return P3(P.x, P.y, z0);
+  }
+  orbit(dx, dy) { this.yaw -= dx * 0.008; this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + dy * 0.006)); }
+  zoom(k) { this.scale = Math.max(4, Math.min(500, this.scale * k)); }
+}
+
+// ---------------------------------------------------------------- Lưới & trục 2D
+function grid2(cam, opt) {
+  if (!opt.grid && !opt.axes) return '';
+  const out = [];
+  const tl = cam.u({ x: 0, y: 0 }), br = cam.u({ x: cam.w, y: cam.h });
+  const raw = 70 / cam.scale;
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 5, 10].map((m) => m * p).find((s) => s >= raw) || p * 10;
+  if (opt.grid) {
+    const g = [];
+    for (let x = Math.ceil(tl.x / step) * step; x < br.x; x += step) {
+      const sx = f(cam.s({ x, y: 0 }).x); g.push(`M${sx} 0V${cam.h}`);
+    }
+    for (let y = Math.ceil(br.y / step) * step; y < tl.y; y += step) {
+      const sy = f(cam.s({ x: 0, y }).y); g.push(`M0 ${sy}H${cam.w}`);
+    }
+    out.push(`<path d="${g.join('')}" class="grid"/>`);
+    const g2 = [];
+    const s2 = step / 5;
+    if (cam.scale * s2 > 7) {
+      for (let x = Math.ceil(tl.x / s2) * s2; x < br.x; x += s2) { const sx = f(cam.s({ x, y: 0 }).x); g2.push(`M${sx} 0V${cam.h}`); }
+      for (let y = Math.ceil(br.y / s2) * s2; y < tl.y; y += s2) { const sy = f(cam.s({ x: 0, y }).y); g2.push(`M0 ${sy}H${cam.w}`); }
+      out.unshift(`<path d="${g2.join('')}" class="grid2"/>`);
+    }
+  }
+  if (opt.axes) {
+    const o = cam.s({ x: 0, y: 0 });
+    out.push(`<path d="M0 ${f(o.y)}H${cam.w}M${f(o.x)} 0V${cam.h}" class="axis"/>`);
+    const lab = [];
+    for (let x = Math.ceil(tl.x / step) * step; x < br.x; x += step) {
+      if (Math.abs(x) < 1e-9) continue;
+      const s = cam.s({ x, y: 0 });
+      lab.push(`<text x="${f(s.x)}" y="${f(Math.min(Math.max(o.y + 14, 12), cam.h - 4))}" class="tick">${fmt(x)}</text>`);
+    }
+    for (let y = Math.ceil(br.y / step) * step; y < tl.y; y += step) {
+      if (Math.abs(y) < 1e-9) continue;
+      const s = cam.s({ x: 0, y });
+      lab.push(`<text x="${f(Math.min(Math.max(o.x - 7, 10), cam.w - 6))}" y="${f(s.y + 4)}" class="tick" text-anchor="end">${fmt(y)}</text>`);
+    }
+    out.push(lab.join(''));
+    out.push(`<text x="${f(o.x - 7)}" y="${f(o.y + 15)}" class="tick" text-anchor="end">O</text>`);
+  }
+  return out.join('');
+}
+const fmt = (v) => {
+  const r = Math.round(v * 1000) / 1000;
+  return Number.isInteger(r) ? String(r) : String(r);
+};
+
+// ---------------------------------------------------------------- Vẽ 2D
+function lineEndpoints(L, cam) {
+  const big = (cam.w + cam.h) * 1.5 / cam.scale;
+  if (L.kind === 'seg') return [L.a, L.b];
+  if (L.kind === 'ray') return [L.a, vAdd(L.a, vMul(vNorm(vSub(L.b, L.a)), big))];
+  return [vAdd(L.p, vMul(L.d, -big)), vAdd(L.p, vMul(L.d, big))];
+}
+
+function styleAttr(o, sel) {
+  const st = o.style || {};
+  const c = sel ? '#d98324' : (st.color || '#16233d');
+  const w = (st.width || 1.8) * (sel ? 1.7 : 1);
+  return `stroke="${c}" stroke-width="${w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}`;
+}
+
+function render2(doc, cam, opt) {
+  const out = [grid2(cam, opt)];
+  const labels = [];
+  const sel = opt.selected || new Set();
+  const hl = opt.hover;
+
+  // 1) đa giác
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val || o.type !== 'polygon') continue;
+    const pts = o.val.pts.map((p) => cam.s(p)).map((p) => `${f(p.x)},${f(p.y)}`).join(' ');
+    out.push(`<polygon points="${pts}" fill="${o.style.fill || 'rgba(67,56,168,.09)'}" ${styleAttr(o, sel.has(o.id))} stroke-linejoin="round"/>`);
+    if (o.showLabel) {
+      const c = o.val.pts.reduce((a, p) => vAdd(a, p), { x: 0, y: 0 });
+      labels.push(lab(cam.s(vMul(c, 1 / o.val.pts.length)), o.name, o.style.color, 0, 0));
+    }
+  }
+  // 2) đường tròn & đường thẳng
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val) continue;
+    if (o.type === 'circle') {
+      const c = cam.s(o.val.c);
+      out.push(`<circle cx="${f(c.x)}" cy="${f(c.y)}" r="${f(o.val.r * cam.scale)}" fill="none" ${styleAttr(o, sel.has(o.id))}/>`);
+      if (o.showLabel) labels.push(lab({ x: c.x, y: c.y - o.val.r * cam.scale }, o.name, o.style.color, 0, -6));
+    } else if (o.type === 'line') {
+      const [a, b] = lineEndpoints(o.val, cam);
+      const A = cam.s(a), B = cam.s(b);
+      out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" ${styleAttr(o, sel.has(o.id))} stroke-linecap="round"${o.val.arrow ? ' marker-end="url(#arwr)"' : ''}/>`);
+      if (o.showLabel) {
+        const m = { x: A.x + (B.x - A.x) * 0.72, y: A.y + (B.y - A.y) * 0.72 };
+        labels.push(lab(m, o.name, o.style.color, 8, -6));
+      }
+    }
+  }
+  // 3) góc
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val || o.type !== 'angle') continue;
+    const V = cam.s(o.val.at), A = cam.s(o.val.from), C = cam.s(o.val.to);
+    const r = 26;
+    const a1 = Math.atan2(A.y - V.y, A.x - V.x), a2 = Math.atan2(C.y - V.y, C.x - V.x);
+    let da = a2 - a1;
+    while (da <= -Math.PI) da += 2 * Math.PI;
+    while (da > Math.PI) da -= 2 * Math.PI;
+    const col = o.style.color || '#b3261e';
+    if (Math.abs(o.val.v - 90) < 0.4) {
+      const u = { x: Math.cos(a1), y: Math.sin(a1) }, w = { x: Math.cos(a2), y: Math.sin(a2) };
+      const s = 15;
+      out.push(`<path d="M${f(V.x + u.x * s)} ${f(V.y + u.y * s)}L${f(V.x + (u.x + w.x) * s)} ${f(V.y + (u.y + w.y) * s)}L${f(V.x + w.x * s)} ${f(V.y + w.y * s)}" fill="rgba(179,38,30,.10)" stroke="${col}" stroke-width="1.6"/>`);
+    } else {
+      const x1 = V.x + r * Math.cos(a1), y1 = V.y + r * Math.sin(a1);
+      const x2 = V.x + r * Math.cos(a1 + da), y2 = V.y + r * Math.sin(a1 + da);
+      out.push(`<path d="M${f(V.x)} ${f(V.y)}L${f(x1)} ${f(y1)}A${r} ${r} 0 0 ${da > 0 ? 1 : 0} ${f(x2)} ${f(y2)}Z" fill="rgba(179,38,30,.10)" stroke="${col}" stroke-width="1.6"/>`);
+    }
+    const am = a1 + da / 2;
+    labels.push(lab({ x: V.x + (r + 14) * Math.cos(am), y: V.y + (r + 14) * Math.sin(am) }, `${o.val.v.toFixed(1)}°`, col, 0, 4));
+  }
+  // 4) số đo & chữ
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val) continue;
+    if (o.type === 'number' && o.val.anchor) {
+      labels.push(lab(cam.s(o.val.anchor), `${o.name} = ${round3(o.val.v)}`, o.style.color, 0, -8));
+    } else if (o.type === 'text') {
+      labels.push(lab(cam.s({ x: o.val.x, y: o.val.y }), o.val.s, o.style.color, 0, 0, true));
+    }
+  }
+  // 5) điểm
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val || o.type !== 'point') continue;
+    const p = cam.s(o.val);
+    const r = (o.style.size || 4.6) * (sel.has(o.id) ? 1.45 : 1);
+    const col = sel.has(o.id) ? '#d98324' : o.style.color;
+    if (hl === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
+    out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
+    if (o.showLabel) labels.push(lab(p, o.name, col, 9, -9));
+  }
+  return out.join('') + labels.join('');
+}
+
+const round3 = (v) => Math.round(v * 1000) / 1000;
+function lab(p, text, color, dx = 0, dy = 0, plain = false) {
+  return `<text x="${f(p.x + dx)}" y="${f(p.y + dy)}" class="lbl${plain ? ' plain' : ''}" fill="${color || '#16233d'}">${esc(text)}</text>`;
+}
+
+// ---------------------------------------------------------------- Vẽ 3D
+function render3(doc, cam, opt) {
+  const b = cam.basis();
+  const out = [];
+  const labels = [];
+  const sel = opt.selected || new Set();
+  const S = (p) => cam.s(p);
+
+  if (opt.axes) {
+    const L = 6;
+    const O = S(P3(0, 0, 0));
+    for (const [v, name, col, mk] of [[P3(L, 0, 0), 'x', '#c0271c', 'arwr'], [P3(0, L, 0), 'y', '#1f7a5a', 'arwg'], [P3(0, 0, L), 'z', '#22468f', 'arwb']]) {
+      const e = S(v);
+      out.push(`<line x1="${f(O.x)}" y1="${f(O.y)}" x2="${f(e.x)}" y2="${f(e.y)}" stroke="${col}" stroke-width="1.3" opacity=".7" marker-end="url(#${mk})"/>`);
+      labels.push(lab(e, name, col, 7, -5));
+    }
+  }
+  if (opt.grid) {
+    const g = [];
+    for (let i = -6; i <= 6; i++) {
+      const a = S(P3(i, -6, 0)), c = S(P3(i, 6, 0));
+      const d = S(P3(-6, i, 0)), e = S(P3(6, i, 0));
+      g.push(`M${f(a.x)} ${f(a.y)}L${f(c.x)} ${f(c.y)}M${f(d.x)} ${f(d.y)}L${f(e.x)} ${f(e.y)}`);
+    }
+    out.unshift(`<path d="${g.join('')}" class="grid"/>`);
+  }
+
+  // các mặt của khối: sắp theo độ sâu (thuật toán hoạ sĩ)
+  const faces = [];
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val) continue;
+    if (o.val.t === 'solid') {
+      const s = o.val;
+      s.faces.forEach((fc) => {
+        const pts = fc.map((i) => s.v[i]);
+        const ctr = pts.reduce((a, p) => p3add(a, p), P3(0, 0, 0));
+        faces.push({ o, pts, depth: cam.depth(p3mul(ctr, 1 / pts.length)), front: isFront(pts, b) });
+      });
+    } else if (o.val.t === 'f3') {
+      const pts = o.val.pts;
+      const ctr = pts.reduce((a, p) => p3add(a, p), P3(0, 0, 0));
+      faces.push({ o, pts, depth: cam.depth(p3mul(ctr, 1 / pts.length)), front: true, flat: true });
+    }
+  }
+  faces.sort((a, c) => a.depth - c.depth);
+  for (const fa of faces) {
+    if (!fa.flat && !fa.front) continue;
+    const d = fa.pts.map(S).map((p) => `${f(p.x)},${f(p.y)}`).join(' ');
+    out.push(`<polygon points="${d}" fill="${fa.o.style.fill || 'rgba(31,63,143,.07)'}" stroke="none"/>`);
+  }
+
+  // cạnh: nét liền nếu thấy, nét đứt nếu khuất
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val) continue;
+    const on = sel.has(o.id);
+    if (o.val.t === 'solid') {
+      const s = o.val;
+      for (const [i, j] of s.edges) {
+        const adj = s.faces.filter((fc) => fc.includes(i) && fc.includes(j));
+        const vis = adj.some((fc) => isFront(fc.map((k) => s.v[k]), b));
+        const A = S(s.v[i]), B = S(s.v[j]);
+        out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" stroke="${on ? '#d98324' : o.style.color}" stroke-width="${(o.style.width || 1.7) * (vis ? 1 : 0.85)}"${vis ? '' : ' stroke-dasharray="6 5" opacity=".75"'} stroke-linecap="round"/>`);
+      }
+    } else if (o.val.t === 's3') {
+      const A = S(o.val.a), B = S(o.val.b);
+      let a = A, c = B;
+      if (o.val.kind === 'line') {
+        const dir = { x: B.x - A.x, y: B.y - A.y };
+        const l = Math.hypot(dir.x, dir.y) || 1;
+        const big = (cam.w + cam.h);
+        a = { x: A.x - dir.x / l * big, y: A.y - dir.y / l * big };
+        c = { x: A.x + dir.x / l * big, y: A.y + dir.y / l * big };
+      }
+      out.push(`<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(c.x)}" y2="${f(c.y)}" ${styleAttr(o, on)} stroke-linecap="round"/>`);
+      if (o.showLabel) labels.push(lab({ x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, o.name, o.style.color, 8, -6));
+    } else if (o.val.t === 'f3') {
+      const pts = o.val.pts.map(S);
+      out.push(`<polygon points="${pts.map((p) => `${f(p.x)},${f(p.y)}`).join(' ')}" fill="none" ${styleAttr(o, on)} stroke-linejoin="round"/>`);
+      if (o.showLabel) {
+        const c = pts.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
+        labels.push(lab({ x: c.x / pts.length, y: c.y / pts.length }, o.name, o.style.color, 0, 0));
+      }
+    } else if (o.val.t === 'sph') {
+      const c = S(o.val.c), r = o.val.r * cam.scale;
+      out.push(`<circle cx="${f(c.x)}" cy="${f(c.y)}" r="${f(r)}" fill="${o.style.fill}" ${styleAttr(o, on)}/>`);
+      const ry = Math.max(3, Math.abs(Math.sin(cam.pitch)) * r);
+      out.push(`<ellipse cx="${f(c.x)}" cy="${f(c.y)}" rx="${f(r)}" ry="${f(ry)}" fill="none" stroke="${o.style.color}" stroke-width="1.1" opacity=".55" stroke-dasharray="5 4"/>`);
+      if (o.showLabel) labels.push(lab({ x: c.x, y: c.y - r }, o.name, o.style.color, 0, -6));
+    } else if (o.val.t === 'num' && o.val.anchor3) {
+      labels.push(lab(S(o.val.anchor3), `${o.name} = ${round3(o.val.v)}`, o.style.color, 0, -8));
+    }
+  }
+  // điểm 3D
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val || o.val.t !== 'p3') continue;
+    const p = S(o.val);
+    const r = (o.style.size || 4.6) * (sel.has(o.id) ? 1.45 : 1);
+    const col = sel.has(o.id) ? '#d98324' : o.style.color;
+    if (opt.hover === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
+    out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
+    if (o.showLabel) labels.push(lab(p, o.name, col, 9, -9));
+  }
+  return out.join('') + labels.join('');
+}
+
+function isFront(pts, b) {
+  if (pts.length < 3) return true;
+  let n = P3(0, 0, 0);
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], c = pts[(i + 1) % pts.length];
+    n = p3add(n, P3((a.y - c.y) * (a.z + c.z), (a.z - c.z) * (a.x + c.x), (a.x - c.x) * (a.y + c.y)));
+  }
+  return p3dot(n, b.fwd) > 0;
+}
+
+// ---------------------------------------------------------------- Hit test
+/** Tìm đối tượng gần con trỏ nhất (ưu tiên điểm). px = toạ độ màn hình. */
+function pick(doc, cam, px, mode, tol = 13) {
+  let best = null, bd = tol;
+  const is3 = mode === '3d';
+  // ưu tiên điểm
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val) continue;
+    const isPt = is3 ? o.val.t === 'p3' : o.type === 'point';
+    if (!isPt) continue;
+    const s = cam.s(o.val);
+    const d = Math.hypot(s.x - px.x, s.y - px.y);
+    if (d < bd) { bd = d; best = o; }
+  }
+  if (best) return best;
+  bd = tol;
+  for (const o of doc.list()) {
+    if (!o.visible || !o.val) continue;
+    let d = Infinity;
+    if (!is3 && o.type === 'line') {
+      const [a, b] = lineEndpoints(o.val, cam);
+      d = distSegPx(cam.s(a), cam.s(b), px);
+    } else if (!is3 && o.type === 'circle') {
+      const c = cam.s(o.val.c);
+      d = Math.abs(Math.hypot(px.x - c.x, px.y - c.y) - o.val.r * cam.scale);
+    } else if (!is3 && o.type === 'polygon') {
+      d = Math.min(...o.val.pts.map((p, i) => distSegPx(cam.s(p), cam.s(o.val.pts[(i + 1) % o.val.pts.length]), px)));
+    } else if (is3 && o.val.t === 's3') {
+      d = distSegPx(cam.s(o.val.a), cam.s(o.val.b), px);
+    } else if (is3 && (o.val.t === 'f3')) {
+      d = Math.min(...o.val.pts.map((p, i) => distSegPx(cam.s(p), cam.s(o.val.pts[(i + 1) % o.val.pts.length]), px)));
+    } else if (is3 && o.val.t === 'solid') {
+      d = Math.min(...o.val.edges.map(([i, j]) => distSegPx(cam.s(o.val.v[i]), cam.s(o.val.v[j]), px)));
+    }
+    if (d < bd) { bd = d; best = o; }
+  }
+  return best;
+}
+function distSegPx(a, b, p) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  if (l2 < 1e-9) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/* ==== /src/ui/tools.js ==== */
+// ============================================================================
+// tools.js — Định nghĩa thanh công cụ. Mỗi công cụ = "cần chọn gì" + "tạo ra gì".
+// ============================================================================
+
+const I = (d) => `<svg viewBox="0 0 24 24">${d}</svg>`;
+const DOT = (x, y, r = 2.2) => `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor" stroke="none"/>`;
+
+const ICONS = {
+  move: I('<path d="M5 3l5.5 15 2-6.2 6.2-2z"/>'),
+  point: I(DOT(12, 12, 3.6)),
+  pointOn: I('<path d="M3 17L21 7"/>' + DOT(12, 12, 3.2)),
+  inter: I('<path d="M4 5l16 14M20 5L4 19"/>' + DOT(12, 12, 3)),
+  mid: I('<path d="M4 12h16"/>' + DOT(4, 12) + DOT(20, 12) + DOT(12, 12, 3)),
+  seg: I('<path d="M5 18L19 6"/>' + DOT(5, 18) + DOT(19, 6)),
+  ray: I('<path d="M5 18L21 5"/>' + DOT(5, 18)),
+  line: I('<path d="M3 19L21 5"/>' + DOT(8, 15.4) + DOT(16, 9.4)),
+  vector: I('<path d="M5 18L18 7M18 7h-4.5M18 7v4.5"/>' + DOT(5, 18)),
+  poly: I('<path d="M12 4L20 18H4z"/>'),
+  circ: I('<circle cx="12" cy="12" r="7.5"/>' + DOT(12, 12) + DOT(19.5, 12)),
+  circ3: I('<circle cx="12" cy="12" r="7.5"/>' + DOT(12, 4.5) + DOT(18.5, 15.7) + DOT(5.5, 15.7)),
+  perp: I('<path d="M12 3v18M4 21h16M12 18h3v3"/>'),
+  para: I('<path d="M3 9h18M3 16h18"/>'),
+  bisec: I('<path d="M4 20L20 8M4 20L20 16"/><path d="M4 20l14-6" stroke-dasharray="2.5 2.5"/>'),
+  perpbi: I('<path d="M5 17L19 7"/><path d="M8.6 8.4l6.8 10.2" stroke-dasharray="2.5 2.5"/>' + DOT(5, 17) + DOT(19, 7)),
+  tang: I('<circle cx="10" cy="14" r="6"/><path d="M3 5h18"/>'),
+  refl: I('<path d="M12 2v20" stroke-dasharray="3 3"/><path d="M9 7L4 12l5 5zM15 7l5 5-5 5"/>'),
+  dist: I('<path d="M4 8v8M20 8v8M4 12h16"/>'),
+  ang: I('<path d="M5 19h15M5 19L18 6"/><path d="M12.5 19a8 8 0 00-2.3-5.6" stroke-dasharray="2 2"/>'),
+  text: I('<path d="M5 6h14M12 6v13"/>'),
+  del: I('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
+  pt3: I('<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/>' + DOT(12, 12, 2.6)),
+  seg3: I('<path d="M5 17l14-9"/>' + DOT(5, 17) + DOT(19, 8)),
+  face3: I('<path d="M3 14l7-8 11 3-7 9z"/>'),
+  pyr: I('<path d="M12 3L3 19h18zM12 3l-3 16M12 3l6 16" stroke-dasharray="0"/>'),
+  prism: I('<path d="M6 20V9l6-5 6 5v11zM6 9l6 5 6-5M12 14v6"/>'),
+  box: I('<path d="M4 8l8-4 8 4v9l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v9"/>'),
+  sph: I('<circle cx="12" cy="12" r="8"/><ellipse cx="12" cy="12" rx="8" ry="3.2" stroke-dasharray="3 2.5"/>'),
+  sect: I('<path d="M6 19V8l6-4 6 4v11z"/><path d="M4 14l16-4" stroke="currentColor" stroke-dasharray="0"/>'),
+  rot: I('<path d="M20 12a8 8 0 11-2.4-5.7M20 4v4h-4"/>'),
+};
+
+// pick kinds: 'point' | 'curve' (đường/đường tròn) | 'any' | 'solid' | 'p3'
+const TOOLS_2D = [
+  { g: 'Chọn', t: [
+    { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo điểm tự do để hình biến đổi theo. Kéo nền để di chuyển bảng.' },
+    { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá (xoá cả hình phụ thuộc nó).' },
+  ]},
+  { g: 'Điểm', t: [
+    { id: 'point', name: 'Điểm', icon: ICONS.point, n: 1, kinds: ['point'], hint: 'Bấm lên bảng để tạo điểm. Bấm lên đường/đường tròn để tạo điểm thuộc hình đó.', make: () => null },
+    { id: 'inter', name: 'Giao điểm', icon: ICONS.inter, n: 2, kinds: ['curve', 'curve'], hint: 'Chọn 2 đường (thẳng / tròn) để lấy giao điểm.',
+      make: (p, app) => { app.addAll(p[0], p[1]); return null; } },
+    { id: 'mid', name: 'Trung điểm', icon: ICONS.mid, n: 2, kinds: ['point', 'point'], hint: 'Chọn 2 điểm.', op: 'midpoint' },
+  ]},
+  { g: 'Đường', t: [
+    { id: 'seg', name: 'Đoạn thẳng', icon: ICONS.seg, n: 2, kinds: ['point', 'point'], op: 'segment', hint: 'Chọn 2 điểm.' },
+    { id: 'line', name: 'Đường thẳng', icon: ICONS.line, n: 2, kinds: ['point', 'point'], op: 'line', hint: 'Chọn 2 điểm.' },
+    { id: 'ray', name: 'Tia', icon: ICONS.ray, n: 2, kinds: ['point', 'point'], op: 'ray', hint: 'Chọn gốc tia rồi điểm thứ hai.' },
+    { id: 'vector', name: 'Vectơ', icon: ICONS.vector, n: 2, kinds: ['point', 'point'], op: 'vector', hint: 'Chọn điểm đầu rồi điểm cuối.' },
+    { id: 'poly', name: 'Đa giác', icon: ICONS.poly, n: -1, kinds: ['point'], op: 'polygon', hint: 'Chọn lần lượt các đỉnh, bấm lại đỉnh đầu (hoặc Enter) để đóng hình.' },
+  ]},
+  { g: 'Đường tròn', t: [
+    { id: 'circ', name: 'Đường tròn (tâm, điểm)', icon: ICONS.circ, n: 2, kinds: ['point', 'point'], op: 'circleCP', hint: 'Chọn tâm rồi một điểm trên đường tròn.' },
+    { id: 'circ3', name: 'Đường tròn qua 3 điểm', icon: ICONS.circ3, n: 3, kinds: ['point', 'point', 'point'], op: 'circle3', hint: 'Chọn 3 điểm.' },
+    { id: 'tang', name: 'Tiếp tuyến', icon: ICONS.tang, n: 2, kinds: ['curve', 'point'], hint: 'Chọn đường tròn rồi điểm ngoài đường tròn.',
+      make: (p, app) => { app.add('tangent', [p[0], p[1]], { i: 0 }); app.add('tangent', [p[0], p[1]], { i: 1 }); return null; } },
+  ]},
+  { g: 'Quan hệ', t: [
+    { id: 'perp', name: 'Đường vuông góc', icon: ICONS.perp, n: 2, kinds: ['curve', 'point'], op: 'perpLine', hint: 'Chọn đường thẳng rồi điểm đi qua.' },
+    { id: 'para', name: 'Đường song song', icon: ICONS.para, n: 2, kinds: ['curve', 'point'], op: 'paraLine', hint: 'Chọn đường thẳng rồi điểm đi qua.' },
+    { id: 'perpbi', name: 'Trung trực', icon: ICONS.perpbi, n: 2, kinds: ['point', 'point'], op: 'perpBisector', hint: 'Chọn 2 điểm.' },
+    { id: 'bisec', name: 'Phân giác', icon: ICONS.bisec, n: 3, kinds: ['point', 'point', 'point'], op: 'bisector', hint: 'Chọn 3 điểm, điểm GIỮA là đỉnh góc.' },
+    { id: 'refl', name: 'Đối xứng', icon: ICONS.refl, n: 2, kinds: ['point', 'any'], op: 'reflectPt', hint: 'Chọn điểm cần lấy đối xứng, rồi chọn trục (đường thẳng) hoặc tâm (điểm).' },
+  ]},
+  { g: 'Đo', t: [
+    { id: 'dist', name: 'Khoảng cách', icon: ICONS.dist, n: 2, kinds: ['point', 'point'], op: 'distance', hint: 'Chọn 2 điểm.' },
+    { id: 'ang', name: 'Số đo góc', icon: ICONS.ang, n: 3, kinds: ['point', 'point', 'point'], op: 'angleM', hint: 'Chọn 3 điểm, điểm GIỮA là đỉnh góc.' },
+    { id: 'text', name: 'Ghi chú', icon: ICONS.text, n: 0, hint: 'Bấm lên bảng rồi nhập nội dung.' },
+  ]},
+];
+
+const TOOLS_3D = [
+  { g: 'Chọn', t: [
+    { id: 'move', name: 'Chọn / Xoay', icon: ICONS.move, n: 0, hint: 'Kéo nền để xoay hình. Kéo điểm để dời trong mặt phẳng ngang.' },
+    { id: 'rot', name: 'Xoay hình', icon: ICONS.rot, n: 0, hint: 'Kéo để xoay góc nhìn.' },
+    { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá.' },
+  ]},
+  { g: 'Điểm & cạnh', t: [
+    { id: 'pt3', name: 'Điểm', icon: ICONS.pt3, n: 1, kinds: ['p3'], hint: 'Bấm lên mặt phẳng đáy để tạo điểm (z = 0).', make: () => null },
+    { id: 'mid3', name: 'Trung điểm', icon: ICONS.mid, n: 2, kinds: ['p3', 'p3'], op: 'mid3', hint: 'Chọn 2 điểm.' },
+    { id: 'seg3', name: 'Đoạn thẳng', icon: ICONS.seg3, n: 2, kinds: ['p3', 'p3'], op: 'segment3', hint: 'Chọn 2 điểm.' },
+    { id: 'face3', name: 'Mặt phẳng qua 3 điểm', icon: ICONS.face3, n: -1, kinds: ['p3'], op: 'face', hint: 'Chọn các điểm rồi bấm Enter.' },
+    { id: 'dist3', name: 'Độ dài', icon: ICONS.dist, n: 2, kinds: ['p3', 'p3'], op: 'dist3', hint: 'Chọn 2 điểm.' },
+  ]},
+  { g: 'Khối', t: [
+    { id: 'pyr', name: 'Hình chóp', icon: ICONS.pyr, n: -1, kinds: ['p3'], op: 'pyramid', hint: 'Chọn các đỉnh ĐÁY, rồi chọn ĐỈNH CHÓP sau cùng, bấm Enter.' },
+    { id: 'prism', name: 'Lăng trụ đứng', icon: ICONS.prism, n: -1, kinds: ['p3'], op: 'prism', params: { h: 6 }, hint: 'Chọn các đỉnh đáy rồi bấm Enter (cao 6).' },
+    { id: 'box', name: 'Hình hộp', icon: ICONS.box, n: 1, kinds: ['p3'], op: 'box', params: { a: 6, b: 4, c: 4 }, hint: 'Chọn một đỉnh làm gốc.' },
+    { id: 'sph', name: 'Mặt cầu', icon: ICONS.sph, n: 2, kinds: ['p3', 'p3'], op: 'sphere', hint: 'Chọn tâm rồi một điểm trên mặt cầu.' },
+  ]},
+  { g: 'Thiết diện', t: [
+    { id: 'sect', name: 'Thiết diện', icon: ICONS.sect, n: 4, kinds: ['solid', 'p3', 'p3', 'p3'], op: 'section', hint: 'Chọn KHỐI rồi 3 điểm xác định mặt phẳng cắt.' },
+  ]},
+];
+
+const QUICK_2D = [
+  ['Tam giác', 'A=(-4,-2)\nB=(5,-2)\nC=(0,4)\nt=tamgiac(A,B,C)'],
+  ['Tam giác vuông', 'A=(-3,-2)\nB=(5,-2)\nC=(-3,4)\nt=tamgiac(A,B,C)\ng=goc(B,A,C)'],
+  ['Tam giác đều', 'A=(-3,-2)\nB=(3,-2)\nC=(0,3.196)\nt=tamgiac(A,B,C)'],
+  ['Đường tròn', 'O=(0,0)\nA=(4,0)\nc=duongtron(O,A)'],
+  ['Hình vuông', 'A=(-3,-3)\nB=(3,-3)\nC=(3,3)\nD=(-3,3)\nt=tugiac(A,B,C,D)'],
+  ['3 đường cao', 'A=(-4,-2)\nB=(5,-2)\nC=(1,4)\nt=tamgiac(A,B,C)\nha=duongcao(A,B,C)\nhb=duongcao(B,C,A)\nhc=duongcao(C,A,B)\nH=tructam(A,B,C)'],
+];
+const QUICK_3D = [
+  ['Chóp tứ giác', 'A=(0,0,0)\nB=(6,0,0)\nC=(6,5,0)\nD=(0,5,0)\nS=(3,2.5,7)\nK=chop(A,B,C,D,S)'],
+  ['Chóp tam giác', 'A=(0,0,0)\nB=(6,0,0)\nC=(2,5,0)\nS=(2.7,1.7,6)\nK=chop(A,B,C,S)'],
+  ['Hình hộp', 'A=(0,0,0)\nK=hop(A,6,4,4)'],
+  ['Lăng trụ', 'A=(0,0,0)\nB=(6,0,0)\nC=(2,5,0)\nK=langtru(A,B,C,6)'],
+  ['Mặt cầu', 'O=(0,0,0)\nS=matcau(O,4)'],
+  ['Thiết diện mẫu', 'A=(0,0,0)\nB=(6,0,0)\nC=(6,5,0)\nD=(0,5,0)\nS=(3,2.5,7)\nK=chop(A,B,C,D,S)\nM=trungdiem3(S,A)\nN=trungdiem3(S,B)\nP=trungdiem3(S,C)\ntd=thietdien(K,M,N,P)'],
+];
+
+const CHIPS = [
+  'Vẽ tam giác ABC vuông tại A, kẻ đường cao AH',
+  'Vẽ đường tròn tâm O bán kính 5 và một dây AB',
+  'Tam giác ABC nội tiếp đường tròn tâm O, kẻ ba đường cao',
+  'Hình chóp S.ABCD đáy là hình vuông, cắt bởi mặt phẳng qua trung điểm SA, SB, SC',
+];
+
+/* ==== /src/ai/agent.js ==== */
+// ============================================================================
+// agent.js — AI agent: đổi câu tiếng Việt thành script DSL rồi thi hành ngay.
+// 3 tầng: (1) luật offline cho câu quen thuộc → (2) Gemini → (3) Claude runtime.
+// ============================================================================
+
+const DSL_REFERENCE = `
+TOẠ ĐỘ & ĐIỂM (2D)
+  A = (x,y)                     điểm tự do
+  M = trungdiem(A,B)            trung điểm
+  I = giao(d1,d2)  |  giao(d,c,0) / giao(d,c,1)   giao điểm (số 0/1 chọn nghiệm)
+  P = diemtren(c)  |  diemtren(d,0.3)             điểm thuộc đối tượng
+  N = chia(A,B,0.25)            điểm chia AB theo tỉ lệ (0→A, 1→B)
+  G = trongtam(A,B,C)   O = tamngoaitiep(A,B,C)
+  I = tamnoitiep(A,B,C) H = tructam(A,B,C)
+  F = chan(P, d)                hình chiếu vuông góc của P lên đường d
+  H = chanduongcao(A,B,C)       chân đường cao hạ từ A xuống BC
+  A' = doixung(A, m)            m là điểm hoặc đường thẳng
+  B' = quay(A,O,90)   C' = vitu(A,O,2)   D' = tinhtien(A, u) | tinhtien(A, dx, dy)
+
+ĐƯỜNG (2D)
+  doan(A,B)  duongthang(A,B)  tia(A,B)  vecto(A,B)
+  vuonggoc(d,P)   songsong(d,P)   trungtruc(A,B)
+  phangiac(A,B,C)  (phân giác góc đỉnh B)
+  duongcao(A,B,C)  (đường cao từ A)      trungtuyen(A,B,C)
+  tieptuyen(c,P,0) / tieptuyen(c,P,1)
+
+ĐƯỜNG TRÒN
+  duongtron(O,A)     tâm O qua A
+  duongtron(O, 5)    tâm O bán kính 5
+  duongtronqua(A,B,C) = ngoaitiep(A,B,C)      noitiep(A,B,C)
+
+ĐA GIÁC & ĐO ĐẠC
+  tamgiac(A,B,C)   tugiac(A,B,C,D)   dagiac(A,B,C,D,E)
+  khoangcach(A,B)   goc(A,B,C)   dientich(t)   chu("nội dung", x, y)
+
+HÌNH KHÔNG GIAN (3D)
+  A = (x,y,z)                    điểm 3D (3 số)
+  doan3(A,B)   duongthang3(A,B)  mat(A,B,C,D)
+  chop(A,B,C,D,S)                hình chóp: các đỉnh đáy rồi ĐỈNH CHÓP ở cuối
+  langtru(A,B,C, 6)              lăng trụ đứng đáy ABC, chiều cao 6
+  hop(A, 4,3,3)                  hình hộp chữ nhật từ đỉnh A
+  matcau(O, 3)                   mặt cầu
+  mp(A,B,C)                      mặt phẳng qua 3 điểm
+  thietdien(K, M,N,P)            THIẾT DIỆN của khối K cắt bởi mp(MNP)
+  giao3(A,B, mp1)                giao của đường AB với mặt phẳng
+  trungdiem3(A,B)   chia3(A,B,t)   kc3(A,B)
+
+LỆNH KHÁC
+  an X | hien X | xoa X | mau X #ff0000 | net X dut | doiten X Y | xoahet
+`.trim();
+
+const SYSTEM_PROMPT = `Bạn là trợ lý dựng hình cho học sinh Việt Nam cấp 2 - cấp 3.
+Nhiệm vụ: đọc yêu cầu bằng tiếng Việt và trả về SCRIPT theo đúng ngôn ngữ lệnh dưới đây để ứng dụng vẽ hình.
+
+${DSL_REFERENCE}
+
+QUY TẮC BẮT BUỘC
+1. Chỉ dùng đúng các lệnh trong danh sách. Không bịa lệnh mới, không dùng cú pháp GeoGebra.
+2. Mỗi dòng một lệnh, dạng "TÊN = biểu_thức". Tên điểm viết HOA, tên đường/đường tròn viết thường.
+3. Điểm tự do phải có toạ độ cụ thể, chọn số đẹp, hình cân đối, nằm gọn trong khoảng -10..10 (3D: 0..8).
+4. Nếu bài cho quan hệ (vuông, cân, đều, trung điểm, tiếp xúc...) hãy chọn toạ độ THOẢ MÃN chính xác quan hệ đó,
+   ví dụ tam giác đều cạnh 6: A=(0,0) B=(6,0) C=(3,5.196).
+5. Vẽ luôn cả hình phụ mà đề bài nhắc tới (đường cao, trung tuyến, đường tròn ngoại tiếp...).
+6. Chỉ tạo thêm đối tượng mới; đối tượng đã có trong danh sách hiện tại thì dùng lại tên, đừng định nghĩa lại.
+7. Với hình không gian: dùng toạ độ 3 thành phần và lệnh nhóm 3D. Đáy thường nằm ở z = 0.
+8. Không giải thích trong script. Giải thích ngắn (1-2 câu tiếng Việt) đặt ở trường "giai_thich".
+
+Trả lời DUY NHẤT một đối tượng JSON: {"giai_thich": "...", "script": "..."}`;
+
+const RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: { giai_thich: { type: 'STRING' }, script: { type: 'STRING' } },
+  required: ['script'],
+};
+
+/** Mô tả ngắn tình trạng bảng vẽ để AI biết đang có gì */
+function describeDoc(doc, mode) {
+  const items = doc.list().filter((o) => o.visible).map((o) => {
+    let v = '';
+    if (o.val && o.type === 'point') v = `(${rr2(o.val.x)}, ${rr2(o.val.y)})`;
+    else if (o.val && o.val.t === 'p3') v = `(${rr2(o.val.x)}, ${rr2(o.val.y)}, ${rr2(o.val.z)})`;
+    else if (o.val && o.val.t === 'circle') v = `tâm (${rr2(o.val.c.x)}, ${rr2(o.val.c.y)}) R=${rr2(o.val.r)}`;
+    return `${o.name}: ${o.op}${v ? ' ' + v : ''}`;
+  });
+  return `Chế độ: ${mode === '3d' ? 'hình không gian 3D' : 'hình phẳng 2D'}.\n`
+    + (items.length ? `Đang có ${items.length} đối tượng:\n` + items.join('\n') : 'Bảng vẽ đang trống.');
+}
+const rr2 = (v) => Math.round(v * 100) / 100;
+
+// ---------------------------------------------------------------- Gemini
+async function askGemini({ key, model, history, context }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+  const contents = history.map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+  if (contents.length) contents[contents.length - 1].parts[0].text = `[TÌNH TRẠNG BẢNG VẼ]\n${context}\n\n[YÊU CẦU]\n${contents[contents.length - 1].parts[0].text}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+      generationConfig: { temperature: 0.15, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
+    }),
+  });
+  if (!res.ok) {
+    let msg = `Lỗi ${res.status}`;
+    try { const e = await res.json(); msg = e.error?.message || msg; } catch (_) { }
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const txt = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
+  return parseJSONLoose(txt);
+}
+
+// ------------------------------------------------- Claude runtime (bản Artifact)
+/** Lấy khả năng "hỏi Claude" nếu trang đang chạy trên claude.ai; ngược lại trả null */
+async function getClaudeCapability(name) {
+  try {
+    if (typeof window === 'undefined' || !window.claude || typeof window.claude.use !== 'function') return null;
+    return await window.claude.use(name);
+  } catch (_) { return null; }
+}
+
+/** Dùng runtime của Artifact — không cần API key */
+async function askClaudeRuntime({ sample, history, context }) {
+  const last = history[history.length - 1]?.text || '';
+  const turns = [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n[TÌNH TRẠNG BẢNG VẼ]\n${context}\n\n[YÊU CẦU]\n${last}\n\nChỉ in ra JSON.` }];
+  const out = await sample.json(turns, { modelTier: 'default' });
+  return typeof out === 'string' ? parseJSONLoose(out) : out;
+}
+
+function parseJSONLoose(txt) {
+  const t = String(txt).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  try { return JSON.parse(t); } catch (_) { }
+  const m = t.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch (_) { } }
+  return { giai_thich: '', script: t };
+}
+
+// ---------------------------------------------------------------- Luật offline
+const strip = (s) => s.toLowerCase().replace(/đ/g, 'd').normalize('NFD').replace(/[̀-ͯ]/g, '');
+const UP = (n) => n.toUpperCase();
+
+/**
+ * Bộ luật xử lý các câu quen thuộc, chạy ngay không cần mạng.
+ * @returns {{script:string, note:string}|null}
+ */
+function localParse(text, doc) {
+  const s = strip(text).trim();
+  const has = (n) => !!doc.byName(n);
+  const L = [];
+  const note = [];
+
+  // --- tam giác ---
+  let m = s.match(/tam giac\s+([a-z])\s*([a-z])\s*([a-z])/);
+  if (m) {
+    const [A, B, C] = [UP(m[1]), UP(m[2]), UP(m[3])];
+    let pts;
+    if (/\bdeu\b/.test(s)) { pts = [[0, 0], [6, 0], [3, 5.196]]; note.push('tam giác đều cạnh 6'); }
+    else if (/vuong can/.test(s)) { pts = [[0, 0], [6, 0], [0, 6]]; note.push('vuông cân tại ' + A); }
+    else if (/vuong/.test(s)) {
+      const at = (s.match(/vuong tai\s+([a-z])/) || [])[1];
+      const k = at ? [m[1], m[2], m[3]].indexOf(at) : 0;
+      const base = [[0, 0], [6, 0], [0, 8]];
+      pts = [base[(3 - k) % 3], base[(4 - k) % 3], base[(5 - k) % 3]];
+      pts = k === 0 ? [[0, 0], [6, 0], [0, 8]] : k === 1 ? [[6, 0], [0, 0], [0, 8]] : [[0, 8], [6, 0], [0, 0]];
+      note.push('vuông tại ' + UP(at || m[1]));
+    } else if (/\bcan\b/.test(s)) { pts = [[0, 6], [-4, 0], [4, 0]]; note.push('cân tại ' + A); }
+    else pts = [[0, 0], [7, 0], [2, 5]];
+    [A, B, C].forEach((n, i) => { if (!has(n)) L.push(`${n} = (${pts[i][0]}, ${pts[i][1]})`); });
+    L.push(`t${A}${B}${C} = tamgiac(${A},${B},${C})`);
+    if (/duong cao/.test(s)) { L.push(`H${A} = chanduongcao(${A},${B},${C})`, `h${A} = doan(${A},H${A})`); note.push('kèm đường cao'); }
+    if (/trung tuyen/.test(s)) L.push(`mt = trungtuyen(${A},${B},${C})`);
+    if (/ngoai tiep/.test(s)) L.push(`cng = ngoaitiep(${A},${B},${C})`);
+    if (/noi tiep/.test(s)) L.push(`cnt = noitiep(${A},${B},${C})`);
+    if (/trong tam/.test(s)) L.push(`G = trongtam(${A},${B},${C})`);
+    if (/truc tam/.test(s)) L.push(`H = tructam(${A},${B},${C})`);
+    return { script: L.join('\n'), note: 'Dựng ' + note.join(', ') };
+  }
+
+  // --- hình chóp S.ABCD ---
+  m = s.match(/(?:hinh\s+)?chop\s+([a-z])\s*\.?\s*([a-z]{3,4})/);
+  if (m) {
+    const S = UP(m[1]);
+    const base = m[2].toUpperCase().split('');
+    const n = base.length;
+    const coords = n === 3 ? [[0, 0, 0], [6, 0, 0], [2, 5, 0]] : [[0, 0, 0], [6, 0, 0], [6, 5, 0], [0, 5, 0]];
+    base.forEach((b, i) => { if (!has(b)) L.push(`${b} = (${coords[i].join(', ')})`); });
+    const cx = coords.reduce((a, c) => a + c[0], 0) / n, cy = coords.reduce((a, c) => a + c[1], 0) / n;
+    if (!has(S)) L.push(`${S} = (${Math.round(cx * 10) / 10}, ${Math.round(cy * 10) / 10}, 7)`);
+    L.push(`K = chop(${base.join(',')},${S})`);
+    return { script: L.join('\n'), note: `Dựng hình chóp ${S}.${base.join('')}` };
+  }
+
+  // --- lăng trụ ---
+  m = s.match(/lang tru\s+([a-z]{3,4})/);
+  if (m) {
+    const base = m[1].toUpperCase().split('');
+    const coords = base.length === 3 ? [[0, 0, 0], [6, 0, 0], [2, 5, 0]] : [[0, 0, 0], [6, 0, 0], [6, 5, 0], [0, 5, 0]];
+    base.forEach((b, i) => { if (!has(b)) L.push(`${b} = (${coords[i].join(', ')})`); });
+    L.push(`K = langtru(${base.join(',')}, 6)`);
+    return { script: L.join('\n'), note: 'Dựng lăng trụ đứng ' + base.join('') };
+  }
+
+  // --- hình hộp ---
+  if (/hinh hop|hop chu nhat/.test(s)) {
+    if (!has('A')) L.push('A = (0, 0, 0)');
+    L.push('K = hop(A, 6, 4, 4)');
+    return { script: L.join('\n'), note: 'Dựng hình hộp chữ nhật' };
+  }
+
+  // --- đường tròn tâm ... bán kính ... ---
+  m = s.match(/duong tron[^a-z]*tam\s+([a-z])(?:[^a-z0-9]*(?:ban kinh|r)\s*=?\s*([0-9.]+))?/);
+  if (m) {
+    const O = UP(m[1]);
+    if (!has(O)) L.push(`${O} = (0, 0)`);
+    L.push(`c${O} = duongtron(${O}, ${m[2] || 4})`);
+    return { script: L.join('\n'), note: `Đường tròn tâm ${O}` };
+  }
+
+  // --- trung điểm ---
+  m = s.match(/trung diem\s+(?:cua\s+)?([a-z])\s*([a-z])/);
+  if (m && has(UP(m[1])) && has(UP(m[2]))) {
+    return { script: `M${UP(m[1])}${UP(m[2])} = trungdiem(${UP(m[1])},${UP(m[2])})`, note: 'Lấy trung điểm' };
+  }
+  return null;
+}
+
+/* ==== src/main.js ==== */
+// ============================================================================
+// main.js — Bộ điều khiển ứng dụng: công cụ, tương tác chuột/chạm, chat AI.
+// ============================================================================
+
+
+
+
+
+
+const $ = (s) => document.querySelector(s);
+const LS = {
+  get: (k, d) => { try { const v = localStorage.getItem('geoai.' + k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
+  set: (k, v) => { try { localStorage.setItem('geoai.' + k, JSON.stringify(v)); } catch (_) { } },
+};
+
+const app = {
+  mode: '2d',
+  doc: { '2d': new GeoDoc(), '3d': new GeoDoc() },
+  cam: { '2d': new Cam2(), '3d': new Cam3() },
+  tool: 'move',
+  picks: [],
+  sel: new Set(),
+  hover: null,
+  opts: { grid: LS.get('grid', true), axes: true },
+  hist: { '2d': [], '3d': [] },
+  future: { '2d': [], '3d': [] },
+  chat: [],
+  busy: false,
+  cmdHist: [], cmdIdx: -1,
+  sampler: null, downloads: null,
+};
+window.geoai = app;
+
+const D = () => app.doc[app.mode];
+const C = () => app.cam[app.mode];
+const is3 = () => app.mode === '3d';
+
+// ---------------------------------------------------------------- Vẽ lại
+function render() {
+  const svg = $('#svg');
+  const r = svg.getBoundingClientRect();
+  const cam = C();
+  cam.w = Math.max(1, r.width); cam.h = Math.max(1, r.height);
+  const mk = (id, c) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`;
+  const defs = `<defs>${mk('arw', '#16233d')}${mk('arwr', '#b3261e')}${mk('arwg', '#1f7a5a')}${mk('arwb', '#22468f')}</defs>`;
+  const opt = { ...app.opts, selected: app.sel, hover: app.hover };
+  svg.innerHTML = defs + (is3() ? render3(D(), cam, opt) : render2(D(), cam, opt));
+  renderObjList();
+  updateHint();
+}
+
+function updateHint() {
+  const t = curTool();
+  let s = t ? `<b>${esc(t.name)}</b> — ${esc(t.hint || '')}` : '';
+  if (t && t.n && app.picks.length) {
+    s += ` <b>(${app.picks.length}${t.n > 0 ? '/' + t.n : ''} đã chọn${t.n < 0 ? ' — Enter để xong' : ''})</b>`;
+  }
+  $('#hint').innerHTML = s;
+}
+
+function renderObjList() {
+  const box = $('#objlist');
+  const items = D().list();
+  if (!items.length) { box.innerHTML = `<div style="padding:18px;color:var(--muted);font-size:13px">Chưa có đối tượng nào.</div>`; return; }
+  box.innerHTML = items.map((o) => {
+    const col = (o.style && o.style.color) || '#64748b';
+    return `<div class="obj" data-id="${o.id}">
+      <span class="sw" style="background:${col};${o.visible ? '' : 'opacity:.25'}"></span>
+      <span class="nm">${esc(o.name)}</span>
+      <span class="de">${esc(describe(o))}</span>
+      <button class="x" data-act="vis" title="Ẩn/hiện">${o.visible ? '👁' : '⌀'}</button>
+      <button class="x" data-act="del" title="Xoá">✕</button>
+    </div>`;
+  }).join('');
+}
+function describe(o) {
+  const A = o.args.map((a) => { const p = D().get(a); return p ? p.name : '?'; }).join(', ');
+  const v = o.val;
+  let extra = '';
+  if (v && o.type === 'point') extra = ` (${r2(v.x)}; ${r2(v.y)})`;
+  else if (v && v.t === 'p3') extra = ` (${r2(v.x)}; ${r2(v.y)}; ${r2(v.z)})`;
+  else if (v && v.t === 'circle') extra = ` R=${r2(v.r)}`;
+  else if (v && v.t === 'num') extra = ` = ${r2(v.v)}`;
+  else if (v && v.t === 'angle') extra = ` = ${r2(v.v)}°`;
+  else if (v && v.t === 'solid') extra = ` ${v.v.length} đỉnh`;
+  return `${VN[o.op] || o.op}${A ? '(' + A + ')' : ''}${extra}`;
+}
+const r2 = (v) => (Number.isFinite(v) ? Math.round(v * 100) / 100 : '?');
+const VN = {
+  point: 'điểm', point3: 'điểm', pointOn: 'điểm thuộc', intersect: 'giao điểm', midpoint: 'trung điểm',
+  mid3: 'trung điểm', segment: 'đoạn', segment3: 'đoạn', line: 'đường thẳng', line3: 'đường thẳng',
+  ray: 'tia', vector: 'vectơ', polygon: 'đa giác', circleCP: 'đường tròn', circleR: 'đường tròn',
+  circle3: 'đường tròn qua', incircle: 'đtr nội tiếp', perpLine: 'đường ⟂', paraLine: 'đường //',
+  perpBisector: 'trung trực', bisector: 'phân giác', altitude: 'đường cao', median: 'trung tuyến',
+  tangent: 'tiếp tuyến', distance: 'khoảng cách', dist3: 'độ dài', angleM: 'góc', areaM: 'diện tích',
+  centroid: 'trọng tâm', circumcenter: 'tâm ngoại tiếp', incenter: 'tâm nội tiếp', orthocenter: 'trực tâm',
+  foot: 'hình chiếu', footBC: 'chân đ.cao', reflectPt: 'đối xứng', rotatePt: 'quay', dilatePt: 'vị tự',
+  translatePt: 'tịnh tiến', pyramid: 'hình chóp', prism: 'lăng trụ', box: 'hình hộp', sphere: 'mặt cầu',
+  face: 'mặt', plane3: 'mặt phẳng', section: 'thiết diện', meet3: 'giao với mp', text: 'ghi chú', numberFree: 'số',
+};
+
+// ---------------------------------------------------------------- Undo
+function snap() {
+  const m = app.mode;
+  app.hist[m].push(JSON.stringify(D().toJSON()));
+  if (app.hist[m].length > 80) app.hist[m].shift();
+  app.future[m] = [];
+}
+function undo() {
+  const m = app.mode;
+  if (!app.hist[m].length) return;
+  app.future[m].push(JSON.stringify(D().toJSON()));
+  loadDoc(JSON.parse(app.hist[m].pop()));
+}
+function redo() {
+  const m = app.mode;
+  if (!app.future[m].length) return;
+  app.hist[m].push(JSON.stringify(D().toJSON()));
+  loadDoc(JSON.parse(app.future[m].pop()));
+}
+function loadDoc(json) {
+  const d = GeoDoc.fromJSON(json);
+  d.onChange = render;
+  app.doc[app.mode] = d;
+  app.sel.clear(); app.picks = [];
+  render();
+}
+
+// ---------------------------------------------------------------- Công cụ
+function toolSets() { return is3() ? TOOLS_3D : TOOLS_2D; }
+function curTool() {
+  for (const g of toolSets()) for (const t of g.t) if (t.id === app.tool) return t;
+  return null;
+}
+function buildRail() {
+  $('#rail').innerHTML = toolSets().map((g) => `<div class="grp"><div class="glabel">${esc(g.g)}</div>` +
+    g.t.map((t) => `<button class="tool${t.id === app.tool ? ' on' : ''}" data-tool="${t.id}" data-tip="${esc(t.name)}">${t.icon}</button>`).join('') +
+    `</div>`).join('');
+  const q = is3() ? QUICK_3D : QUICK_2D;
+  $('#quick').innerHTML = q.map((x, i) => `<button data-q="${i}">${esc(x[0])}</button>`).join('');
+}
+function setTool(id) {
+  app.tool = id; app.picks = []; app.sel.clear();
+  document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id));
+  $('#svg').style.cursor = id === 'move' ? 'default' : 'crosshair';
+  render();
+}
+
+/** Snap toạ độ về lưới con gần nhất */
+function snapWorld(p) {
+  const cam = C();
+  const raw = 70 / cam.scale;
+  const pw = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = ([1, 2, 5, 10].map((m) => m * pw).find((s) => s >= raw) || pw * 10) / 5;
+  return { x: Math.round(p.x / step) * step, y: Math.round(p.y / step) * step, z: p.z };
+}
+
+/** Lấy đối tượng cần thiết cho bước chọn hiện tại; tự tạo điểm nếu cần */
+function acquire(px, kind) {
+  const doc = D(), cam = C();
+  const hit = pick(doc, cam, px, app.mode);
+  const wantPt = kind === 'point' || kind === 'p3';
+  if (hit) {
+    const hitIsPt = is3() ? (hit.val && hit.val.t === 'p3') : hit.type === 'point';
+    if (!wantPt || hitIsPt) {
+      if (kind === 'curve' && (hit.type === 'point' || (hit.val && hit.val.t === 'p3'))) return null;
+      if (kind === 'solid' && !(hit.val && hit.val.t === 'solid')) return null;
+      return hit;
+    }
+    // muốn điểm nhưng bấm trúng đường -> tạo điểm thuộc đường
+    if (!is3() && (hit.type === 'line' || hit.type === 'circle' || hit.type === 'polygon')) {
+      const w = cam.u(px);
+      return doc.add({ op: 'pointOn', args: [hit], params: { t: paramFor(hit.val, w) } });
+    }
+  }
+  if (!wantPt) return null;
+  if (is3()) {
+    const w = snapWorld(cam.u(px, 0));
+    return doc.add({ op: 'point3', args: [], params: { x: w.x, y: w.y, z: 0 } });
+  }
+  const w = snapWorld(cam.u(px));
+  return doc.add({ op: 'point', args: [], params: { x: w.x, y: w.y } });
+}
+function paramFor(val, w) {
+  if (!val) return 0;
+  if (val.t === 'circle') return Math.atan2(w.y - val.c.y, w.x - val.c.x);
+  if (val.t === 'line') {
+    if (val.kind === 'seg') {
+      const dx = val.b.x - val.a.x, dy = val.b.y - val.a.y;
+      const l2 = dx * dx + dy * dy || 1;
+      return Math.max(0, Math.min(1, ((w.x - val.a.x) * dx + (w.y - val.a.y) * dy) / l2));
+    }
+    return (w.x - val.p.x) * val.d.x + (w.y - val.p.y) * val.d.y;
+  }
+  return 0.5;
+}
+
+function clickTool(px) {
+  const t = curTool();
+  if (!t) return;
+  if (t.id === 'del') {
+    const hit = pick(D(), C(), px, app.mode);
+    if (hit) { snap(); D().remove(hit.id); render(); }
+    return;
+  }
+  if (t.id === 'text') {
+    const s = prompt('Nội dung ghi chú:');
+    if (s) { const w = C().u(px); snap(); D().add({ op: 'text', args: [], params: { s, x: w.x, y: w.y } }); render(); }
+    return;
+  }
+  if (!t.n) return;
+  const kind = (t.kinds && t.kinds[Math.min(app.picks.length, t.kinds.length - 1)]) || 'any';
+  if (app.picks.length === 0) snap();
+  const got = acquire(px, kind);
+  if (!got) { flash('Hãy chọn đúng loại đối tượng: ' + KINDVN[kind]); return; }
+  // đa giác: bấm lại đỉnh đầu để đóng hình
+  if (t.n < 0 && app.picks.length >= 3 && got.id === app.picks[0].id) { finishTool(); return; }
+  if (!app.picks.some((p) => p.id === got.id)) app.picks.push(got);
+  app.sel = new Set(app.picks.map((p) => p.id));
+  if (t.n > 0 && app.picks.length >= t.n) finishTool();
+  render();
+}
+const KINDVN = { point: 'một điểm', p3: 'một điểm', curve: 'một đường thẳng / đường tròn', solid: 'một khối', any: 'một đối tượng' };
+
+function finishTool() {
+  const t = curTool();
+  const picks = app.picks;
+  app.picks = []; app.sel.clear();
+  if (!t || !picks.length) { render(); return; }
+  try {
+    if (t.make) t.make(picks, api);
+    else if (t.op) D().add({ op: t.op, args: picks, params: t.params || {} });
+  } catch (e) { flash('Không dựng được: ' + e.message); }
+  render();
+}
+
+const api = {
+  add: (op, args, params) => D().add({ op, args, params: params || {} }),
+  addAll: (a, b) => {
+    // giao điểm: tạo tất cả nghiệm
+    const n = countInter(a.val, b.val);
+    for (let i = 0; i < Math.max(1, n); i++) D().add({ op: 'intersect', args: [a, b], params: { i } });
+  },
+};
+function countInter(x, y) {
+  if (!x || !y) return 1;
+  if (x.t === 'line' && y.t === 'line') return 1;
+  return 2;
+}
+
+// ---------------------------------------------------------------- Chuột / chạm
+let drag = null;
+function pxOf(e) {
+  const r = $('#svg').getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function onDown(e) {
+  const svg = $('#svg');
+  svg.setPointerCapture(e.pointerId);
+  const px = pxOf(e);
+  const t = curTool();
+  if (t && (t.id === 'move' || t.id === 'rot')) {
+    const hit = t.id === 'rot' ? null : pick(D(), C(), px, app.mode);
+    if (hit && D().isDraggable(hit)) {
+      drag = { kind: 'obj', obj: hit, moved: false };
+      app.sel = new Set([hit.id]);
+      snap();
+    } else {
+      drag = { kind: 'view', last: px };
+    }
+    render();
+    return;
+  }
+  drag = { kind: 'tool', px, moved: false };
+}
+function onMove(e) {
+  const px = pxOf(e);
+  if (!drag) {
+    const hit = pick(D(), C(), px, app.mode);
+    const id = hit ? hit.id : null;
+    if (id !== app.hover) { app.hover = id; $('#svg').style.cursor = hit ? 'pointer' : (app.tool === 'move' ? 'default' : 'crosshair'); render(); }
+    return;
+  }
+  if (drag.kind === 'obj') {
+    drag.moved = true;
+    const cam = C();
+    const target = is3() ? cam.u(px, drag.obj.params.z || 0) : cam.u(px);
+    D().moveTo(drag.obj, e.shiftKey ? snapWorld(target) : target);
+    render();
+  } else if (drag.kind === 'view') {
+    const dx = px.x - drag.last.x, dy = px.y - drag.last.y;
+    drag.last = px;
+    if (is3()) C().orbit(dx, dy); else C().panPx(dx, dy);
+    render();
+  } else if (drag.kind === 'tool') {
+    if (Math.hypot(px.x - drag.px.x, px.y - drag.px.y) > 4) drag.moved = true;
+  }
+}
+function onUp(e) {
+  const px = pxOf(e);
+  if (drag && drag.kind === 'tool' && !drag.moved) clickTool(px);
+  if (drag && drag.kind === 'view' && !is3()) { /* pan xong */ }
+  drag = null;
+  render();
+}
+
+// ---------------------------------------------------------------- Chạy lệnh
+function exec(script, opts) {
+  if (!script || !script.trim()) return { errors: [], ok: 0, created: [] };
+  const wasEmpty = D().order.length === 0;
+  snap();
+  const res = runScript(D(), script, opts || {});
+  if (wasEmpty && res.created.length) fit();
+  render();
+  return res;
+}
+function fit() {
+  const doc = D(), cam = C();
+  const pts = [];
+  for (const o of doc.list()) {
+    if (!o.val) continue;
+    if (is3()) {
+      if (o.val.t === 'p3') pts.push(o.val);
+      else if (o.val.t === 'solid') pts.push(...o.val.v);
+      else if (o.val.t === 'f3') pts.push(...o.val.pts);
+      else if (o.val.t === 'sph') pts.push({ x: o.val.c.x - o.val.r, y: o.val.c.y - o.val.r, z: o.val.c.z - o.val.r }, { x: o.val.c.x + o.val.r, y: o.val.c.y + o.val.r, z: o.val.c.z + o.val.r });
+    } else {
+      if (o.type === 'point') pts.push(o.val);
+      else if (o.val.t === 'circle') pts.push({ x: o.val.c.x - o.val.r, y: o.val.c.y - o.val.r }, { x: o.val.c.x + o.val.r, y: o.val.c.y + o.val.r });
+      else if (o.val.t === 'poly') pts.push(...o.val.pts);
+    }
+  }
+  if (!pts.length) return;
+  if (is3()) {
+    const s = pts.map((p) => cam.s(p));
+    const minx = Math.min(...s.map((p) => p.x)), maxx = Math.max(...s.map((p) => p.x));
+    const miny = Math.min(...s.map((p) => p.y)), maxy = Math.max(...s.map((p) => p.y));
+    const k = Math.min((cam.w - 120) / Math.max(40, maxx - minx), (cam.h - 120) / Math.max(40, maxy - miny));
+    cam.zoom(Math.max(0.2, Math.min(4, k)));
+    const s2 = pts.map((p) => cam.s(p));
+    cam.ox += cam.w / 2 - (Math.min(...s2.map((p) => p.x)) + Math.max(...s2.map((p) => p.x))) / 2;
+    cam.oy += cam.h / 2 - (Math.min(...s2.map((p) => p.y)) + Math.max(...s2.map((p) => p.y))) / 2;
+  } else {
+    const minx = Math.min(...pts.map((p) => p.x)), maxx = Math.max(...pts.map((p) => p.x));
+    const miny = Math.min(...pts.map((p) => p.y)), maxy = Math.max(...pts.map((p) => p.y));
+    cam.cx = (minx + maxx) / 2; cam.cy = (miny + maxy) / 2;
+    const k = Math.min((cam.w - 110) / Math.max(1e-6, maxx - minx || 6), (cam.h - 110) / Math.max(1e-6, maxy - miny || 6));
+    cam.scale = Math.max(6, Math.min(220, k));
+  }
+}
+
+function flash(msg, ms = 2600) {
+  const el = $('#status');
+  el.textContent = msg;
+  clearTimeout(flash._t);
+  flash._t = setTimeout(() => { el.textContent = ''; }, ms);
+}
+
+// ---------------------------------------------------------------- Chat AI
+function addMsg(role, text, code, cls) {
+  app.chat.push({ role, text });
+  const el = document.createElement('div');
+  el.className = 'msg ' + (cls || (role === 'user' ? 'me' : 'ai'));
+  el.innerHTML = esc(text) + (code ? `<span class="code">${esc(code)}</span>` : '');
+  $('#chatlog').appendChild(el);
+  $('#chatlog').scrollTop = 1e9;
+  return el;
+}
+function sysMsg(t) { return addMsg('sys', t, null, 'sys'); }
+
+async function sendChat() {
+  const inp = $('#chatin');
+  const text = inp.value.trim();
+  if (!text || app.busy) return;
+  inp.value = ''; inp.style.height = 'auto';
+  addMsg('user', text);
+  app.busy = true; $('#chatsend').disabled = true;
+  const thinking = addMsg('assistant', 'Đang dựng hình…');
+  try {
+    const key = LS.get('key', '');
+    const hist = app.chat.filter((m) => m.role !== 'sys').slice(-8);
+    let out = null, via = '';
+    if (key) {
+      try {
+        out = await askGemini({ key, model: LS.get('model', 'gemini-2.5-flash'), history: hist, context: describeDoc(D(), app.mode) });
+        via = 'Gemini';
+      } catch (e) { addMsg('assistant', 'Gemini báo lỗi: ' + e.message + '\nĐang thử cách khác…', null, 'err'); }
+    }
+    if (!out && app.sampler) {
+      try {
+        out = await askClaudeRuntime({ sample: app.sampler, history: hist, context: describeDoc(D(), app.mode) });
+        via = 'Claude';
+      } catch (e) { addMsg('assistant', 'Trợ lý Claude lỗi: ' + (e.message || e.code || e), null, 'err'); }
+    }
+    if (!out) {
+      const loc = localParse(text, D());
+      if (loc) out = { giai_thich: loc.note + ' (bộ luật cài sẵn)', script: loc.script };
+    }
+    if (thinking.isConnected) thinking.remove();
+    if (!out || !out.script) {
+      addMsg('assistant', 'Mình chưa hiểu câu này. Bạn thêm khoá Gemini trong ⚙ Cài đặt để dùng đầy đủ, hoặc thử câu quen thuộc như “vẽ tam giác ABC vuông tại A”.');
+      return;
+    }
+    // đổi chế độ nếu script là hình không gian
+    const looks3d = /\(\s*-?[\d.]+\s*,\s*-?[\d.]+\s*,\s*-?[\d.]+\s*\)|chop\(|langtru\(|hop\(|matcau\(|thietdien\(|doan3\(|mp\(/.test(out.script);
+    if (looks3d && !is3()) setMode('3d');
+    if (!looks3d && is3() && /tamgiac\(|duongtron\(|trungtruc\(/.test(out.script)) setMode('2d');
+
+    let res = exec(out.script);
+    // Agent tự sửa lỗi 1 lần
+    if (res.errors.length && LS.get('key', '')) {
+      const fix = await askGemini({
+        key: LS.get('key', ''), model: LS.get('model', 'gemini-2.5-flash'),
+        history: [{ role: 'user', text: `Script trước bị lỗi:\n${out.script}\n\nLỗi:\n${res.errors.join('\n')}\n\nHãy viết lại script đúng cho yêu cầu: ${text}` }],
+        context: describeDoc(D(), app.mode),
+      }).catch(() => null);
+      if (fix && fix.script) { const r2_ = exec(fix.script); if (r2_.ok) { out = fix; res = r2_; } }
+    }
+    const okCount = res.created.length;
+    addMsg('assistant', (out.giai_thich || 'Đã dựng hình.') + (via ? ` · ${via}` : '') + (okCount ? `\nĐã tạo ${okCount} đối tượng.` : ''), out.script);
+    if (res.errors.length) addMsg('assistant', 'Một số dòng chưa chạy được:\n' + res.errors.join('\n'), null, 'err');
+  } catch (e) {
+    if (thinking.isConnected) thinking.remove();
+    addMsg('assistant', 'Lỗi: ' + (e.message || e), null, 'err');
+  } finally {
+    app.busy = false; $('#chatsend').disabled = false;
+  }
+}
+
+// ---------------------------------------------------------------- Lưu / mở / xuất
+function saveFile() {
+  const data = { app: 'geoai', v: 1, mode: app.mode, doc2: app.doc['2d'].toJSON(), doc3: app.doc['3d'].toJSON() };
+  dl(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }), 'hinh-' + stamp() + '.geo.json');
+}
+function openFile(file) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const d = JSON.parse(fr.result);
+      if (d.doc2) { app.doc['2d'] = GeoDoc.fromJSON(d.doc2); app.doc['2d'].onChange = render; }
+      if (d.doc3) { app.doc['3d'] = GeoDoc.fromJSON(d.doc3); app.doc['3d'].onChange = render; }
+      setMode(d.mode || '2d'); fit(); render(); flash('Đã mở tệp');
+    } catch (e) { flash('Tệp không hợp lệ'); }
+  };
+  fr.readAsText(file);
+}
+function svgString() {
+  const cam = C();
+  const css = `<style>
+    .grid{stroke:#e2e8f0;stroke-width:1;fill:none}.grid2{stroke:#eef2f7;stroke-width:.6;fill:none}
+    .axis{stroke:#94a3b8;stroke-width:1.2;fill:none}.tick{font-size:10.5px;fill:#64748b;text-anchor:middle;font-family:sans-serif}
+    .lbl{font-size:14px;font-weight:600;font-family:'Times New Roman',serif;font-style:italic;paint-order:stroke;stroke:#fff;stroke-width:3.5px;stroke-linejoin:round}
+    .lbl.plain{font-style:normal;font-family:sans-serif;font-size:13px}
+  </style>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(cam.w)}" height="${Math.round(cam.h)}" viewBox="0 0 ${Math.round(cam.w)} ${Math.round(cam.h)}">${css}<rect width="100%" height="100%" fill="#fff"/>${$('#svg').innerHTML}</svg>`;
+}
+function exportPng() {
+  const s = svgString();
+  const img = new Image();
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+  img.onload = () => {
+    const cam = C(), k = 2;
+    const cv = document.createElement('canvas');
+    cv.width = cam.w * k; cv.height = cam.h * k;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+    g.drawImage(img, 0, 0, cv.width, cv.height);
+    cv.toBlob((b) => dl(b, 'hinh-' + stamp() + '.png'));
+  };
+  img.onerror = () => { dl(new Blob([s], { type: 'image/svg+xml' }), 'hinh-' + stamp() + '.svg'); };
+  img.src = url;
+}
+async function dl(blob, name) {
+  if (app.downloads) {
+    try { await app.downloads.save({ filename: name, data: blob }); return; } catch (_) { }
+    try {
+      const b64 = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+      await app.downloads.save({ filename: name, data: b64 }); return;
+    } catch (_) { }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+
+function dumpScript() {
+  const doc = D();
+  const lines = doc.list().map((o) => {
+    const A = o.args.map((a) => (doc.get(a) ? doc.get(a).name : '?'));
+    if (o.op === 'point') return `${o.name} = (${r2(o.params.x)}, ${r2(o.params.y)})`;
+    if (o.op === 'point3') return `${o.name} = (${r2(o.params.x)}, ${r2(o.params.y)}, ${r2(o.params.z || 0)})`;
+    const ps = Object.entries(o.params || {}).filter(([k]) => ['i', 't', 'r', 'k', 'ang', 'h', 'a', 'b', 'c'].includes(k)).map(([, v]) => r2(v));
+    return `${o.name} = ${ROP[o.op] || o.op}(${[...A, ...ps].join(', ')})`;
+  });
+  return lines.join('\n');
+}
+const ROP = {
+  midpoint: 'trungdiem', intersect: 'giao', pointOn: 'diemtren', segment: 'doan', line: 'duongthang',
+  ray: 'tia', vector: 'vecto', polygon: 'dagiac', circleCP: 'duongtron', circleR: 'duongtron',
+  circle3: 'duongtronqua', incircle: 'noitiep', perpLine: 'vuonggoc', paraLine: 'songsong',
+  perpBisector: 'trungtruc', bisector: 'phangiac', altitude: 'duongcao', median: 'trungtuyen',
+  tangent: 'tieptuyen', distance: 'khoangcach', angleM: 'goc', areaM: 'dientich', centroid: 'trongtam',
+  circumcenter: 'tamngoaitiep', incenter: 'tamnoitiep', orthocenter: 'tructam', foot: 'chan',
+  footBC: 'chanduongcao', reflectPt: 'doixung', rotatePt: 'quay', dilatePt: 'vitu', translatePt: 'tinhtien',
+  mid3: 'trungdiem3', ratio3: 'chia3', segment3: 'doan3', line3: 'duongthang3', face: 'mat',
+  pyramid: 'chop', prism: 'langtru', box: 'hop', sphere: 'matcau', plane3: 'mp', section: 'thietdien',
+  meet3: 'giao3', dist3: 'kc3', ratioPoint: 'chia',
+};
+
+// ---------------------------------------------------------------- Khởi tạo
+function setMode(m) {
+  app.mode = m;
+  app.picks = []; app.sel.clear();
+  document.querySelectorAll('#modeseg button').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
+  app.tool = 'move';
+  buildRail();
+  render();
+}
+
+function bind() {
+  const svg = $('#svg');
+  svg.addEventListener('pointerdown', onDown);
+  svg.addEventListener('pointermove', onMove);
+  svg.addEventListener('pointerup', onUp);
+  svg.addEventListener('pointercancel', () => { drag = null; });
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const k = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    if (is3()) C().zoom(k); else C().zoomAt(pxOf(e), k);
+    render();
+  }, { passive: false });
+  svg.addEventListener('dblclick', () => { if (app.picks.length >= 3) finishTool(); });
+
+  $('#rail').addEventListener('click', (e) => { const b = e.target.closest('[data-tool]'); if (b) setTool(b.dataset.tool); });
+  $('#quick').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-q]');
+    if (!b) return;
+    const q = (is3() ? QUICK_3D : QUICK_2D)[+b.dataset.q];
+    const r = exec(q[1]);
+    flash(r.errors.length ? r.errors[0] : 'Đã vẽ ' + q[0].toLowerCase());
+  });
+  $('#modeseg').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
+  $('.tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pane]'); if (!b) return;
+    document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.id === 'pane-' + b.dataset.pane));
+  });
+  $('#objlist').addEventListener('click', (e) => {
+    const row = e.target.closest('.obj'); if (!row) return;
+    const o = D().get(row.dataset.id); if (!o) return;
+    const act = e.target.dataset.act;
+    if (act === 'del') { snap(); D().remove(o.id); }
+    else if (act === 'vis') { snap(); o.visible = !o.visible; }
+    else { app.sel = new Set([o.id]); }
+    render();
+  });
+
+  $('#chatsend').addEventListener('click', sendChat);
+  $('#chatin').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  });
+  $('#chatin').addEventListener('input', (e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(120, e.target.scrollHeight) + 'px'; });
+  $('#chips').innerHTML = CHIPS.map((c, i) => `<button data-c="${i}">${esc(c.length > 34 ? c.slice(0, 33) + '…' : c)}</button>`).join('');
+  $('#chips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-c]'); if (!b) return;
+    $('#chatin').value = CHIPS[+b.dataset.c]; sendChat();
+  });
+
+  const cmd = $('#cmd');
+  cmd.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const v = cmd.value.trim(); if (!v) return;
+      app.cmdHist.push(v); app.cmdIdx = app.cmdHist.length;
+      const r = exec(v);
+      flash(r.errors.length ? r.errors[0] : 'OK');
+      if (!r.errors.length) cmd.value = '';
+    } else if (e.key === 'ArrowUp') {
+      if (app.cmdIdx > 0) { app.cmdIdx--; cmd.value = app.cmdHist[app.cmdIdx]; e.preventDefault(); }
+    } else if (e.key === 'ArrowDown') {
+      if (app.cmdIdx < app.cmdHist.length - 1) { app.cmdIdx++; cmd.value = app.cmdHist[app.cmdIdx]; } else { cmd.value = ''; app.cmdIdx = app.cmdHist.length; }
+    }
+  });
+
+  $('#runscript').addEventListener('click', () => {
+    const r = exec($('#scriptbox').value);
+    flash(r.errors.length ? r.errors.length + ' dòng lỗi' : 'Đã chạy script');
+    if (r.errors.length) alert('Các dòng lỗi:\n\n' + r.errors.join('\n'));
+  });
+  $('#dumpscript').addEventListener('click', () => { $('#scriptbox').value = dumpScript(); });
+  $('#dslhelp').textContent = DSL_REFERENCE;
+
+  $('#undo').addEventListener('click', undo);
+  $('#redo').addEventListener('click', redo);
+  $('#zin').addEventListener('click', () => { const c = C(); is3() ? c.zoom(1.2) : c.zoomAt({ x: c.w / 2, y: c.h / 2 }, 1.2); render(); });
+  $('#zout').addEventListener('click', () => { const c = C(); is3() ? c.zoom(1 / 1.2) : c.zoomAt({ x: c.w / 2, y: c.h / 2 }, 1 / 1.2); render(); });
+  $('#zfit').addEventListener('click', () => { fit(); render(); });
+  $('#btnGrid').addEventListener('click', () => { app.opts.grid = !app.opts.grid; LS.set('grid', app.opts.grid); render(); });
+  $('#btnSave').addEventListener('click', saveFile);
+  $('#btnOpen').addEventListener('click', () => $('#fileopen').click());
+  $('#fileopen').addEventListener('change', (e) => { if (e.target.files[0]) openFile(e.target.files[0]); e.target.value = ''; });
+  $('#btnPng').addEventListener('click', exportPng);
+  $('#btnSide').addEventListener('click', () => $('#side').classList.toggle('hide'));
+  $('#btnTheme').addEventListener('click', () => {
+    const sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const now = document.documentElement.getAttribute('data-theme') || (sysDark ? 'dark' : 'light');
+    const next = now === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next); LS.set('theme', next); render();
+  });
+  $('#btnSet').addEventListener('click', () => {
+    $('#apikey').value = LS.get('key', '');
+    $('#model').value = LS.get('model', 'gemini-2.5-flash');
+    $('#setmodal').classList.add('on');
+  });
+  $('#setcancel').addEventListener('click', () => $('#setmodal').classList.remove('on'));
+  $('#setsave').addEventListener('click', () => {
+    LS.set('key', $('#apikey').value.trim()); LS.set('model', $('#model').value);
+    $('#setmodal').classList.remove('on');
+    flash($('#apikey').value.trim() ? 'Đã lưu khoá — trợ lý AI sẵn sàng' : 'Đã xoá khoá');
+  });
+  $('#setmodal').addEventListener('click', (e) => { if (e.target.id === 'setmodal') e.currentTarget.classList.remove('on'); });
+
+  window.addEventListener('keydown', (e) => {
+    const inField = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+    if (inField) return;
+    if (e.key === 'Enter' && app.picks.length) { finishTool(); return; }
+    if (e.key === 'Escape') { app.picks = []; app.sel.clear(); render(); return; }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (app.sel.size) { snap(); for (const id of app.sel) D().remove(id); app.sel.clear(); render(); }
+    }
+  });
+  window.addEventListener('resize', render);
+  new ResizeObserver(render).observe($('#svg').parentElement);
+}
+
+function boot() {
+  const savedTheme = LS.get('theme', '');
+  if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+  for (const m of ['2d', '3d']) app.doc[m].onChange = () => { };
+  buildRail(); bind();
+  sysMsg('Chào bạn! Mô tả hình cần vẽ bằng tiếng Việt, mình dựng ngay trên bảng.');
+  const noKeyNote = !LS.get('key', '')
+    ? sysMsg('Chưa có khoá Gemini — vẫn dùng được bộ luật cài sẵn. Thêm khoá ở ⚙ Cài đặt để vẽ được mọi bài.') : null;
+  exec('A=(-4,-2)\nB=(5,-2)\nC=(1,4)\nt=tamgiac(A,B,C)\nH=chanduongcao(A,B,C)\nh=doan(A,H)\ng=goc(B,H,A)');
+  fit(); render();
+  // Bản chạy trên claude.ai: dùng luôn trợ lý Claude, không cần khoá
+  getClaudeCapability('sample').then((s) => {
+    if (!s) return;
+    app.sampler = s;
+    if (noKeyNote) noKeyNote.textContent = 'Trợ lý Claude đã sẵn sàng — bạn có thể hỏi ngay, không cần khoá API.';
+  });
+  getClaudeCapability('downloads').then((d) => { if (d) app.downloads = d; });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+</script>
+</body>
+</html>

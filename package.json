@@ -1,0 +1,25 @@
+{
+  "name": "geoai",
+  "version": "0.1.0",
+  "description": "Bảng vẽ hình học 2D/3D cho học sinh cấp 2-3, có AI agent nhận lệnh bằng tiếng Việt",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node tests/core.test.js && node tests/dom-smoke.mjs",
+    "bundle": "node scripts/build-single.mjs",
+    "snapshot": "node tests/snapshot.mjs"
+  },
+  "keywords": [
+    "geometry",
+    "dynamic-geometry",
+    "education",
+    "vietnam",
+    "geogebra-alternative"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}
