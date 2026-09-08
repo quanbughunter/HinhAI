@@ -37,8 +37,10 @@ export default {
     if (!duocPhep) {
       return traLoi({ error: { message: 'Tên miền này không được phép dùng proxy' } }, 403, cors);
     }
-    if (!env.GEMINI_KEY) {
-      return traLoi({ error: { message: 'Máy chủ chưa được cài GEMINI_KEY' } }, 500, cors);
+    // Chấp nhận cả hai cách đặt tên cho quen tay
+    const khoa = env.GEMINI_KEY || env.GEMINI_API_KEY;
+    if (!khoa) {
+      return traLoi({ error: { message: 'Máy chủ chưa được cài khoá. Hãy thêm biến GEMINI_KEY (hoặc GEMINI_API_KEY) dạng Secret.' } }, 500, cors);
     }
 
     const raw = await req.text();
@@ -58,7 +60,7 @@ export default {
       generationConfig: body.generationConfig,
     };
     const model = env.GEMINI_MODEL || MODEL_MAC_DINH;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(env.GEMINI_KEY)}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(khoa)}`;
 
     try {
       const r = await fetch(url, {

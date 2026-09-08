@@ -68,31 +68,22 @@ QUY TẮC BẮT BUỘC
 Trả lời DUY NHẤT một đối tượng JSON: {"giai_thich": "...", "script": "..."}`;
 
 export const RESPONSE_SCHEMA = {
-  type: "OBJECT",
-  properties: { giai_thich: { type: "STRING" }, script: { type: "STRING" } },
-  required: ["script"],
+  type: 'OBJECT',
+  properties: { giai_thich: { type: 'STRING' }, script: { type: 'STRING' } },
+  required: ['script'],
 };
 
 /** Mô tả ngắn tình trạng bảng vẽ để AI biết đang có gì */
 export function describeDoc(doc, mode) {
-  const items = doc
-    .list()
-    .filter((o) => o.visible)
-    .map((o) => {
-      let v = "";
-      if (o.val && o.type === "point") v = `(${rr2(o.val.x)}, ${rr2(o.val.y)})`;
-      else if (o.val && o.val.t === "p3")
-        v = `(${rr2(o.val.x)}, ${rr2(o.val.y)}, ${rr2(o.val.z)})`;
-      else if (o.val && o.val.t === "circle")
-        v = `tâm (${rr2(o.val.c.x)}, ${rr2(o.val.c.y)}) R=${rr2(o.val.r)}`;
-      return `${o.name}: ${o.op}${v ? " " + v : ""}`;
-    });
-  return (
-    `Chế độ: ${mode === "3d" ? "hình không gian 3D" : "hình phẳng 2D"}.\n` +
-    (items.length
-      ? `Đang có ${items.length} đối tượng:\n` + items.join("\n")
-      : "Bảng vẽ đang trống.")
-  );
+  const items = doc.list().filter((o) => o.visible).map((o) => {
+    let v = '';
+    if (o.val && o.type === 'point') v = `(${rr2(o.val.x)}, ${rr2(o.val.y)})`;
+    else if (o.val && o.val.t === 'p3') v = `(${rr2(o.val.x)}, ${rr2(o.val.y)}, ${rr2(o.val.z)})`;
+    else if (o.val && o.val.t === 'circle') v = `tâm (${rr2(o.val.c.x)}, ${rr2(o.val.c.y)}) R=${rr2(o.val.r)}`;
+    return `${o.name}: ${o.op}${v ? ' ' + v : ''}`;
+  });
+  return `Chế độ: ${mode === '3d' ? 'hình không gian 3D' : 'hình phẳng 2D'}.\n`
+    + (items.length ? `Đang có ${items.length} đối tượng:\n` + items.join('\n') : 'Bảng vẽ đang trống.');
 }
 const rr2 = (v) => Math.round(v * 100) / 100;
 
@@ -103,117 +94,76 @@ const rr2 = (v) => Math.round(v * 100) / 100;
  * dùng được ngay mà không cần khoá riêng. Để trống nếu không dùng proxy.
  * Ví dụ: 'https://hinhai-proxy.ten-cua-ban.workers.dev'
  */
-export const DEFAULT_PROXY =
-  "https://hinhai-proxy.nguyendinhquan7788266.workers.dev/";
+export const DEFAULT_PROXY = 'https://hinhai-proxy.nguyendinhquan7788266.workers.dev';
 
 /** Dựng phần thân yêu cầu gửi cho Gemini (dùng chung cho cả hai đường đi) */
 function geminiBody(history, context) {
-  const contents = history.map((m) => ({
-    role: m.role === "user" ? "user" : "model",
-    parts: [{ text: m.text }],
-  }));
-  if (contents.length)
-    contents[contents.length - 1].parts[0].text =
-      `[TÌNH TRẠNG BẢNG VẼ]\n${context}\n\n[YÊU CẦU]\n${contents[contents.length - 1].parts[0].text}`;
+  const contents = history.map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+  if (contents.length) contents[contents.length - 1].parts[0].text = `[TÌNH TRẠNG BẢNG VẼ]\n${context}\n\n[YÊU CẦU]\n${contents[contents.length - 1].parts[0].text}`;
   return {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents,
-    generationConfig: {
-      temperature: 0.15,
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA,
-    },
+    generationConfig: { temperature: 0.15, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
   };
 }
 
 async function docKetQua(res) {
   if (!res.ok) {
     let msg = `Lỗi ${res.status}`;
-    try {
-      const e = await res.json();
-      msg = e.error?.message || msg;
-    } catch (_) {}
+    try { const e = await res.json(); msg = e.error?.message || msg; } catch (_) { }
     throw new Error(msg);
   }
   const data = await res.json();
-  const txt =
-    data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") || "";
+  const txt = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
   return parseJSONLoose(txt);
 }
 
 /** Gọi thẳng Gemini bằng khoá riêng của người dùng */
 export async function askGemini({ key, model, history, context }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
-  return docKetQua(
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(geminiBody(history, context)),
-    }),
-  );
+  return docKetQua(await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(geminiBody(history, context)),
+  }));
 }
 
 /** Gọi qua proxy — người dùng không cần khoá, khoá nằm ở phía máy chủ */
 export async function askViaProxy({ url, history, context }) {
-  return docKetQua(
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(geminiBody(history, context)),
-    }),
-  );
+  return docKetQua(await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(geminiBody(history, context)),
+  }));
 }
 
 // ------------------------------------------------- Claude runtime (bản Artifact)
 /** Lấy khả năng "hỏi Claude" nếu trang đang chạy trên claude.ai; ngược lại trả null */
 export async function getClaudeCapability(name) {
   try {
-    if (
-      typeof window === "undefined" ||
-      !window.claude ||
-      typeof window.claude.use !== "function"
-    )
-      return null;
+    if (typeof window === 'undefined' || !window.claude || typeof window.claude.use !== 'function') return null;
     return await window.claude.use(name);
-  } catch (_) {
-    return null;
-  }
+  } catch (_) { return null; }
 }
 
 /** Dùng runtime của Artifact — không cần API key */
 export async function askClaudeRuntime({ sample, history, context }) {
-  const last = history[history.length - 1]?.text || "";
-  const turns = [
-    {
-      role: "user",
-      content: `${SYSTEM_PROMPT}\n\n[TÌNH TRẠNG BẢNG VẼ]\n${context}\n\n[YÊU CẦU]\n${last}\n\nChỉ in ra JSON.`,
-    },
-  ];
-  const out = await sample.json(turns, { modelTier: "default" });
-  return typeof out === "string" ? parseJSONLoose(out) : out;
+  const last = history[history.length - 1]?.text || '';
+  const turns = [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n[TÌNH TRẠNG BẢNG VẼ]\n${context}\n\n[YÊU CẦU]\n${last}\n\nChỉ in ra JSON.` }];
+  const out = await sample.json(turns, { modelTier: 'default' });
+  return typeof out === 'string' ? parseJSONLoose(out) : out;
 }
 
 export function parseJSONLoose(txt) {
-  const t = String(txt)
-    .trim()
-    .replace(/^```(?:json)?/i, "")
-    .replace(/```$/, "")
-    .trim();
-  try {
-    return JSON.parse(t);
-  } catch (_) {}
+  const t = String(txt).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  try { return JSON.parse(t); } catch (_) { }
   const m = t.match(/\{[\s\S]*\}/);
-  if (m) {
-    try {
-      return JSON.parse(m[0]);
-    } catch (_) {}
-  }
-  return { giai_thich: "", script: t };
+  if (m) { try { return JSON.parse(m[0]); } catch (_) { } }
+  return { giai_thich: '', script: t };
 }
 
 // ---------------------------------------------------------------- Luật offline
-const strip = (s) =>
-  s.toLowerCase().replace(/đ/g, "d").normalize("NFD").replace(/[̀-ͯ]/g, "");
+const strip = (s) => s.toLowerCase().replace(/đ/g, 'd').normalize('NFD').replace(/[̀-ͯ]/g, '');
 const UP = (n) => n.toUpperCase();
 
 /**
@@ -231,167 +181,72 @@ export function localParse(text, doc) {
   if (m) {
     const [A, B, C] = [UP(m[1]), UP(m[2]), UP(m[3])];
     let pts;
-    if (/\bdeu\b/.test(s)) {
-      pts = [
-        [0, 0],
-        [6, 0],
-        [3, 5.196],
-      ];
-      note.push("tam giác đều cạnh 6");
-    } else if (/vuong can/.test(s)) {
-      pts = [
-        [0, 0],
-        [6, 0],
-        [0, 6],
-      ];
-      note.push("vuông cân tại " + A);
-    } else if (/vuong/.test(s)) {
+    if (/\bdeu\b/.test(s)) { pts = [[0, 0], [6, 0], [3, 5.196]]; note.push('tam giác đều cạnh 6'); }
+    else if (/vuong can/.test(s)) { pts = [[0, 0], [6, 0], [0, 6]]; note.push('vuông cân tại ' + A); }
+    else if (/vuong/.test(s)) {
       const at = (s.match(/vuong tai\s+([a-z])/) || [])[1];
       const k = at ? [m[1], m[2], m[3]].indexOf(at) : 0;
-      const base = [
-        [0, 0],
-        [6, 0],
-        [0, 8],
-      ];
+      const base = [[0, 0], [6, 0], [0, 8]];
       pts = [base[(3 - k) % 3], base[(4 - k) % 3], base[(5 - k) % 3]];
-      pts =
-        k === 0
-          ? [
-              [0, 0],
-              [6, 0],
-              [0, 8],
-            ]
-          : k === 1
-            ? [
-                [6, 0],
-                [0, 0],
-                [0, 8],
-              ]
-            : [
-                [0, 8],
-                [6, 0],
-                [0, 0],
-              ];
-      note.push("vuông tại " + UP(at || m[1]));
-    } else if (/\bcan\b/.test(s)) {
-      pts = [
-        [0, 6],
-        [-4, 0],
-        [4, 0],
-      ];
-      note.push("cân tại " + A);
-    } else
-      pts = [
-        [0, 0],
-        [7, 0],
-        [2, 5],
-      ];
-    [A, B, C].forEach((n, i) => {
-      if (!has(n)) L.push(`${n} = (${pts[i][0]}, ${pts[i][1]})`);
-    });
+      pts = k === 0 ? [[0, 0], [6, 0], [0, 8]] : k === 1 ? [[6, 0], [0, 0], [0, 8]] : [[0, 8], [6, 0], [0, 0]];
+      note.push('vuông tại ' + UP(at || m[1]));
+    } else if (/\bcan\b/.test(s)) { pts = [[0, 6], [-4, 0], [4, 0]]; note.push('cân tại ' + A); }
+    else pts = [[0, 0], [7, 0], [2, 5]];
+    [A, B, C].forEach((n, i) => { if (!has(n)) L.push(`${n} = (${pts[i][0]}, ${pts[i][1]})`); });
     L.push(`t${A}${B}${C} = tamgiac(${A},${B},${C})`);
-    if (/duong cao/.test(s)) {
-      L.push(
-        `H${A} = chanduongcao(${A},${B},${C})`,
-        `h${A} = doan(${A},H${A})`,
-      );
-      note.push("kèm đường cao");
-    }
+    if (/duong cao/.test(s)) { L.push(`H${A} = chanduongcao(${A},${B},${C})`, `h${A} = doan(${A},H${A})`); note.push('kèm đường cao'); }
     if (/trung tuyen/.test(s)) L.push(`mt = trungtuyen(${A},${B},${C})`);
     if (/ngoai tiep/.test(s)) L.push(`cng = ngoaitiep(${A},${B},${C})`);
     if (/noi tiep/.test(s)) L.push(`cnt = noitiep(${A},${B},${C})`);
     if (/trong tam/.test(s)) L.push(`G = trongtam(${A},${B},${C})`);
     if (/truc tam/.test(s)) L.push(`H = tructam(${A},${B},${C})`);
-    return { script: L.join("\n"), note: "Dựng " + note.join(", ") };
+    return { script: L.join('\n'), note: 'Dựng ' + note.join(', ') };
   }
 
   // --- hình chóp S.ABCD ---
   m = s.match(/(?:hinh\s+)?chop\s+([a-z])\s*\.?\s*([a-z]{3,4})/);
   if (m) {
     const S = UP(m[1]);
-    const base = m[2].toUpperCase().split("");
+    const base = m[2].toUpperCase().split('');
     const n = base.length;
-    const coords =
-      n === 3
-        ? [
-            [0, 0, 0],
-            [6, 0, 0],
-            [2, 5, 0],
-          ]
-        : [
-            [0, 0, 0],
-            [6, 0, 0],
-            [6, 5, 0],
-            [0, 5, 0],
-          ];
-    base.forEach((b, i) => {
-      if (!has(b)) L.push(`${b} = (${coords[i].join(", ")})`);
-    });
-    const cx = coords.reduce((a, c) => a + c[0], 0) / n,
-      cy = coords.reduce((a, c) => a + c[1], 0) / n;
-    if (!has(S))
-      L.push(
-        `${S} = (${Math.round(cx * 10) / 10}, ${Math.round(cy * 10) / 10}, 7)`,
-      );
-    L.push(`K = chop(${base.join(",")},${S})`);
-    return {
-      script: L.join("\n"),
-      note: `Dựng hình chóp ${S}.${base.join("")}`,
-    };
+    const coords = n === 3 ? [[0, 0, 0], [6, 0, 0], [2, 5, 0]] : [[0, 0, 0], [6, 0, 0], [6, 5, 0], [0, 5, 0]];
+    base.forEach((b, i) => { if (!has(b)) L.push(`${b} = (${coords[i].join(', ')})`); });
+    const cx = coords.reduce((a, c) => a + c[0], 0) / n, cy = coords.reduce((a, c) => a + c[1], 0) / n;
+    if (!has(S)) L.push(`${S} = (${Math.round(cx * 10) / 10}, ${Math.round(cy * 10) / 10}, 7)`);
+    L.push(`K = chop(${base.join(',')},${S})`);
+    return { script: L.join('\n'), note: `Dựng hình chóp ${S}.${base.join('')}` };
   }
 
   // --- lăng trụ ---
   m = s.match(/lang tru\s+([a-z]{3,4})/);
   if (m) {
-    const base = m[1].toUpperCase().split("");
-    const coords =
-      base.length === 3
-        ? [
-            [0, 0, 0],
-            [6, 0, 0],
-            [2, 5, 0],
-          ]
-        : [
-            [0, 0, 0],
-            [6, 0, 0],
-            [6, 5, 0],
-            [0, 5, 0],
-          ];
-    base.forEach((b, i) => {
-      if (!has(b)) L.push(`${b} = (${coords[i].join(", ")})`);
-    });
-    L.push(`K = langtru(${base.join(",")}, 6)`);
-    return {
-      script: L.join("\n"),
-      note: "Dựng lăng trụ đứng " + base.join(""),
-    };
+    const base = m[1].toUpperCase().split('');
+    const coords = base.length === 3 ? [[0, 0, 0], [6, 0, 0], [2, 5, 0]] : [[0, 0, 0], [6, 0, 0], [6, 5, 0], [0, 5, 0]];
+    base.forEach((b, i) => { if (!has(b)) L.push(`${b} = (${coords[i].join(', ')})`); });
+    L.push(`K = langtru(${base.join(',')}, 6)`);
+    return { script: L.join('\n'), note: 'Dựng lăng trụ đứng ' + base.join('') };
   }
 
   // --- hình hộp ---
   if (/hinh hop|hop chu nhat/.test(s)) {
-    if (!has("A")) L.push("A = (0, 0, 0)");
-    L.push("K = hop(A, 6, 4, 4)");
-    return { script: L.join("\n"), note: "Dựng hình hộp chữ nhật" };
+    if (!has('A')) L.push('A = (0, 0, 0)');
+    L.push('K = hop(A, 6, 4, 4)');
+    return { script: L.join('\n'), note: 'Dựng hình hộp chữ nhật' };
   }
 
   // --- đường tròn tâm ... bán kính ... ---
-  m = s.match(
-    /duong tron[^a-z]*tam\s+([a-z])(?:[^a-z0-9]*(?:ban kinh|r)\s*=?\s*([0-9.]+))?/,
-  );
+  m = s.match(/duong tron[^a-z]*tam\s+([a-z])(?:[^a-z0-9]*(?:ban kinh|r)\s*=?\s*([0-9.]+))?/);
   if (m) {
     const O = UP(m[1]);
     if (!has(O)) L.push(`${O} = (0, 0)`);
     L.push(`c${O} = duongtron(${O}, ${m[2] || 4})`);
-    return { script: L.join("\n"), note: `Đường tròn tâm ${O}` };
+    return { script: L.join('\n'), note: `Đường tròn tâm ${O}` };
   }
 
   // --- trung điểm ---
   m = s.match(/trung diem\s+(?:cua\s+)?([a-z])\s*([a-z])/);
   if (m && has(UP(m[1])) && has(UP(m[2]))) {
-    return {
-      script: `M${UP(m[1])}${UP(m[2])} = trungdiem(${UP(m[1])},${UP(m[2])})`,
-      note: "Lấy trung điểm",
-    };
+    return { script: `M${UP(m[1])}${UP(m[2])} = trungdiem(${UP(m[1])},${UP(m[2])})`, note: 'Lấy trung điểm' };
   }
   return null;
 }
