@@ -150,20 +150,79 @@ input,textarea,select{font:inherit;color:inherit}
 .note{font-size:12px;color:var(--muted);background:var(--bg);border-radius:9px;padding:9px 11px;line-height:1.55}
 .note a{color:var(--accent)}
 
+/* ===================== Bong bóng chat (chỉ hiện trên điện thoại) ===================== */
+.fab,.sheetbk,.grab{display:none}
+
 /* ===================== Điện thoại ===================== */
 @media (max-width:820px){
   :root{--rail:100%;--side:100%}
-  .body{flex-direction:column}
-  .rail{width:100%;height:auto;display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:4px 6px;order:2}
+  .body{flex-direction:column;position:relative}
+
+  /* bảng vẽ chiếm phần lớn màn hình */
+  .stage{order:1;flex:1;min-height:0}
+
+  /* thanh công cụ nằm dưới, trong tầm ngón cái */
+  .rail{order:2;width:100%;height:auto;display:flex;overflow-x:auto;overscroll-behavior-x:contain;
+    border-right:0;border-top:1px solid var(--line);padding:4px 6px;flex:0 0 auto}
   .rail .grp{display:flex;border-bottom:0;border-right:1px solid var(--line);padding:0 4px;gap:2px}
   .rail .glabel{display:none}
-  .tool{width:44px;height:40px;flex:0 0 auto}
+  .tool{width:46px;height:44px;flex:0 0 auto}
   .tool[data-tip]:hover::after{display:none}
   .resizer{display:none}
-  .stage{order:1;min-height:52vh}
-  .side{order:3;position:fixed;inset:auto 0 0 0;height:72vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.18);z-index:50}
-  .side.hide{display:none}
+
+  /* thanh trên: cho trượt ngang thay vì tràn */
+  .top{overflow-x:auto;overscroll-behavior-x:contain;padding:6px 8px;gap:6px;scrollbar-width:none}
+  .top::-webkit-scrollbar{display:none}
+  .rail{scrollbar-width:none}
+  .rail::-webkit-scrollbar{display:none}
+  .brand span:last-child{display:none}
+  .tbtn{padding:6px 8px;flex:0 0 auto}
+  #btnSide{display:none}
+
+  /* thanh lệnh gõ tay: ẩn đi, đã có tab "Lệnh" trong tấm trượt */
+  .cmdbar{display:none}
   .quick{display:none}
+  .hud{top:auto;bottom:10px;left:10px;right:84px;max-width:none;font-size:11.5px;
+    padding:5px 9px;line-height:1.35;max-height:38px;overflow:hidden}
+
+  /* ---- bong bóng nổi ---- */
+  .fab{display:grid;position:fixed;right:14px;bottom:calc(64px + env(safe-area-inset-bottom,0px));
+    width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--panel);
+    place-items:center;box-shadow:0 6px 20px -4px rgba(22,35,61,.45);z-index:55;
+    transition:transform .18s ease,opacity .18s ease}
+  .fab svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .fab:active{transform:scale(.92)}
+  .fab.hidden{opacity:0;transform:scale(.6);pointer-events:none}
+  .fab .dot{position:absolute;top:4px;right:4px;width:11px;height:11px;border-radius:50%;
+    background:var(--warn);border:2px solid var(--panel);display:none}
+  .fab.new .dot{display:block}
+
+  /* ---- tấm trượt từ dưới lên ---- */
+  .sheetbk{display:block;position:fixed;inset:0;background:rgba(13,20,36,.45);z-index:58;
+    opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .sheetbk.on{opacity:1;pointer-events:auto}
+
+  .side,.side.hide{display:flex;position:fixed;left:0;right:0;bottom:0;width:100%;
+    height:min(78vh,620px);border-left:0;border-top:1px solid var(--line);
+    border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.3);z-index:60;
+    transform:translateY(102%);transition:transform .24s cubic-bezier(.32,.72,0,1);
+    padding-bottom:env(safe-area-inset-bottom,0px)}
+  .side.open{transform:none}
+
+  .grab{display:flex;align-items:center;gap:10px;padding:8px 12px 4px;flex:0 0 auto;
+    border-bottom:1px solid var(--line)}
+  .grab .bar{width:38px;height:4px;border-radius:3px;background:var(--line);margin:0 auto}
+  .grab button{width:32px;height:32px;border-radius:9px;color:var(--muted);display:grid;place-items:center;
+    font-size:17px;flex:0 0 auto}
+  .grab button:hover{background:var(--bg);color:var(--ink)}
+
+  .composer textarea{min-height:52px;max-height:180px;font-size:16px}  /* 16px để iOS không tự phóng to */
+  .msg{max-width:96%}
+  .chips{overflow-x:auto;flex-wrap:nowrap;padding-bottom:10px}
+  .chips button{flex:0 0 auto}
+}
+@media (max-width:820px) and (prefers-reduced-motion:reduce){
+  .side{transition:none}.sheetbk{transition:none}
 }
 </style>
 <div id="app">
@@ -198,7 +257,13 @@ input,textarea,select{font:inherit;color:inherit}
     </main>
 
     <div class="resizer" id="resizer" title="Kéo để đổi bề rộng"></div>
+    <div class="sheetbk" id="sheetbk"></div>
     <aside class="side" id="side">
+      <div class="grab">
+        <span style="width:32px"></span>
+        <span class="bar"></span>
+        <button id="sheetclose" aria-label="Thu gọn trợ lý">✕</button>
+      </div>
       <div class="tabs">
         <button data-pane="chat" class="on">Trợ lý AI</button>
         <button data-pane="obj">Đối tượng</button>
@@ -228,6 +293,11 @@ input,textarea,select{font:inherit;color:inherit}
       </section>
     </aside>
   </div>
+
+  <button class="fab" id="fab" aria-label="Mở trợ lý AI">
+    <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-8 8H7l-4 3 1.2-4.2A8 8 0 1121 12z"/><path d="M9 11h6M9 14.5h3.5"/></svg>
+    <span class="dot"></span>
+  </button>
 
   <div class="cmdbar">
     <span class="pfx">›</span>
@@ -2488,6 +2558,7 @@ function addMsg(role, text, code, cls, ghiNho = true) {
   el.innerHTML = esc(text) + (code ? `<span class="code">${esc(code)}</span>` : '');
   $('#chatlog').appendChild(el);
   $('#chatlog').scrollTop = 1e9;
+  if (role === 'assistant' && app.baoTinMoi) app.baoTinMoi();
   return el;
 }
 function sysMsg(t) { return addMsg('sys', t, null, 'sys', false); }
@@ -2742,6 +2813,29 @@ function bind() {
   $('#fileopen').addEventListener('change', (e) => { if (e.target.files[0]) openFile(e.target.files[0]); e.target.value = ''; });
   $('#btnPng').addEventListener('click', exportPng);
   $('#btnSide').addEventListener('click', () => $('#side').classList.toggle('hide'));
+
+  // --- Bong bóng trợ lý (điện thoại): mở/đóng tấm trượt từ dưới lên ---
+  const sheet = { el: $('#side'), bk: $('#sheetbk'), fab: $('#fab') };
+  const moTam = () => {
+    sheet.el.classList.add('open');
+    sheet.bk.classList.add('on');
+    sheet.fab.classList.remove('new');
+    sheet.fab.classList.add('hidden');
+    document.querySelector('.tabs button[data-pane="chat"]').click();
+    setTimeout(() => { $('#chatlog').scrollTop = 1e9; }, 260);
+  };
+  const dongTam = () => {
+    sheet.el.classList.remove('open');
+    sheet.bk.classList.remove('on');
+    sheet.fab.classList.remove('hidden');
+  };
+  app.sheetDangMo = () => sheet.el.classList.contains('open');
+  app.baoTinMoi = () => { if (!app.sheetDangMo()) sheet.fab.classList.add('new'); };
+  if (sheet.fab) sheet.fab.addEventListener('click', moTam);
+  if (sheet.bk) sheet.bk.addEventListener('click', dongTam);
+  const nutDong = $('#sheetclose');
+  if (nutDong) nutDong.addEventListener('click', dongTam);
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && app.sheetDangMo()) dongTam(); });
   $('#btnTheme').addEventListener('click', () => {
     const sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     const now = document.documentElement.getAttribute('data-theme') || (sysDark ? 'dark' : 'light');

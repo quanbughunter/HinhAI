@@ -365,6 +365,7 @@ function addMsg(role, text, code, cls, ghiNho = true) {
   el.innerHTML = esc(text) + (code ? `<span class="code">${esc(code)}</span>` : '');
   $('#chatlog').appendChild(el);
   $('#chatlog').scrollTop = 1e9;
+  if (role === 'assistant' && app.baoTinMoi) app.baoTinMoi();
   return el;
 }
 function sysMsg(t) { return addMsg('sys', t, null, 'sys', false); }
@@ -619,6 +620,29 @@ function bind() {
   $('#fileopen').addEventListener('change', (e) => { if (e.target.files[0]) openFile(e.target.files[0]); e.target.value = ''; });
   $('#btnPng').addEventListener('click', exportPng);
   $('#btnSide').addEventListener('click', () => $('#side').classList.toggle('hide'));
+
+  // --- Bong bóng trợ lý (điện thoại): mở/đóng tấm trượt từ dưới lên ---
+  const sheet = { el: $('#side'), bk: $('#sheetbk'), fab: $('#fab') };
+  const moTam = () => {
+    sheet.el.classList.add('open');
+    sheet.bk.classList.add('on');
+    sheet.fab.classList.remove('new');
+    sheet.fab.classList.add('hidden');
+    document.querySelector('.tabs button[data-pane="chat"]').click();
+    setTimeout(() => { $('#chatlog').scrollTop = 1e9; }, 260);
+  };
+  const dongTam = () => {
+    sheet.el.classList.remove('open');
+    sheet.bk.classList.remove('on');
+    sheet.fab.classList.remove('hidden');
+  };
+  app.sheetDangMo = () => sheet.el.classList.contains('open');
+  app.baoTinMoi = () => { if (!app.sheetDangMo()) sheet.fab.classList.add('new'); };
+  if (sheet.fab) sheet.fab.addEventListener('click', moTam);
+  if (sheet.bk) sheet.bk.addEventListener('click', dongTam);
+  const nutDong = $('#sheetclose');
+  if (nutDong) nutDong.addEventListener('click', dongTam);
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && app.sheetDangMo()) dongTam(); });
   $('#btnTheme').addEventListener('click', () => {
     const sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     const now = document.documentElement.getAttribute('data-theme') || (sysDark ? 'dark' : 'light');
