@@ -13,7 +13,7 @@
 :root{
   --bg:#f4f5f9; --panel:#ffffff; --ink:#16233d; --muted:#6b7794; --line:#dfe3f0;
   --accent:#22468f; --accent-soft:#e9eefb; --warn:#d98324; --ok:#1f7a5a; --danger:#b3261e;
-  --rail:64px; --side:340px; --radius:12px;
+  --rail:64px; --side:400px; --radius:12px;
   --grid:#e3e7f4; --grid2:#eef0f8; --axis:#8c96b2; --labelhalo:#ffffff;
   --errbg:#fdf1f0; --errline:#f0c4bf; --errink:#8f2018;
   --shadow:0 1px 2px rgba(22,35,61,.06),0 8px 24px -12px rgba(22,35,61,.20);
@@ -91,6 +91,10 @@ input,textarea,select{font:inherit;color:inherit}
 .quick button:hover{color:var(--accent);border-color:var(--accent)}
 
 /* ===================== Panel phải ===================== */
+.resizer{width:7px;flex:0 0 auto;cursor:col-resize;position:relative;background:var(--panel);border-left:1px solid var(--line)}
+.resizer::after{content:'';position:absolute;inset:6px 2px;border-radius:3px;background:var(--line)}
+.resizer:hover::after,.resizer.drag::after{background:var(--accent)}
+.side.hide+.resizer,.side.hide~.resizer{display:none}
 .side{width:var(--side);flex:0 0 auto;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .side.hide{display:none}
 .tabs{display:flex;border-bottom:1px solid var(--line);flex:0 0 auto}
@@ -107,7 +111,7 @@ input,textarea,select{font:inherit;color:inherit}
 .msg .code{display:block;margin-top:7px;font-family:var(--font-mono);font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 9px;white-space:pre;overflow-x:auto;color:var(--muted)}
 .msg.err{background:var(--errbg);border:1px solid var(--errline);color:var(--errink)}
 .composer{flex:0 0 auto;border-top:1px solid var(--line);padding:9px;display:flex;gap:7px;align-items:flex-end}
-.composer textarea{flex:1;resize:none;min-height:38px;max-height:120px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--bg);outline:none}
+.composer textarea{flex:1;resize:none;min-height:66px;max-height:300px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);outline:none;line-height:1.5;font-size:13.5px}
 .composer textarea:focus{border-color:var(--accent)}
 .send{width:38px;height:38px;border-radius:10px;background:var(--accent);color:var(--panel);display:grid;place-items:center;flex:0 0 auto}
 .send:disabled{opacity:.5}
@@ -160,6 +164,7 @@ input,textarea,select{font:inherit;color:inherit}
   .rail .glabel{display:none}
   .tool{width:44px;height:40px;flex:0 0 auto}
   .tool[data-tip]:hover::after{display:none}
+  .resizer{display:none}
   .stage{order:1;min-height:52vh}
   .side{order:3;position:fixed;inset:auto 0 0 0;height:72vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.18);z-index:50}
   .side.hide{display:none}
@@ -199,6 +204,7 @@ input,textarea,select{font:inherit;color:inherit}
       </div>
     </main>
 
+    <div class="resizer" id="resizer" title="Kéo để đổi bề rộng"></div>
     <aside class="side" id="side">
       <div class="tabs">
         <button data-pane="chat" class="on">Trợ lý AI</button>

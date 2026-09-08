@@ -562,7 +562,7 @@ function bind() {
   $('#chatin').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
   });
-  $('#chatin').addEventListener('input', (e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(120, e.target.scrollHeight) + 'px'; });
+  $('#chatin').addEventListener('input', (e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(300, e.target.scrollHeight) + 'px'; });
   $('#chips').innerHTML = CHIPS.map((c, i) => `<button data-c="${i}">${esc(c.length > 34 ? c.slice(0, 33) + '…' : c)}</button>`).join('');
   $('#chips').addEventListener('click', (e) => {
     const b = e.target.closest('[data-c]'); if (!b) return;
@@ -633,25 +633,45 @@ function bind() {
       if (app.sel.size) { snap(); for (const id of app.sel) D().remove(id); app.sel.clear(); render(); }
     }
   });
+  // kéo mép trái của panel để đổi bề rộng
+  const rz = $('#resizer');
+  if (rz) {
+    let rzDrag = null;
+    rz.addEventListener('pointerdown', (e) => {
+      rz.setPointerCapture(e.pointerId);
+      rz.classList.add('drag');
+      rzDrag = { x: e.clientX, w: $('#side').getBoundingClientRect().width };
+    });
+    rz.addEventListener('pointermove', (e) => {
+      if (!rzDrag) return;
+      const w = Math.max(300, Math.min(window.innerWidth - 360, rzDrag.w + (rzDrag.x - e.clientX)));
+      document.documentElement.style.setProperty('--side', w + 'px');
+      render();
+    });
+    const endRz = () => { if (rzDrag) { LS.set('side', parseInt(getComputedStyle(document.documentElement).getPropertyValue('--side'), 10)); rzDrag = null; rz.classList.remove('drag'); render(); } };
+    rz.addEventListener('pointerup', endRz);
+    rz.addEventListener('pointercancel', endRz);
+    rz.addEventListener('dblclick', () => { document.documentElement.style.setProperty('--side', '400px'); LS.set('side', 400); render(); });
+  }
+
   window.addEventListener('resize', render);
   new ResizeObserver(render).observe($('#svg').parentElement);
 }
 
 function boot() {
+  const savedSide = LS.get('side', 0);
+  if (savedSide > 260) document.documentElement.style.setProperty('--side', savedSide + 'px');
   const savedTheme = LS.get('theme', '');
   if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
   for (const m of ['2d', '3d']) app.doc[m].onChange = () => { };
   buildRail(); bind();
   sysMsg('Chào bạn! Mô tả hình cần vẽ bằng tiếng Việt, mình dựng ngay trên bảng.');
-  const noKeyNote = !LS.get('key', '')
-    ? sysMsg('Chưa có khoá Gemini — vẫn dùng được bộ luật cài sẵn. Thêm khoá ở ⚙ Cài đặt để vẽ được mọi bài.') : null;
   exec('A=(-4,-2)\nB=(5,-2)\nC=(1,4)\nt=tamgiac(A,B,C)\nH=chanduongcao(A,B,C)\nh=doan(A,H)\ng=goc(B,H,A)');
   fit(); render();
   // Bản chạy trên claude.ai: dùng luôn trợ lý Claude, không cần khoá
   getClaudeCapability('sample').then((s) => {
     if (!s) return;
     app.sampler = s;
-    if (noKeyNote) noKeyNote.textContent = 'Trợ lý Claude đã sẵn sàng — bạn có thể hỏi ngay, không cần khoá API.';
   });
   getClaudeCapability('downloads').then((d) => { if (d) app.downloads = d; });
 }
