@@ -119,6 +119,7 @@ function styleAttr(o, sel) {
 }
 
 export function render2(doc, cam, opt) {
+  NHAN = [];
   const out = [grid2(cam, opt)];
   const labels = [];
   const sel = opt.selected || new Set();
@@ -131,7 +132,7 @@ export function render2(doc, cam, opt) {
     out.push(`<polygon points="${pts}" fill="${o.style.fill || 'rgba(67,56,168,.09)'}" ${styleAttr(o, sel.has(o.id))} stroke-linejoin="round"/>`);
     if (o.showLabel) {
       const c = o.val.pts.reduce((a, p) => vAdd(a, p), { x: 0, y: 0 });
-      labels.push(lab(cam.s(vMul(c, 1 / o.val.pts.length)), o.name, o.style.color, 0, 0));
+      labels.push(lab(o, cam.s(vMul(c, 1 / o.val.pts.length)), o.name, o.style.color, 0, 0));
     }
   }
   // 2) đường tròn & đường thẳng
@@ -140,14 +141,14 @@ export function render2(doc, cam, opt) {
     if (o.type === 'circle') {
       const c = cam.s(o.val.c);
       out.push(`<circle cx="${f(c.x)}" cy="${f(c.y)}" r="${f(o.val.r * cam.scale)}" fill="none" ${styleAttr(o, sel.has(o.id))}/>`);
-      if (o.showLabel) labels.push(lab({ x: c.x, y: c.y - o.val.r * cam.scale }, o.name, o.style.color, 0, -6));
+      if (o.showLabel) labels.push(lab(o, { x: c.x, y: c.y - o.val.r * cam.scale }, o.name, o.style.color, 0, -6));
     } else if (o.type === 'line') {
       const [a, b] = lineEndpoints(o.val, cam);
       const A = cam.s(a), B = cam.s(b);
       out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" ${styleAttr(o, sel.has(o.id))} stroke-linecap="round"${o.val.arrow ? ' marker-end="url(#arwr)"' : ''}/>`);
       if (o.showLabel) {
         const m = { x: A.x + (B.x - A.x) * 0.72, y: A.y + (B.y - A.y) * 0.72 };
-        labels.push(lab(m, o.name, o.style.color, 8, -6));
+        labels.push(lab(o, m, o.name, o.style.color, 8, -6));
       }
     }
   }
@@ -171,15 +172,15 @@ export function render2(doc, cam, opt) {
       out.push(`<path d="M${f(V.x)} ${f(V.y)}L${f(x1)} ${f(y1)}A${r} ${r} 0 0 ${da > 0 ? 1 : 0} ${f(x2)} ${f(y2)}Z" fill="rgba(179,38,30,.10)" stroke="${col}" stroke-width="1.6"/>`);
     }
     const am = a1 + da / 2;
-    labels.push(lab({ x: V.x + (r + 14) * Math.cos(am), y: V.y + (r + 14) * Math.sin(am) }, `${o.val.v.toFixed(1)}°`, col, 0, 4));
+    labels.push(lab(o, { x: V.x + (r + 14) * Math.cos(am), y: V.y + (r + 14) * Math.sin(am) }, `${o.val.v.toFixed(1)}°`, col, 0, 4));
   }
   // 4) số đo & chữ
   for (const o of doc.list()) {
     if (!o.visible || !o.val) continue;
     if (o.type === 'number' && o.val.anchor) {
-      labels.push(lab(cam.s(o.val.anchor), `${o.name} = ${round3(o.val.v)}`, o.style.color, 0, -8));
+      labels.push(lab(o, cam.s(o.val.anchor), `${o.name} = ${round3(o.val.v)}`, o.style.color, 0, -8));
     } else if (o.type === 'text') {
-      labels.push(lab(cam.s({ x: o.val.x, y: o.val.y }), o.val.s, o.style.color, 0, 0, true));
+      labels.push(lab(o, cam.s({ x: o.val.x, y: o.val.y }), o.val.s, o.style.color, 0, 0, true));
     }
   }
   // 5) điểm
@@ -190,18 +191,31 @@ export function render2(doc, cam, opt) {
     const col = sel.has(o.id) ? '#d98324' : o.style.color;
     if (hl === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
     out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
-    if (o.showLabel) labels.push(lab(p, o.name, col, 9, -9));
+    if (o.showLabel) labels.push(lab(o, p, o.name, col, 12, -11));
   }
   return out.join('') + labels.join('');
 }
 
 const round3 = (v) => Math.round(v * 1000) / 1000;
-function lab(p, text, color, dx = 0, dy = 0, plain = false) {
-  return `<text x="${f(p.x + dx)}" y="${f(p.y + dy)}" class="lbl${plain ? ' plain' : ''}" fill="${color || '#16233d'}">${esc(text)}</text>`;
+/** Vị trí các nhãn của khung vừa vẽ — dùng để bắt trúng khi kéo nhãn */
+let NHAN = [];
+export function labelBoxes() { return NHAN; }
+
+/**
+ * Vẽ một nhãn. `o` là đối tượng sở hữu nhãn (có thể null với nhãn trục toạ độ).
+ * Độ lệch riêng o.lab (đơn vị pixel màn hình) cho phép người dùng kéo chữ đi chỗ khác.
+ */
+function lab(o, p, text, color, dx = 0, dy = 0, plain = false) {
+  const lx = o && o.lab ? (o.lab.dx || 0) : 0;
+  const ly = o && o.lab ? (o.lab.dy || 0) : 0;
+  const X = p.x + dx + lx, Y = p.y + dy + ly;
+  if (o) NHAN.push({ id: o.id, x: X, y: Y });
+  return `<text x="${f(X)}" y="${f(Y)}" class="lbl${plain ? ' plain' : ''}" fill="${color || '#16233d'}">${esc(text)}</text>`;
 }
 
 // ---------------------------------------------------------------- Vẽ 3D
 export function render3(doc, cam, opt) {
+  NHAN = [];
   const b = cam.basis();
   const out = [];
   const labels = [];
@@ -214,7 +228,7 @@ export function render3(doc, cam, opt) {
     for (const [v, name, col, mk] of [[P3(L, 0, 0), 'x', '#c0271c', 'arwr'], [P3(0, L, 0), 'y', '#1f7a5a', 'arwg'], [P3(0, 0, L), 'z', '#22468f', 'arwb']]) {
       const e = S(v);
       out.push(`<line x1="${f(O.x)}" y1="${f(O.y)}" x2="${f(e.x)}" y2="${f(e.y)}" stroke="${col}" stroke-width="1.3" opacity=".7" marker-end="url(#${mk})"/>`);
-      labels.push(lab(e, name, col, 7, -5));
+      labels.push(lab(null, e, name, col, 7, -5));
     }
   }
   if (opt.grid) {
@@ -274,22 +288,22 @@ export function render3(doc, cam, opt) {
         c = { x: A.x + dir.x / l * big, y: A.y + dir.y / l * big };
       }
       out.push(`<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(c.x)}" y2="${f(c.y)}" ${styleAttr(o, on)} stroke-linecap="round"/>`);
-      if (o.showLabel) labels.push(lab({ x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, o.name, o.style.color, 8, -6));
+      if (o.showLabel) labels.push(lab(o, { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, o.name, o.style.color, 8, -6));
     } else if (o.val.t === 'f3') {
       const pts = o.val.pts.map(S);
       out.push(`<polygon points="${pts.map((p) => `${f(p.x)},${f(p.y)}`).join(' ')}" fill="none" ${styleAttr(o, on)} stroke-linejoin="round"/>`);
       if (o.showLabel) {
         const c = pts.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
-        labels.push(lab({ x: c.x / pts.length, y: c.y / pts.length }, o.name, o.style.color, 0, 0));
+        labels.push(lab(o, { x: c.x / pts.length, y: c.y / pts.length }, o.name, o.style.color, 0, 0));
       }
     } else if (o.val.t === 'sph') {
       const c = S(o.val.c), r = o.val.r * cam.scale;
       out.push(`<circle cx="${f(c.x)}" cy="${f(c.y)}" r="${f(r)}" fill="${o.style.fill}" ${styleAttr(o, on)}/>`);
       const ry = Math.max(3, Math.abs(Math.sin(cam.pitch)) * r);
       out.push(`<ellipse cx="${f(c.x)}" cy="${f(c.y)}" rx="${f(r)}" ry="${f(ry)}" fill="none" stroke="${o.style.color}" stroke-width="1.1" opacity=".55" stroke-dasharray="5 4"/>`);
-      if (o.showLabel) labels.push(lab({ x: c.x, y: c.y - r }, o.name, o.style.color, 0, -6));
+      if (o.showLabel) labels.push(lab(o, { x: c.x, y: c.y - r }, o.name, o.style.color, 0, -6));
     } else if (o.val.t === 'num' && o.val.anchor3) {
-      labels.push(lab(S(o.val.anchor3), `${o.name} = ${round3(o.val.v)}`, o.style.color, 0, -8));
+      labels.push(lab(o, S(o.val.anchor3), `${o.name} = ${round3(o.val.v)}`, o.style.color, 0, -8));
     }
   }
   // điểm 3D
@@ -300,7 +314,7 @@ export function render3(doc, cam, opt) {
     const col = sel.has(o.id) ? '#d98324' : o.style.color;
     if (opt.hover === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
     out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
-    if (o.showLabel) labels.push(lab(p, o.name, col, 9, -9));
+    if (o.showLabel) labels.push(lab(o, p, o.name, col, 12, -11));
   }
   return out.join('') + labels.join('');
 }

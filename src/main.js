@@ -4,7 +4,7 @@
 
 import { GeoDoc } from './core/model.js';
 import { runScript } from './core/dsl.js';
-import { Cam2, Cam3, render2, render3, pick, esc } from './ui/render.js';
+import { Cam2, Cam3, render2, render3, pick, labelBoxes, esc } from './ui/render.js';
 import { TOOLS_2D, TOOLS_3D, QUICK_2D, QUICK_3D, CHIPS } from './ui/tools.js';
 import { askGemini, askViaProxy, askClaudeRuntime, getClaudeCapability, localParse, describeDoc, DSL_REFERENCE, DEFAULT_PROXY } from './ai/agent.js';
 
@@ -145,6 +145,38 @@ function setTool(id) {
   document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id));
   $('#svg').style.cursor = id === 'move' ? 'default' : 'crosshair';
   render();
+}
+
+/** Nhãn (chữ cái) nào đang nằm dưới con trỏ. Nhãn tách rời khỏi điểm của nó. */
+function nhanTaiCho(px, tol = 16) {
+  let best = null, bd = tol;
+  for (const n of labelBoxes()) {
+    // toạ độ y của chữ là đường chân chữ, tâm chữ nhích lên khoảng 5px
+    const d = Math.hypot(n.x + 4 - px.x, n.y - 5 - px.y);
+    if (d < bd) { bd = d; best = n; }
+  }
+  return best ? D().get(best.id) : null;
+}
+
+/** Điểm gần con trỏ nhất và khoảng cách tới nó (pixel) */
+function diemGanNhat(px) {
+  let best = null, bd = Infinity;
+  for (const o of D().list()) {
+    if (!o.visible || !o.val) continue;
+    const laDiem = is3() ? o.val.t === 'p3' : o.type === 'point';
+    if (!laDiem) continue;
+    const s = C().s(o.val);
+    const d = Math.hypot(s.x - px.x, s.y - px.y);
+    if (d < bd) { bd = d; best = o; }
+  }
+  return { o: best, d: bd };
+}
+
+/** Đang trỏ vào chữ chứ không phải vào đỉnh? Đỉnh luôn được ưu tiên trong 9px. */
+function chuChuKhongPhaiDinh(px) {
+  const g = diemGanNhat(px);
+  if (g.o && g.d <= 9) return null;
+  return nhanTaiCho(px);
 }
 
 /** Mọi điểm tự do mà đối tượng này phụ thuộc vào — dùng để kéo cả hình đi */
@@ -292,6 +324,17 @@ function onDown(e) {
   if (t && (t.id === 'move' || t.id === 'rot')) {
     const hit = t.id === 'rot' ? null : pick(D(), C(), px, app.mode);
     const nen = () => (is3() ? C().u(px, 0) : C().u(px));
+    // Bấm trúng ĐỈNH thì kéo đỉnh (hình biến đổi theo).
+    // Không trúng đỉnh mà trúng CHỮ thì chỉ kéo chữ đi, hình đứng yên.
+    const nh = chuChuKhongPhaiDinh(px);
+    if (nh) {
+      drag = { kind: 'nhan', obj: nh, goc: px, base: { ...(nh.lab || { dx: 0, dy: 0 }) }, moved: false };
+      app.sel = new Set([nh.id]);
+      snap();
+      render();
+      return;
+    }
+
     if (hit && D().isDraggable(hit)) {
       drag = { kind: 'obj', obj: hit, moved: false };
       app.sel = new Set([hit.id]);
@@ -322,8 +365,13 @@ function onMove(e) {
   const px = pxOf(e);
   if (!drag) {
     const hit = pick(D(), C(), px, app.mode);
-    const id = hit ? hit.id : null;
-    if (id !== app.hover) { app.hover = id; $('#svg').style.cursor = hit ? 'pointer' : (app.tool === 'move' ? 'default' : 'crosshair'); render(); }
+    const nh = chuChuKhongPhaiDinh(px);
+    const id = (nh || hit) ? (nh || hit).id : null;
+    if (id !== app.hover) {
+      app.hover = id;
+      $('#svg').style.cursor = nh ? 'move' : (hit ? 'pointer' : (app.tool === 'move' ? 'default' : 'crosshair'));
+      render();
+    }
     return;
   }
   if (drag.kind === 'obj') {
@@ -331,6 +379,14 @@ function onMove(e) {
     const cam = C();
     const target = is3() ? cam.u(px, drag.obj.params.z || 0) : cam.u(px);
     D().moveTo(drag.obj, e.shiftKey ? snapWorld(target) : target);
+    render();
+  } else if (drag.kind === 'nhan') {
+    drag.moved = true;
+    const o = drag.obj;
+    const dx = drag.base.dx + (px.x - drag.goc.x);
+    const dy = drag.base.dy + (px.y - drag.goc.y);
+    // kéo về sát chỗ cũ thì coi như trả nhãn về vị trí mặc định
+    o.lab = (Math.abs(dx) < 5 && Math.abs(dy) < 5) ? null : { dx, dy };
     render();
   } else if (drag.kind === 'cum') {
     drag.moved = true;
@@ -604,8 +660,9 @@ function bind() {
   svg.addEventListener('dblclick', (e) => {
     if (app.picks.length >= 3) { finishTool(); return; }
     if (app.tool !== 'move' && app.tool !== 'rot') return;
-    const hit = pick(D(), C(), pxOf(e), app.mode);
-    if (hit) doiTen(hit);
+    const px = pxOf(e);
+    const hit = pick(D(), C(), px, app.mode);
+    doiTen(chuChuKhongPhaiDinh(px) || hit);
   });
 
   $('#rail').addEventListener('click', (e) => { const b = e.target.closest('[data-tool]'); if (b) setTool(b.dataset.tool); });
@@ -672,6 +729,14 @@ function bind() {
   $('#zin').addEventListener('click', () => { const c = C(); is3() ? c.zoom(1.2) : c.zoomAt({ x: c.w / 2, y: c.h / 2 }, 1.2); render(); });
   $('#zout').addEventListener('click', () => { const c = C(); is3() ? c.zoom(1 / 1.2) : c.zoomAt({ x: c.w / 2, y: c.h / 2 }, 1 / 1.2); render(); });
   $('#zfit').addEventListener('click', () => { fit(); render(); });
+  $('#btnLabels').addEventListener('click', () => {
+    const co = D().list().some((o) => o.lab);
+    if (!co) { flash('Chưa có nhãn nào bị dời'); return; }
+    snap();
+    D().list().forEach((o) => { o.lab = null; });
+    render();
+    flash('Đã trả các nhãn về vị trí mặc định');
+  });
   $('#btnGrid').addEventListener('click', () => { app.opts.grid = !app.opts.grid; LS.set('grid', app.opts.grid); render(); });
   $('#btnSave').addEventListener('click', saveFile);
   $('#btnOpen').addEventListener('click', () => $('#fileopen').click());

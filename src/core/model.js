@@ -153,7 +153,7 @@ export class GeoDoc {
         const o = this.objs.get(id);
         return {
           id: o.id, name: o.name, op: o.op, args: o.args, params: o.params,
-          visible: o.visible, showLabel: o.showLabel, style: o.style, fixed: o.fixed,
+          visible: o.visible, showLabel: o.showLabel, style: o.style, fixed: o.fixed, lab: o.lab || null,
         };
       }),
     };

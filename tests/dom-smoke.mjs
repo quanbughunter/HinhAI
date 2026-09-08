@@ -119,6 +119,21 @@ svg.fire('pointermove', { pointerId: 1, clientX: 300, clientY: 260 });
 svg.fire('pointerup', { pointerId: 1, clientX: 300, clientY: 260 });
 ok('kéo được điểm tự do', A.val.x !== before.x || A.val.y !== before.y, JSON.stringify(A.val));
 
+// kéo NHÃN: chỉ chữ dời đi, điểm đứng yên
+{
+  const P = app.doc['2d'].byName('B');
+  const cam = app.cam['2d'];
+  const s0 = { x: 900 / 2 + (P.val.x - cam.cx) * cam.scale, y: 620 / 2 - (P.val.y - cam.cy) * cam.scale };
+  const viTriDiem = { ...P.val };
+  const lb = { x: s0.x + 12, y: s0.y - 11 };            // vị trí mặc định của chữ
+  svg.fire('pointerdown', { pointerId: 2, clientX: lb.x + 4, clientY: lb.y - 5 });
+  svg.fire('pointermove', { pointerId: 2, clientX: lb.x + 54, clientY: lb.y + 25 });
+  svg.fire('pointerup', { pointerId: 2, clientX: lb.x + 54, clientY: lb.y + 25 });
+  ok('kéo chữ thì chữ dời đi', !!P.lab && Math.abs(P.lab.dx - 50) < 2 && Math.abs(P.lab.dy - 30) < 2,
+    JSON.stringify(P.lab));
+  ok('kéo chữ thì ĐIỂM vẫn đứng yên', P.val.x === viTriDiem.x && P.val.y === viTriDiem.y);
+}
+
 // thanh lệnh
 const cmd = q('#cmd');
 cmd.value = 'M = trungdiem(A,B)';
