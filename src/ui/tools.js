@@ -42,7 +42,7 @@ export const ICONS = {
 // pick kinds: 'point' | 'curve' (đường/đường tròn) | 'any' | 'solid' | 'p3'
 export const TOOLS_2D = [
   { g: 'Chọn', t: [
-    { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo điểm tự do để hình biến đổi theo. Kéo nền để di chuyển bảng.' },
+    { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo điểm để hình biến đổi theo · kéo cạnh hoặc đa giác để dời cả hình · bấm đúp để đổi tên · kéo nền để di chuyển bảng.' },
     { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá (xoá cả hình phụ thuộc nó).' },
   ]},
   { g: 'Điểm', t: [
@@ -80,7 +80,7 @@ export const TOOLS_2D = [
 
 export const TOOLS_3D = [
   { g: 'Chọn', t: [
-    { id: 'move', name: 'Chọn / Xoay', icon: ICONS.move, n: 0, hint: 'Kéo nền để xoay hình. Kéo điểm để dời trong mặt phẳng ngang.' },
+    { id: 'move', name: 'Chọn / Xoay', icon: ICONS.move, n: 0, hint: 'Kéo nền để xoay góc nhìn · kéo điểm để dời trong mặt phẳng đáy · kéo khối để dời cả khối · bấm đúp để đổi tên.' },
     { id: 'rot', name: 'Xoay hình', icon: ICONS.rot, n: 0, hint: 'Kéo để xoay góc nhìn.' },
     { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá.' },
   ]},

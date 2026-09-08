@@ -67,7 +67,7 @@ function renderObjList() {
     const col = (o.style && o.style.color) || '#64748b';
     return `<div class="obj" data-id="${o.id}">
       <span class="sw" style="background:${col};${o.visible ? '' : 'opacity:.25'}"></span>
-      <span class="nm">${esc(o.name)}</span>
+      <span class="nm" title="Bấm để đổi tên">${esc(o.name)}</span>
       <span class="de">${esc(describe(o))}</span>
       <button class="x" data-act="vis" title="Ẩn/hiện">${o.visible ? '👁' : '⌀'}</button>
       <button class="x" data-act="del" title="Xoá">✕</button>
@@ -144,6 +144,35 @@ function setTool(id) {
   app.tool = id; app.picks = []; app.sel.clear();
   document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id));
   $('#svg').style.cursor = id === 'move' ? 'default' : 'crosshair';
+  render();
+}
+
+/** Mọi điểm tự do mà đối tượng này phụ thuộc vào — dùng để kéo cả hình đi */
+function diemTuDoCua(obj) {
+  const doc = D(), ra = [], daXet = new Set();
+  const di = (id) => {
+    if (daXet.has(id)) return;
+    daXet.add(id);
+    const o = doc.get(id);
+    if (!o) return;
+    if ((o.op === 'point' || o.op === 'point3') && !o.fixed) ra.push(o);
+    o.args.forEach(di);
+  };
+  di(obj.id);
+  return ra;
+}
+
+/** Đổi tên một đối tượng */
+function doiTen(o) {
+  if (!o) return;
+  const t = prompt('Tên mới cho "' + o.name + '":', o.name);
+  if (t == null) return;
+  const ten = t.trim();
+  if (!ten) return;
+  const trung = D().byName(ten);
+  if (trung && trung !== o) { flash('Tên "' + ten + '" đã có rồi'); return; }
+  snap();
+  o.name = ten;
   render();
 }
 
@@ -262,10 +291,25 @@ function onDown(e) {
   const t = curTool();
   if (t && (t.id === 'move' || t.id === 'rot')) {
     const hit = t.id === 'rot' ? null : pick(D(), C(), px, app.mode);
+    const nen = () => (is3() ? C().u(px, 0) : C().u(px));
     if (hit && D().isDraggable(hit)) {
       drag = { kind: 'obj', obj: hit, moved: false };
       app.sel = new Set([hit.id]);
       snap();
+    } else if (hit) {
+      // Đoạn thẳng, đa giác, đường tròn... không tự di chuyển được,
+      // nhưng ta dời tất cả điểm tự do sinh ra chúng → cả hình đi theo.
+      const dsDiem = diemTuDoCua(hit);
+      if (dsDiem.length) {
+        drag = {
+          kind: 'cum', moved: false, goc: nen(),
+          ds: dsDiem.map((o) => ({ o, x: o.params.x, y: o.params.y, z: o.params.z || 0 })),
+        };
+        app.sel = new Set([hit.id]);
+        snap();
+      } else {
+        drag = { kind: 'view', last: px };
+      }
     } else {
       drag = { kind: 'view', last: px };
     }
@@ -287,6 +331,14 @@ function onMove(e) {
     const cam = C();
     const target = is3() ? cam.u(px, drag.obj.params.z || 0) : cam.u(px);
     D().moveTo(drag.obj, e.shiftKey ? snapWorld(target) : target);
+    render();
+  } else if (drag.kind === 'cum') {
+    drag.moved = true;
+    const w = is3() ? C().u(px, 0) : C().u(px);
+    let dx = w.x - drag.goc.x, dy = w.y - drag.goc.y;
+    if (e.shiftKey) { const g = snapWorld({ x: dx, y: dy }); dx = g.x; dy = g.y; }
+    for (const t of drag.ds) { t.o.params.x = t.x + dx; t.o.params.y = t.y + dy; }
+    D().recompute();
     render();
   } else if (drag.kind === 'view') {
     const dx = px.x - drag.last.x, dy = px.y - drag.last.y;
@@ -549,7 +601,12 @@ function bind() {
     if (is3()) C().zoom(k); else C().zoomAt(pxOf(e), k);
     render();
   }, { passive: false });
-  svg.addEventListener('dblclick', () => { if (app.picks.length >= 3) finishTool(); });
+  svg.addEventListener('dblclick', (e) => {
+    if (app.picks.length >= 3) { finishTool(); return; }
+    if (app.tool !== 'move' && app.tool !== 'rot') return;
+    const hit = pick(D(), C(), pxOf(e), app.mode);
+    if (hit) doiTen(hit);
+  });
 
   $('#rail').addEventListener('click', (e) => { const b = e.target.closest('[data-tool]'); if (b) setTool(b.dataset.tool); });
   $('#quick').addEventListener('click', (e) => {
@@ -571,6 +628,7 @@ function bind() {
     const act = e.target.dataset.act;
     if (act === 'del') { snap(); D().remove(o.id); }
     else if (act === 'vis') { snap(); o.visible = !o.visible; }
+    else if (e.target.classList.contains('nm')) { doiTen(o); return; }
     else { app.sel = new Set([o.id]); }
     render();
   });
@@ -712,8 +770,7 @@ function boot() {
   for (const m of ['2d', '3d']) app.doc[m].onChange = () => { };
   buildRail(); bind();
   sysMsg('Chào bạn! Mô tả hình cần vẽ bằng tiếng Việt, mình dựng ngay trên bảng.');
-  exec('A=(-4,-2)\nB=(5,-2)\nC=(1,4)\nt=tamgiac(A,B,C)\nH=chanduongcao(A,B,C)\nh=doan(A,H)\ng=goc(B,H,A)');
-  fit(); render();
+  render();
   // Bản chạy trên claude.ai: dùng luôn trợ lý Claude, không cần khoá
   getClaudeCapability('sample').then((s) => {
     if (!s) return;

@@ -87,12 +87,12 @@ ok('boot không văng lỗi', !boom, boom ? boom.stack.split('\n')[0] : '');
 
 const app = globalThis.window.geoai;
 ok('app khởi tạo', !!app && !!app.doc);
-ok('vẽ sẵn hình mẫu (7 đối tượng)', app.doc['2d'].order.length === 7, 'có ' + app.doc['2d'].order.length);
+ok('bảng vẽ trống khi mở app', app.doc['2d'].order.length === 0, 'có ' + app.doc['2d'].order.length);
 const svg = q('#svg');
 ok('SVG có nội dung', svg.innerHTML.length > 500, svg.innerHTML.length + ' ký tự');
-ok('SVG có nhãn điểm', /class="lbl"/.test(svg.innerHTML));
+ok('SVG vẽ được lưới toạ độ', /class="grid"|class="axis"/.test(svg.innerHTML));
 ok('thanh công cụ đã dựng', q('#rail').innerHTML.includes('data-tool="seg"'));
-ok('danh sách đối tượng có dòng', q('#objlist').innerHTML.includes('class="obj"'));
+ok('danh sách đối tượng báo trống', q('#objlist').innerHTML.includes('Chưa có đối tượng'));
 
 console.log('\nTương tác');
 // vẽ bằng chuột: chọn công cụ đoạn thẳng rồi bấm 2 lần lên bảng
@@ -109,6 +109,8 @@ const created = app.doc['2d'].list().slice(-1)[0];
 ok('đối tượng cuối là đoạn thẳng', created.op === 'segment' && !!created.val, created.op);
 
 // kéo một điểm tự do
+q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: '0' } }) } });   // vẽ tam giác mẫu
+ok('mẫu tam giác tạo được A,B,C', !!app.doc['2d'].byName('A') && !!app.doc['2d'].byName('C'));
 const A = app.doc['2d'].byName('A');
 const before = { ...A.val };
 q('#rail').fire('click', { target: { closest: () => ({ dataset: { tool: 'move' } }) } });
