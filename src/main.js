@@ -6,7 +6,7 @@ import { GeoDoc } from './core/model.js';
 import { runScript } from './core/dsl.js';
 import { Cam2, Cam3, render2, render3, pick, esc } from './ui/render.js';
 import { TOOLS_2D, TOOLS_3D, QUICK_2D, QUICK_3D, CHIPS } from './ui/tools.js';
-import { askGemini, askClaudeRuntime, getClaudeCapability, localParse, describeDoc, DSL_REFERENCE } from './ai/agent.js';
+import { askGemini, askViaProxy, askClaudeRuntime, getClaudeCapability, localParse, describeDoc, DSL_REFERENCE, DEFAULT_PROXY } from './ai/agent.js';
 
 const $ = (s) => document.querySelector(s);
 const LS = {
@@ -381,17 +381,26 @@ async function sendChat() {
     const key = LS.get('key', '');
     const hist = app.chat.filter((m) => m.role !== 'sys').slice(-8);
     let out = null, via = '';
-    if (key) {
-      try {
-        out = await askGemini({ key, model: LS.get('model', 'gemini-2.5-flash'), history: hist, context: describeDoc(D(), app.mode) });
-        via = 'Gemini';
-      } catch (e) { addMsg('assistant', 'Gemini báo lỗi: ' + e.message + '\nĐang thử cách khác…', null, 'err'); }
-    }
-    if (!out && app.sampler) {
+    // Bản chạy trên claude.ai: dùng thẳng trợ lý Claude (không cần khoá, và trang này
+    // không được phép gọi ra máy chủ ngoài nên khoá Gemini sẽ không dùng được ở đây).
+    if (app.sampler) {
       try {
         out = await askClaudeRuntime({ sample: app.sampler, history: hist, context: describeDoc(D(), app.mode) });
         via = 'Claude';
       } catch (e) { addMsg('assistant', 'Trợ lý Claude lỗi: ' + (e.message || e.code || e), null, 'err'); }
+    }
+    const proxy = LS.get('proxy', '') || DEFAULT_PROXY;
+    if (!out && proxy) {
+      try {
+        out = await askViaProxy({ url: proxy, history: hist, context: describeDoc(D(), app.mode) });
+        via = 'Gemini';
+      } catch (e) { addMsg('assistant', 'Máy chủ trung gian báo lỗi: ' + e.message, null, 'err'); }
+    }
+    if (!out && key) {
+      try {
+        out = await askGemini({ key, model: LS.get('model', 'gemini-2.5-flash'), history: hist, context: describeDoc(D(), app.mode) });
+        via = 'Gemini';
+      } catch (e) { addMsg('assistant', 'Gemini báo lỗi: ' + e.message, null, 'err'); }
     }
     if (!out) {
       const loc = localParse(text, D());
@@ -409,12 +418,15 @@ async function sendChat() {
 
     let res = exec(out.script);
     // Agent tự sửa lỗi 1 lần
-    if (res.errors.length && LS.get('key', '')) {
-      const fix = await askGemini({
-        key: LS.get('key', ''), model: LS.get('model', 'gemini-2.5-flash'),
-        history: [{ role: 'user', text: `Script trước bị lỗi:\n${out.script}\n\nLỗi:\n${res.errors.join('\n')}\n\nHãy viết lại script đúng cho yêu cầu: ${text}` }],
-        context: describeDoc(D(), app.mode),
-      }).catch(() => null);
+    if (res.errors.length && (app.sampler || LS.get('key', '') || LS.get('proxy', '') || DEFAULT_PROXY)) {
+      const retryHist = [{ role: 'user', text: `Script trước bị lỗi:\n${out.script}\n\nLỗi:\n${res.errors.join('\n')}\n\nHãy viết lại script đúng cho yêu cầu: ${text}` }];
+      const ctx2 = describeDoc(D(), app.mode);
+      const fix = await (app.sampler
+        ? askClaudeRuntime({ sample: app.sampler, history: retryHist, context: ctx2 })
+        : (LS.get('proxy', '') || DEFAULT_PROXY)
+          ? askViaProxy({ url: LS.get('proxy', '') || DEFAULT_PROXY, history: retryHist, context: ctx2 })
+          : askGemini({ key: LS.get('key', ''), model: LS.get('model', 'gemini-2.5-flash'), history: retryHist, context: ctx2 })
+      ).catch(() => null);
       if (fix && fix.script) { const r2_ = exec(fix.script); if (r2_.ok) { out = fix; res = r2_; } }
     }
     const okCount = res.created.length;
@@ -612,13 +624,19 @@ function bind() {
   $('#btnSet').addEventListener('click', () => {
     $('#apikey').value = LS.get('key', '');
     $('#model').value = LS.get('model', 'gemini-2.5-flash');
+    $('#proxyurl').value = LS.get('proxy', '');
+    $('#proxyhint').textContent = DEFAULT_PROXY
+      ? 'Bản này đã cài sẵn máy chủ trung gian, bạn không cần điền gì.'
+      : 'Chưa cài máy chủ trung gian.';
     $('#setmodal').classList.add('on');
   });
   $('#setcancel').addEventListener('click', () => $('#setmodal').classList.remove('on'));
   $('#setsave').addEventListener('click', () => {
-    LS.set('key', $('#apikey').value.trim()); LS.set('model', $('#model').value);
+    LS.set('key', $('#apikey').value.trim());
+    LS.set('model', $('#model').value);
+    LS.set('proxy', $('#proxyurl').value.trim().replace(/\/$/, ''));
     $('#setmodal').classList.remove('on');
-    flash($('#apikey').value.trim() ? 'Đã lưu khoá — trợ lý AI sẵn sàng' : 'Đã xoá khoá');
+    flash('Đã lưu cài đặt');
   });
   $('#setmodal').addEventListener('click', (e) => { if (e.target.id === 'setmodal') e.currentTarget.classList.remove('on'); });
 

@@ -260,6 +260,11 @@ input,textarea,select{font:inherit;color:inherit}
         <option value="gemini-flash-latest">gemini-flash-latest</option>
       </select>
     </div>
+    <div class="field">
+      <label>Máy chủ trung gian (tuỳ chọn — dùng chung một khoá cho cả lớp)</label>
+      <input id="proxyurl" type="text" placeholder="https://hinhai-proxy....workers.dev" autocomplete="off" spellcheck="false">
+      <div style="font-size:11.5px;color:var(--muted);margin-top:5px" id="proxyhint"></div>
+    </div>
     <div class="note">Lấy key miễn phí tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
     Chưa có key vẫn dùng được: trợ lý sẽ chạy bộ luật tiếng Việt cài sẵn cho các câu quen thuộc.</div>
     <div class="row">
@@ -1957,19 +1962,26 @@ function describeDoc(doc, mode) {
 const rr2 = (v) => Math.round(v * 100) / 100;
 
 // ---------------------------------------------------------------- Gemini
-async function askGemini({ key, model, history, context }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+/**
+ * Địa chỉ proxy giữ khoá Gemini dùng chung cho mọi người mở trang.
+ * Điền địa chỉ Worker của bạn vào đây rồi chạy `npm run bundle` là học sinh
+ * dùng được ngay mà không cần khoá riêng. Để trống nếu không dùng proxy.
+ * Ví dụ: 'https://hinhai-proxy.ten-cua-ban.workers.dev'
+ */
+const DEFAULT_PROXY = '';
+
+/** Dựng phần thân yêu cầu gửi cho Gemini (dùng chung cho cả hai đường đi) */
+function geminiBody(history, context) {
   const contents = history.map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
   if (contents.length) contents[contents.length - 1].parts[0].text = `[TÌNH TRẠNG BẢNG VẼ]\n${context}\n\n[YÊU CẦU]\n${contents[contents.length - 1].parts[0].text}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents,
-      generationConfig: { temperature: 0.15, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
-    }),
-  });
+  return {
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    contents,
+    generationConfig: { temperature: 0.15, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
+  };
+}
+
+async function docKetQua(res) {
   if (!res.ok) {
     let msg = `Lỗi ${res.status}`;
     try { const e = await res.json(); msg = e.error?.message || msg; } catch (_) { }
@@ -1978,6 +1990,25 @@ async function askGemini({ key, model, history, context }) {
   const data = await res.json();
   const txt = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
   return parseJSONLoose(txt);
+}
+
+/** Gọi thẳng Gemini bằng khoá riêng của người dùng */
+async function askGemini({ key, model, history, context }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+  return docKetQua(await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(geminiBody(history, context)),
+  }));
+}
+
+/** Gọi qua proxy — người dùng không cần khoá, khoá nằm ở phía máy chủ */
+async function askViaProxy({ url, history, context }) {
+  return docKetQua(await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(geminiBody(history, context)),
+  }));
 }
 
 // ------------------------------------------------- Claude runtime (bản Artifact)
@@ -2477,17 +2508,26 @@ async function sendChat() {
     const key = LS.get('key', '');
     const hist = app.chat.filter((m) => m.role !== 'sys').slice(-8);
     let out = null, via = '';
-    if (key) {
-      try {
-        out = await askGemini({ key, model: LS.get('model', 'gemini-2.5-flash'), history: hist, context: describeDoc(D(), app.mode) });
-        via = 'Gemini';
-      } catch (e) { addMsg('assistant', 'Gemini báo lỗi: ' + e.message + '\nĐang thử cách khác…', null, 'err'); }
-    }
-    if (!out && app.sampler) {
+    // Bản chạy trên claude.ai: dùng thẳng trợ lý Claude (không cần khoá, và trang này
+    // không được phép gọi ra máy chủ ngoài nên khoá Gemini sẽ không dùng được ở đây).
+    if (app.sampler) {
       try {
         out = await askClaudeRuntime({ sample: app.sampler, history: hist, context: describeDoc(D(), app.mode) });
         via = 'Claude';
       } catch (e) { addMsg('assistant', 'Trợ lý Claude lỗi: ' + (e.message || e.code || e), null, 'err'); }
+    }
+    const proxy = LS.get('proxy', '') || DEFAULT_PROXY;
+    if (!out && proxy) {
+      try {
+        out = await askViaProxy({ url: proxy, history: hist, context: describeDoc(D(), app.mode) });
+        via = 'Gemini';
+      } catch (e) { addMsg('assistant', 'Máy chủ trung gian báo lỗi: ' + e.message, null, 'err'); }
+    }
+    if (!out && key) {
+      try {
+        out = await askGemini({ key, model: LS.get('model', 'gemini-2.5-flash'), history: hist, context: describeDoc(D(), app.mode) });
+        via = 'Gemini';
+      } catch (e) { addMsg('assistant', 'Gemini báo lỗi: ' + e.message, null, 'err'); }
     }
     if (!out) {
       const loc = localParse(text, D());
@@ -2505,12 +2545,15 @@ async function sendChat() {
 
     let res = exec(out.script);
     // Agent tự sửa lỗi 1 lần
-    if (res.errors.length && LS.get('key', '')) {
-      const fix = await askGemini({
-        key: LS.get('key', ''), model: LS.get('model', 'gemini-2.5-flash'),
-        history: [{ role: 'user', text: `Script trước bị lỗi:\n${out.script}\n\nLỗi:\n${res.errors.join('\n')}\n\nHãy viết lại script đúng cho yêu cầu: ${text}` }],
-        context: describeDoc(D(), app.mode),
-      }).catch(() => null);
+    if (res.errors.length && (app.sampler || LS.get('key', '') || LS.get('proxy', '') || DEFAULT_PROXY)) {
+      const retryHist = [{ role: 'user', text: `Script trước bị lỗi:\n${out.script}\n\nLỗi:\n${res.errors.join('\n')}\n\nHãy viết lại script đúng cho yêu cầu: ${text}` }];
+      const ctx2 = describeDoc(D(), app.mode);
+      const fix = await (app.sampler
+        ? askClaudeRuntime({ sample: app.sampler, history: retryHist, context: ctx2 })
+        : (LS.get('proxy', '') || DEFAULT_PROXY)
+          ? askViaProxy({ url: LS.get('proxy', '') || DEFAULT_PROXY, history: retryHist, context: ctx2 })
+          : askGemini({ key: LS.get('key', ''), model: LS.get('model', 'gemini-2.5-flash'), history: retryHist, context: ctx2 })
+      ).catch(() => null);
       if (fix && fix.script) { const r2_ = exec(fix.script); if (r2_.ok) { out = fix; res = r2_; } }
     }
     const okCount = res.created.length;
@@ -2708,13 +2751,19 @@ function bind() {
   $('#btnSet').addEventListener('click', () => {
     $('#apikey').value = LS.get('key', '');
     $('#model').value = LS.get('model', 'gemini-2.5-flash');
+    $('#proxyurl').value = LS.get('proxy', '');
+    $('#proxyhint').textContent = DEFAULT_PROXY
+      ? 'Bản này đã cài sẵn máy chủ trung gian, bạn không cần điền gì.'
+      : 'Chưa cài máy chủ trung gian.';
     $('#setmodal').classList.add('on');
   });
   $('#setcancel').addEventListener('click', () => $('#setmodal').classList.remove('on'));
   $('#setsave').addEventListener('click', () => {
-    LS.set('key', $('#apikey').value.trim()); LS.set('model', $('#model').value);
+    LS.set('key', $('#apikey').value.trim());
+    LS.set('model', $('#model').value);
+    LS.set('proxy', $('#proxyurl').value.trim().replace(/\/$/, ''));
     $('#setmodal').classList.remove('on');
-    flash($('#apikey').value.trim() ? 'Đã lưu khoá — trợ lý AI sẵn sàng' : 'Đã xoá khoá');
+    flash('Đã lưu cài đặt');
   });
   $('#setmodal').addEventListener('click', (e) => { if (e.target.id === 'setmodal') e.currentTarget.classList.remove('on'); });
 

@@ -1,0 +1,14 @@
+# Chỉ cần tệp này nếu bạn triển khai bằng dòng lệnh (npx wrangler deploy).
+# Nếu dán code thẳng trên trang cloudflare.com thì bỏ qua tệp này.
+
+name = "hinhai-proxy"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+# Chỉ những tên miền này mới gọi được proxy. Ngăn người khác xài ké khoá của bạn.
+ALLOWED_ORIGINS = "https://quanbughunter.github.io"
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# GEMINI_KEY KHÔNG đặt ở đây (tệp này sẽ được đẩy lên GitHub).
+# Cài bằng lệnh:  npx wrangler secret put GEMINI_KEY
