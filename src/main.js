@@ -398,7 +398,7 @@ async function sendChat() {
     }
     if (!out && key) {
       try {
-        out = await askGemini({ key, model: LS.get('model', 'gemini-2.5-flash'), history: hist, context: describeDoc(D(), app.mode) });
+        out = await askGemini({ key, model: LS.get('model', 'gemini-3.6-flash'), history: hist, context: describeDoc(D(), app.mode) });
         via = 'Gemini';
       } catch (e) { addMsg('assistant', 'Gemini báo lỗi: ' + e.message, null, 'err'); }
     }
@@ -425,7 +425,7 @@ async function sendChat() {
         ? askClaudeRuntime({ sample: app.sampler, history: retryHist, context: ctx2 })
         : (LS.get('proxy', '') || DEFAULT_PROXY)
           ? askViaProxy({ url: LS.get('proxy', '') || DEFAULT_PROXY, history: retryHist, context: ctx2 })
-          : askGemini({ key: LS.get('key', ''), model: LS.get('model', 'gemini-2.5-flash'), history: retryHist, context: ctx2 })
+          : askGemini({ key: LS.get('key', ''), model: LS.get('model', 'gemini-3.6-flash'), history: retryHist, context: ctx2 })
       ).catch(() => null);
       if (fix && fix.script) { const r2_ = exec(fix.script); if (r2_.ok) { out = fix; res = r2_; } }
     }
@@ -623,7 +623,7 @@ function bind() {
   });
   $('#btnSet').addEventListener('click', () => {
     $('#apikey').value = LS.get('key', '');
-    $('#model').value = LS.get('model', 'gemini-2.5-flash');
+    $('#model').value = LS.get('model', 'gemini-3.6-flash');
     $('#proxyurl').value = LS.get('proxy', '');
     $('#proxyhint').textContent = DEFAULT_PROXY
       ? 'Bản này đã cài sẵn máy chủ trung gian, bạn không cần điền gì.'

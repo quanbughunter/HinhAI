@@ -9,7 +9,7 @@
 // Cách cài: xem HUONG-DAN.md cùng thư mục.
 // ============================================================================
 
-const MODEL_MAC_DINH = 'gemini-2.5-flash';
+const MODEL_MAC_DINH = 'gemini-3.6-flash';
 const GIOI_HAN_DO_DAI = 60000;   // ký tự, chặn người gửi đề dài bất thường
 
 const traLoi = (obj, status, headers) =>

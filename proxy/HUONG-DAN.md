@@ -50,7 +50,7 @@ Vẫn ở trang Worker → tab **Settings** → mục **Variables and Secrets** 
 |---|---|---|
 | `GEMINI_KEY` | **Secret** (mã hoá) | khoá `AIza...` ở Bước 1 |
 | `ALLOWED_ORIGINS` | Text | `https://quanbughunter.github.io` |
-| `GEMINI_MODEL` | Text | `gemini-2.5-flash` |
+| `GEMINI_MODEL` | Text | `gemini-3.6-flash` |
 
 Bấm **Deploy** để lưu.
 
@@ -139,6 +139,7 @@ Sửa `ALLOWED_ORIGINS` trong `wrangler.toml` trước khi deploy. Đừng bao g
 | `Tên miền này không được phép dùng proxy` | `ALLOWED_ORIGINS` không khớp | Copy đúng địa chỉ trang, không có dấu `/` ở cuối |
 | `Máy chủ chưa được cài GEMINI_KEY` | quên Bước 3 | Thêm secret rồi Deploy |
 | `API key not valid` | khoá sai hoặc đã bị xoá | Tạo khoá mới ở AI Studio |
+| `no longer available to new users` | tên model đã cũ | Sửa biến `GEMINI_MODEL` thành tên model Google gợi ý trong chính thông báo lỗi |
 | `429` hoặc `quota` | vượt hạn mức miễn phí của Gemini | Đợi sang ngày, hoặc bật thanh toán cho project Google |
 | Không thấy lỗi mà cũng không vẽ | app đang dùng bộ luật offline | Kiểm tra `DEFAULT_PROXY` đã điền và đã chạy `npm run bundle` chưa |
 
