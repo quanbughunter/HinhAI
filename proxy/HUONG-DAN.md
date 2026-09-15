@@ -49,7 +49,7 @@ Vẫn ở trang Worker → tab **Settings** → mục **Variables and Secrets** 
 | Tên biến | Loại | Giá trị |
 |---|---|---|
 | `GEMINI_KEY` | **Secret** (mã hoá) | khoá `AIza...` ở Bước 1 |
-| `ALLOWED_ORIGINS` | Text | `https://quanbughunter.github.io` |
+| `ALLOWED_ORIGINS` | Text | `https://quanbughunter.github.io,https://localhost` |
 | `GEMINI_MODEL` | Text | `gemini-3.6-flash` |
 
 Bấm **Deploy** để lưu.
@@ -59,6 +59,8 @@ Bấm **Deploy** để lưu.
 ```
 https://quanbughunter.github.io,https://hinhai.vn
 ```
+
+**`https://localhost` là địa chỉ của bản APK.** Capacitor không nạp trang từ github.io mà nạp từ bên trong máy, nên với proxy nó là một "tên miền" khác. Thiếu dòng này thì app Android mở ra vẫn vẽ hình bình thường, chỉ riêng chat AI báo *"Tên miền này không được phép dùng proxy"*.
 
 > Trong lúc thử trên máy (mở file `geoai.html` bằng đường dẫn `file://`), trình duyệt gửi `Origin: null` nên sẽ bị chặn. Muốn thử thì tạm để `ALLOWED_ORIGINS` trống — nhưng **nhớ điền lại trước khi phát link cho học sinh**.
 
@@ -137,6 +139,7 @@ Sửa `ALLOWED_ORIGINS` trong `wrangler.toml` trước khi deploy. Đừng bao g
 | Lỗi hiện trong app | Nguyên nhân | Cách sửa |
 |---|---|---|
 | `Tên miền này không được phép dùng proxy` | `ALLOWED_ORIGINS` không khớp | Copy đúng địa chỉ trang, không có dấu `/` ở cuối |
+| Lỗi trên, nhưng chỉ xảy ra trong **app APK** | app chạy từ `https://localhost` | Thêm `,https://localhost` vào `ALLOWED_ORIGINS` rồi Deploy |
 | `Máy chủ chưa được cài GEMINI_KEY` | quên Bước 3 | Thêm secret rồi Deploy |
 | `API key not valid` | khoá sai hoặc đã bị xoá | Tạo khoá mới ở AI Studio |
 | `no longer available to new users` | tên model đã cũ | Sửa biến `GEMINI_MODEL` thành tên model Google gợi ý trong chính thông báo lỗi |

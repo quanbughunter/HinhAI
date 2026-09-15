@@ -337,9 +337,35 @@ function pxOf(e) {
   const r = $('#svg').getBoundingClientRect();
   return { x: e.clientX - r.left, y: e.clientY - r.top };
 }
+// --- Chụm hai ngón để phóng to / thu nhỏ và dời bảng ---------------------
+// Giữ danh sách các ngón đang chạm. Hễ có ngón thứ hai là bỏ mọi thao tác vẽ
+// đang dở và chuyển sang chế độ "véo": khoảng cách hai ngón đổi bao nhiêu lần
+// thì phóng to bấy nhiêu, trung điểm hai ngón dời đi bao nhiêu thì bảng trượt
+// theo bấy nhiêu. Đây là cử chỉ quen thuộc như xem ảnh hay bản đồ.
+const NGON = new Map();
+let veo = null;        // { x, y, d } của lần đo trước
+let vuaVeo = false;    // vừa véo xong → cú nhấc ngón cuối không tính là một cú bấm
+
+function doHaiNgon() {
+  const a = [...NGON.values()];
+  return {
+    x: (a[0].x + a[1].x) / 2,
+    y: (a[0].y + a[1].y) / 2,
+    d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y),
+  };
+}
+
 function onDown(e) {
   const svg = $('#svg');
   svg.setPointerCapture(e.pointerId);
+  NGON.set(e.pointerId, pxOf(e));
+  if (NGON.size === 2) {
+    drag = null;              // huỷ thao tác một ngón đang dở
+    veo = doHaiNgon();
+    vuaVeo = true;
+    return;
+  }
+  if (NGON.size > 2) return;  // ba ngón trở lên: lờ đi
   const px = pxOf(e);
   const t = curTool();
   if (t && (t.id === 'move' || t.id === 'rot')) {
@@ -384,6 +410,17 @@ function onDown(e) {
 }
 function onMove(e) {
   const px = pxOf(e);
+  if (NGON.has(e.pointerId)) NGON.set(e.pointerId, px);
+  if (veo && NGON.size >= 2) {
+    const m = doHaiNgon();
+    const k = m.d / Math.max(14, veo.d);      // chặn dưới để hai ngón sát nhau không giật
+    const cam = C();
+    if (is3()) { cam.zoom(k); cam.ox += m.x - veo.x; cam.oy += m.y - veo.y; }
+    else { cam.zoomAt(m, k); cam.panPx(m.x - veo.x, m.y - veo.y); }
+    veo = m;
+    render();
+    return;
+  }
   if (!drag) {
     const hit = pick(D(), C(), px, app.mode);
     const nh = chuChuKhongPhaiDinh(px);
@@ -428,6 +465,14 @@ function onMove(e) {
 }
 function onUp(e) {
   const px = pxOf(e);
+  NGON.delete(e.pointerId);
+  if (NGON.size < 2) veo = null;
+  if (vuaVeo) {                       // đang véo: nhấc ngón ra không phải là bấm chọn
+    if (!NGON.size) vuaVeo = false;
+    drag = null;
+    render();
+    return;
+  }
   if (drag && drag.kind === 'tool' && !drag.moved) clickTool(px);
   if (drag && drag.kind === 'view' && !is3()) { /* pan xong */ }
   drag = null;
@@ -671,7 +716,15 @@ function bind() {
   svg.addEventListener('pointerdown', onDown);
   svg.addEventListener('pointermove', onMove);
   svg.addEventListener('pointerup', onUp);
-  svg.addEventListener('pointercancel', () => { drag = null; });
+  svg.addEventListener('pointercancel', (e) => {
+    NGON.delete(e.pointerId);
+    if (NGON.size < 2) veo = null;
+    if (!NGON.size) vuaVeo = false;
+    drag = null;
+  });
+  // Lỡ mất sự kiện nhấc ngón (chuyển app, khoá màn hình) thì xoá sạch,
+  // tránh cảnh app tưởng còn hai ngón đang chạm rồi không bấm được gì nữa.
+  window.addEventListener('blur', () => { NGON.clear(); veo = null; vuaVeo = false; drag = null; });
   svg.addEventListener('wheel', (e) => {
     e.preventDefault();
     const k = e.deltaY < 0 ? 1.12 : 1 / 1.12;
@@ -764,6 +817,23 @@ function bind() {
   $('#fileopen').addEventListener('change', (e) => { if (e.target.files[0]) openFile(e.target.files[0]); e.target.value = ''; });
   $('#btnPng').addEventListener('click', exportPng);
   $('#btnSide').addEventListener('click', () => $('#side').classList.toggle('hide'));
+
+  // --- Menu ⋯ (chỉ hiện trên điện thoại; trên máy tính các nút nằm thẳng trên thanh) ---
+  const menu = $('#more'), nutMenu = $('#btnMore');
+  if (menu && nutMenu) {
+    const dongMenu = () => { menu.classList.remove('open'); nutMenu.setAttribute('aria-expanded', 'false'); };
+    nutMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const mo = !menu.classList.contains('open');
+      menu.classList.toggle('open', mo);
+      nutMenu.setAttribute('aria-expanded', mo ? 'true' : 'false');
+    });
+    menu.addEventListener('click', dongMenu);          // chọn xong thì tự thu lại
+    document.addEventListener('pointerdown', (e) => {
+      if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== nutMenu) dongMenu();
+    });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') dongMenu(); });
+  }
 
   // --- Bong bóng trợ lý (điện thoại): mở/đóng tấm trượt từ dưới lên ---
   const sheet = { el: $('#side'), bk: $('#sheetbk'), fab: $('#fab') };
