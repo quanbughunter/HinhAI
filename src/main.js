@@ -4,6 +4,7 @@
 
 import { GeoDoc } from './core/model.js';
 import { runScript } from './core/dsl.js';
+import { phuongTrinh } from './core/ptr.js';
 import { Cam2, Cam3, render2, render3, pick, labelBoxes, esc } from './ui/render.js';
 import { TOOLS_2D, TOOLS_3D, QUICK_2D, QUICK_3D, CHIPS } from './ui/tools.js';
 import { askGemini, askViaProxy, askClaudeRuntime, getClaudeCapability, localParse, describeDoc, DSL_REFERENCE, DEFAULT_PROXY } from './ai/agent.js';
@@ -50,7 +51,43 @@ function render() {
   const opt = { ...app.opts, selected: app.sel, hover: app.hover };
   svg.innerHTML = defs + (is3() ? render3(D(), cam, opt) : render2(D(), cam, opt));
   renderObjList();
+  renderPT();
   updateHint();
+}
+
+/** Chuyển thẻ trong cột bên phải (Trợ lý AI · Phương trình · Đối tượng · Lệnh) */
+function chonThe(ten) {
+  document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x.dataset.pane === ten));
+  document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.id === 'pane-' + ten));
+  LS.set('pane', ten);
+}
+
+/**
+ * Bảng phương trình: vẽ đến đâu hiện phương trình đến đó.
+ * Chạy lại sau mỗi lần render nên kéo một đỉnh là phương trình đổi theo ngay.
+ */
+function renderPT() {
+  const box = $('#ptlist');
+  if (!box) return;
+  const ds = [];
+  for (const o of D().list()) {
+    const e = phuongTrinh(o);
+    if (e && e.pt) ds.push([o, e]);
+  }
+  if (!ds.length) {
+    box.innerHTML = `<div class="ptempty">Chưa có gì để viết phương trình.<br><br>
+      Vẽ một điểm, một đường thẳng hay một đường tròn — phương trình sẽ hiện ngay ở đây và
+      tự đổi theo mỗi khi bạn kéo hình.</div>`;
+    return;
+  }
+  box.innerHTML = ds.map(([o, e]) => {
+    const col = (o.style && o.style.color) || 'var(--accent)';
+    return `<div class="pt${app.sel.has(o.id) ? ' on' : ''}" data-id="${o.id}" style="border-left-color:${col}">
+      <div class="hd"><span class="nm">${esc(o.name)}</span><span class="ty">${esc(e.loai)}</span></div>
+      <div class="eq">${esc(e.pt)}</div>
+      ${e.phu ? `<div class="ex">${esc(e.phu)}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function updateHint() {
@@ -750,8 +787,19 @@ function bind() {
   $('#modeseg').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
   $('.tabs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-pane]'); if (!b) return;
-    document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b));
-    document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.id === 'pane-' + b.dataset.pane));
+    chonThe(b.dataset.pane);
+  });
+  // mở lại đúng thẻ lần trước đang xem — ai hay nhìn phương trình thì lần sau vào là thấy ngay
+  const theCu = LS.get('pane', '');
+  if (theCu && theCu !== 'chat') chonThe(theCu);
+  // bấm một phương trình → chọn luôn hình tương ứng trên bảng
+  $('#ptlist').addEventListener('click', (e) => {
+    const b = e.target.closest('.pt');
+    if (!b) return;
+    const o = D().get(b.dataset.id);
+    if (!o) return;
+    app.sel = app.sel.has(o.id) && app.sel.size === 1 ? new Set() : new Set([o.id]);
+    render();
   });
   $('#objlist').addEventListener('click', (e) => {
     const row = e.target.closest('.obj'); if (!row) return;
@@ -837,22 +885,26 @@ function bind() {
 
   // --- Bong bóng trợ lý (điện thoại): mở/đóng tấm trượt từ dưới lên ---
   const sheet = { el: $('#side'), bk: $('#sheetbk'), fab: $('#fab') };
-  const moTam = () => {
+  const fabPT = $('#fabpt');
+  const moTam = (the = 'chat') => {
     sheet.el.classList.add('open');
     sheet.bk.classList.add('on');
     sheet.fab.classList.remove('new');
     sheet.fab.classList.add('hidden');
-    document.querySelector('.tabs button[data-pane="chat"]').click();
-    setTimeout(() => { $('#chatlog').scrollTop = 1e9; }, 260);
+    if (fabPT) fabPT.classList.add('hidden');
+    chonThe(the);
+    if (the === 'chat') setTimeout(() => { $('#chatlog').scrollTop = 1e9; }, 260);
   };
   const dongTam = () => {
     sheet.el.classList.remove('open');
     sheet.bk.classList.remove('on');
     sheet.fab.classList.remove('hidden');
+    if (fabPT) fabPT.classList.remove('hidden');
   };
+  if (fabPT) fabPT.addEventListener('click', () => moTam('pt'));
   app.sheetDangMo = () => sheet.el.classList.contains('open');
   app.baoTinMoi = () => { if (!app.sheetDangMo()) sheet.fab.classList.add('new'); };
-  if (sheet.fab) sheet.fab.addEventListener('click', moTam);
+  if (sheet.fab) sheet.fab.addEventListener('click', () => moTam('chat'));
   if (sheet.bk) sheet.bk.addEventListener('click', dongTam);
   const nutDong = $('#sheetclose');
   if (nutDong) nutDong.addEventListener('click', dongTam);

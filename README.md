@@ -2,7 +2,7 @@
 
 Bảng vẽ hình học phẳng và hình không gian cho học sinh cấp 2 – cấp 3, có trợ lý AI nhận lệnh bằng tiếng Việt.
 
-Không thư viện ngoài · một tệp HTML 157 KB · mở bằng trình duyệt là chạy.
+Không thư viện ngoài · một tệp HTML 177 KB · mở bằng trình duyệt là chạy.
 
 ---
 
@@ -21,8 +21,8 @@ npm run dev          # mở http://localhost:5173
 
 ```bash
 npm run bundle       # sinh dist/geoai.html
-npm test             # 60 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 30 bài kiểm thử giao diện
+npm test             # 78 bài kiểm thử toán học
+node tests/dom-smoke.mjs   # 34 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
 ```
@@ -51,6 +51,27 @@ dán vào. Khoá chỉ nằm trong `localStorage` của trình duyệt bạn.
 **2. Thanh lệnh dưới đáy** — gõ `M = trungdiem(A,B)` rồi Enter. Phím ↑ lấy lại lệnh cũ.
 
 **3. Chat với trợ lý** — mô tả bằng tiếng Việt, AI viết script và thi hành ngay; script hiện ngay dưới câu trả lời để bạn kiểm tra hoặc sửa.
+
+### Bảng phương trình
+
+Thẻ **Phương trình** ở cột phải viết ra phương trình của mọi thứ đang có trên bảng, và
+**tự đổi theo ngay khi bạn kéo hình**. Bấm vào một phương trình là hình tương ứng sáng lên.
+
+| Đối tượng | Hiện ra |
+|---|---|
+| Điểm | `A(2; -3)` — trong không gian thì đủ ba toạ độ |
+| Đường thẳng, đoạn, tia | `3x - 2y + 6 = 0`, kèm `y = 1.5x + 3` và độ dài |
+| Vectơ | `u = (5; 6)` và `\|u\| = 7.81` |
+| Đường tròn | `(x - 2)² + (y + 1)² = 9`, kèm tâm và bán kính |
+| Đa giác | toạ độ các đỉnh, diện tích, chu vi |
+| Mặt phẳng | `2x - y + 3z - 5 = 0` và vectơ pháp tuyến |
+| Mặt cầu | `(x - 1)² + (y - 2)² + (z - 3)² = 16` |
+| Đường trong không gian | phương trình tham số `x = 1 + 2t · y = 2 - t · z = 3` |
+| Khối chóp, lăng trụ, hộp | số đỉnh/mặt/cạnh và **thể tích** |
+| Thiết diện | toạ độ các đỉnh và **diện tích** |
+
+Trên điện thoại bảng này nằm trong tấm trượt kéo lên từ dưới — bấm bong bóng **ƒ** là mở,
+bấm ✕ hoặc ra ngoài là thu lại.
 
 ### Phím tắt
 
@@ -150,7 +171,7 @@ td=thietdien(K,M,N,P)
 ## Cấu trúc mã
 
 ```
-src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  dsl.js   ← lõi toán, chạy được trong Node
+src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  ptr.js  dsl.js   ← lõi toán, chạy được trong Node
 src/ui/     render.js  tools.js                            ← camera, vẽ SVG, công cụ
 src/ai/     agent.js                                       ← prompt + Gemini + luật offline
 src/main.js                                                ← điều phối

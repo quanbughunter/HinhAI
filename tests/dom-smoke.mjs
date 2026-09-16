@@ -93,6 +93,7 @@ ok('SVG có nội dung', svg.innerHTML.length > 500, svg.innerHTML.length + ' k�
 ok('SVG vẽ được lưới toạ độ', /class="grid"|class="axis"/.test(svg.innerHTML));
 ok('thanh công cụ đã dựng', q('#rail').innerHTML.includes('data-tool="seg"'));
 ok('danh sách đối tượng báo trống', q('#objlist').innerHTML.includes('Chưa có đối tượng'));
+ok('bảng phương trình báo trống', q('#ptlist').innerHTML.includes('Chưa có gì để viết'));
 
 console.log('\nTương tác');
 // vẽ bằng chuột: chọn công cụ đoạn thẳng rồi bấm 2 lần lên bảng
@@ -138,6 +139,12 @@ ok('kéo được điểm tự do', A.val.x !== before.x || A.val.y !== before.y
 const cmd = q('#cmd');
 cmd.value = 'M = trungdiem(A,B)';
 cmd.fire('keydown', { key: 'Enter' });
+{
+  const pt = q('#ptlist').innerHTML;
+  ok('bảng phương trình nhận ra đoạn thẳng', pt.includes('Đoạn thẳng'), pt.slice(0, 160));
+  ok('viết được phương trình tổng quát', /[xy].*= 0/.test(pt), pt.slice(0, 200));
+  ok('kèm dòng phụ (dạng y = mx và độ dài)', /class="ex">y = /.test(pt), pt.slice(0, 300));
+}
 ok('chạy lệnh từ thanh lệnh', !!app.doc['2d'].byName('M'), q('#status').textContent);
 
 // hoàn tác / làm lại

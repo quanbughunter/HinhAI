@@ -137,6 +137,19 @@ input,textarea,select{font:inherit;color:inherit}
 .chips button{font-size:12px;border:1px solid var(--line);border-radius:16px;padding:4px 10px;color:var(--muted)}
 .chips button:hover{color:var(--accent);border-color:var(--accent)}
 
+/* ---- Bảng phương trình ---- */
+#ptlist{flex:1;overflow-y:auto;padding:8px}
+.pt{border:1px solid var(--line);border-radius:11px;padding:8px 11px;margin-bottom:7px;background:var(--bg);
+  border-left:3px solid var(--accent);cursor:pointer}
+.pt:hover{border-color:var(--accent)}
+.pt.on{background:var(--accent-soft);border-color:var(--accent)}
+.pt .hd{display:flex;align-items:baseline;gap:7px;margin-bottom:3px}
+.pt .nm{font-family:var(--font-math);font-style:italic;font-weight:700;font-size:15px;color:var(--accent)}
+.pt .ty{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.pt .eq{font-family:var(--font-math);font-size:15.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.pt .ex{font-size:11.5px;color:var(--muted);margin-top:3px;white-space:pre-wrap}
+.ptempty{padding:18px;color:var(--muted);font-size:13px;line-height:1.6}
+
 #objlist{flex:1;overflow-y:auto;padding:6px}
 .obj{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:13px}
 .obj:hover{background:var(--bg)}
@@ -226,9 +239,9 @@ input,textarea,select{font:inherit;color:inherit}
     scrollbar-width:none;padding-bottom:2px}
   .quick::-webkit-scrollbar{display:none}
   .quick button{flex:0 0 auto;font-size:12px;padding:7px 12px}
-  /* +/− leo lên trên bong bóng thay vì nằm chồng lên nó */
-  .zoombar{right:11px;bottom:78px;padding:3px}
-  .zoombar button{width:36px;height:32px;font-size:17px}
+  /* +/− nằm ngang ở góc trái dưới: bên phải đã có hai bong bóng chồng lên nhau rồi */
+  .zoombar{left:11px;right:auto;bottom:52px;flex-direction:row;padding:3px;gap:2px}
+  .zoombar button{width:38px;height:34px;font-size:17px}
   .hud{max-width:calc(100% - 24px);font-size:11.5px;padding:5px 9px;line-height:1.35;
     max-height:44px;overflow:hidden}
 
@@ -243,6 +256,10 @@ input,textarea,select{font:inherit;color:inherit}
   .fab .dot{position:absolute;top:4px;right:4px;width:11px;height:11px;border-radius:50%;
     background:var(--warn);border:2px solid var(--panel);display:none}
   .fab.new .dot{display:block}
+  /* nút phụ: mở thẳng bảng phương trình, nhỏ hơn và nằm ngay trên nút chat */
+  .fab2{width:44px;height:44px;bottom:calc(128px + env(safe-area-inset-bottom,0px));right:20px;
+    background:var(--panel);color:var(--accent);border:1px solid var(--line)}
+  .fab2 span{font-family:var(--font-math);font-style:italic;font-size:22px;font-weight:700;line-height:1}
 
   /* ---- tấm trượt từ dưới lên ---- */
   .sheetbk{display:block;position:fixed;inset:0;background:rgba(13,20,36,.45);z-index:58;
@@ -263,6 +280,10 @@ input,textarea,select{font:inherit;color:inherit}
     font-size:17px;flex:0 0 auto}
   .grab button:hover{background:var(--bg);color:var(--ink)}
 
+  /* bốn thẻ trên màn hẹp: thu chữ lại, thiếu chỗ thì cho trượt ngang */
+  .tabs{overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:1 0 auto;padding:10px 12px;font-size:12.5px;white-space:nowrap}
   .composer textarea{min-height:52px;max-height:180px;font-size:16px}  /* 16px để iOS không tự phóng to */
   .msg{max-width:96%}
   .chips{overflow-x:auto;flex-wrap:nowrap;padding-bottom:10px}
@@ -333,6 +354,7 @@ input,textarea,select{font:inherit;color:inherit}
       </div>
       <div class="tabs">
         <button data-pane="chat" class="on">Trợ lý AI</button>
+        <button data-pane="pt">Phương trình</button>
         <button data-pane="obj">Đối tượng</button>
         <button data-pane="cmd">Lệnh</button>
       </div>
@@ -345,6 +367,8 @@ input,textarea,select{font:inherit;color:inherit}
           <button class="send" id="chatsend">➤</button>
         </div>
       </section>
+
+      <section class="pane" id="pane-pt"><div id="ptlist"></div></section>
 
       <section class="pane" id="pane-obj"><div id="objlist"></div></section>
 
@@ -361,6 +385,7 @@ input,textarea,select{font:inherit;color:inherit}
     </aside>
   </div>
 
+  <button class="fab fab2" id="fabpt" aria-label="Mở bảng phương trình"><span>ƒ</span></button>
   <button class="fab" id="fab" aria-label="Mở trợ lý AI">
     <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-8 8H7l-4 3 1.2-4.2A8 8 0 1121 12z"/><path d="M9 11h6M9 14.5h3.5"/></svg>
     <span class="dot"></span>

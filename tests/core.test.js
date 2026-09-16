@@ -1,6 +1,7 @@
 // Kiểm thử lõi toán học — chạy: node tests/core.test.js
 import { GeoDoc } from '../src/core/model.js';
 import { runScript } from '../src/core/dsl.js';
+import { phuongTrinh, ptDuongThang, ptThamSo3, theTich, dienTich3, lamDep, soGon } from '../src/core/ptr.js';
 import { angleABC, vDist } from '../src/core/vec.js';
 import { p3dist } from '../src/core/ops3d.js';
 import { docBPT, mienNghiem, thuocMien, dinhHuuHan, docKhoang } from '../src/core/bpt.js';
@@ -269,6 +270,45 @@ T('Miền nghiệm qua DSL và lưu/mở lại', () => {
   const d2 = GeoDoc.fromJSON(JSON.parse(JSON.stringify(d.toJSON())));
   ok('mở lại vẫn đúng miền', dinhHuuHan(d2.byName('H').val).length === 3);
   ok('mở lại vẫn đúng đoạn', d2.byName('A').val.b === 3);
+});
+
+T('Phương trình đường thẳng và đường tròn phẳng', () => {
+  ok('qua gốc, hệ số 1', ptDuongThang({ x: 0, y: 0 }, { x: 1, y: 1 }).tq === 'x - y = 0');
+  ok('dạng y = mx + n', ptDuongThang({ x: 0, y: 0 }, { x: 1, y: 1 }).hs === 'y = x');
+  ok('hệ số nguyên hoá', ptDuongThang({ x: -2, y: 0 }, { x: 2, y: 3 }).tq === '3x - 2y + 6 = 0');
+  ok('đường thẳng đứng', ptDuongThang({ x: 2, y: 5 }, { x: 0, y: 1 }).hs === 'x = 2');
+  ok('hệ số đầu luôn dương', lamDep([-4, 6, -2]).join(',') === '2,-3,1', lamDep([-4, 6, -2]).join(','));
+  ok('bỏ đuôi 0 thừa', soGon(3.10000) === '3.1' && soGon(-0.0000001) === '0');
+
+  const d = new GeoDoc();
+  runScript(d, 'A = (2,-3)\nO = (2,-1)\nc = duongtron(O,3)\nB = (5,1)\ns = doan(A,B)');
+  ok('điểm viết đúng', phuongTrinh(d.byName('A')).pt === 'A(2; -3)');
+  const c = phuongTrinh(d.byName('c'));
+  ok('đường tròn dạng chuẩn', c.pt === '(x - 2)² + (y + 1)² = 9', c.pt);
+  ok('kèm tâm và bán kính', /Tâm \(2; -1\)/.test(c.phu), c.phu);
+  ok('đoạn thẳng có độ dài', /s = 5$/.test(phuongTrinh(d.byName('s')).phu), phuongTrinh(d.byName('s')).phu);
+  runScript(d, 'u = vecto(A,B)');
+  const u = phuongTrinh(d.byName('u'));
+  ok('vectơ viết theo toạ độ chứ không phải phương trình', u.loai === 'Vectơ' && u.pt === 'u = (3; 4)', u.loai + ' | ' + u.pt);
+  ok('vectơ kèm độ dài', u.phu === '|u| = 5', u.phu);
+});
+
+T('Phương trình trong không gian, thể tích và diện tích', () => {
+  ok('tham số bỏ hạng tử 0', ptThamSo3({ x: 1, y: 2, z: 3 }, { x: 2, y: -1, z: 0 }) === 'x = 1 + 2t\ny = 2 - t\nz = 3');
+  const hop = {
+    v: [{x:0,y:0,z:0},{x:2,y:0,z:0},{x:2,y:3,z:0},{x:0,y:3,z:0},{x:0,y:0,z:4},{x:2,y:0,z:4},{x:2,y:3,z:4},{x:0,y:3,z:4}],
+    faces: [[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]],
+  };
+  ok('thể tích hộp 2x3x4 = 24', Math.abs(theTich(hop) - 24) < 1e-9, theTich(hop));
+  ok('diện tích tam giác trong không gian', Math.abs(dienTich3([{x:0,y:0,z:0},{x:3,y:0,z:0},{x:0,y:4,z:0}]) - 6) < 1e-9);
+
+  const d = new GeoDoc();
+  runScript(d, 'A=(0,0,0)\nB=(6,0,0)\nC=(6,5,0)\nD=(0,5,0)\nS=(3,2.5,7)\nK=chop(A,B,C,D,S)\nmp1=mp(A,B,S)');
+  const k = phuongTrinh(d.byName('K'));
+  ok('khối chóp có thể tích', /V = 70$/.test(k.phu), k.phu);
+  const m = phuongTrinh(d.byName('mp1'));
+  ok('mặt phẳng dạng ax+by+cz+d=0', /= 0$/.test(m.pt) && m.pt.indexOf('y') >= 0, m.pt);
+  ok('điểm không gian viết đủ ba toạ độ', phuongTrinh(d.byName('S')).pt === 'S(3; 2.5; 7)');
 });
 
 console.log(`\n===== ${pass} đạt / ${fail} lỗi =====`);

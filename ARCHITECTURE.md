@@ -55,6 +55,7 @@ Chi phí: `O(n)` mỗi khung hình. Kéo một điểm trong hình 100 đối t�
 | `src/core/ops2d.js` | ~280 | 45 phép dựng hình phẳng |
 | `src/core/ops3d.js` | ~200 | Khối đa diện, mặt phẳng, **thiết diện**, giao đường–mặt |
 | `src/core/bpt.js` | ~140 | Bất phương trình bậc nhất hai ẩn, cắt nửa mặt phẳng, **miền nghiệm** |
+| `src/core/ptr.js` | ~230 | Viết phương trình cho từng đối tượng, thể tích khối, diện tích mặt |
 | `src/core/dsl.js` | ~250 | Tách từ, phân tích cú pháp lồng nhau, alias tiếng Việt |
 | `src/ui/render.js` | ~330 | Camera 2D/3D, sinh chuỗi SVG, dò trúng đối tượng |
 | `src/ui/tools.js` | ~140 | Khai báo công cụ + biểu tượng |
@@ -107,9 +108,10 @@ Bản chạy trên claude.ai dùng khả năng `sample` của Artifact nên **kh
 
 ### Đã xong
 Lõi dựng hình 2D/3D · 26 công cụ · DSL tiếng Việt · chat AI qua proxy dùng chung ·
-thiết diện · **miền nghiệm bất phương trình** · kéo nhãn tự do · giao diện điện thoại
-với chat dạng bong bóng · hoàn tác · lưu/mở/xuất PNG · 90 bài kiểm thử tự động ·
-đóng gói APK tự động bằng GitHub Actions.
+thiết diện · **miền nghiệm bất phương trình** · **bảng phương trình cập nhật trực tiếp** ·
+kéo nhãn tự do · chụm hai ngón để phóng to · giao diện điện thoại với chat và bảng
+phương trình dạng bong bóng thu gọn được · hoàn tác · lưu/mở/xuất PNG ·
+112 bài kiểm thử tự động · đóng gói APK tự động bằng GitHub Actions.
 
 ### Nên làm tiếp (theo thứ tự đáng giá / công sức)
 
