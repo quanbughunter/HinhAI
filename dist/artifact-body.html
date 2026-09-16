@@ -166,6 +166,13 @@ input,textarea,select{font:inherit;color:inherit}
   font-family:var(--font-math);min-width:32px}
 .phim button:hover{border-color:var(--accent);color:var(--accent)}
 #tenMoi,#tenDinh{font-family:var(--font-math);font-size:16px}
+/* 12 màu chia đúng hai hàng sáu, khỏi lẻ ra một ô ở hàng dưới */
+.mau{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.mau button{width:100%;height:32px;border-radius:8px;border:2px solid transparent;padding:0;cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.mau button.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),0 0 0 2px var(--panel) inset}
+.net{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.net b{font-variant-numeric:tabular-nums;color:var(--ink);min-width:26px;text-align:right}
 .ptmsg.on{display:block}
 .ptmsg.ok{background:var(--accent-soft);color:var(--accent)}
 .ptmsg.err{background:var(--errbg);border:1px solid var(--errline);color:var(--errink)}
@@ -471,7 +478,7 @@ input,textarea,select{font:inherit;color:inherit}
 <!-- Đổi tên: đề bài cho tên gì thì hình phải mang đúng tên đó -->
 <div class="modal" id="tenmodal">
   <div class="card">
-    <h3 id="tenTieuDe">Đổi tên</h3>
+    <h3 id="tenTieuDe">Sửa đối tượng</h3>
     <p class="sub" id="tenPhu"></p>
     <div class="field">
       <label>Tên mới</label>
@@ -492,10 +499,30 @@ input,textarea,select{font:inherit;color:inherit}
         <b>A₁ A₂ A₃</b>. Bỏ trống thì giữ nguyên tên cũ.
       </div>
     </div>
+    <div class="field">
+      <label>Màu</label>
+      <div class="mau" id="tenMau"></div>
+      <label style="display:flex;align-items:center;gap:9px;margin-top:9px;font-weight:500;color:var(--ink);cursor:pointer">
+        <input id="tenMauRieng" type="color" style="width:44px;height:30px;padding:2px;border-radius:7px">
+        <span style="font-size:12.5px;color:var(--muted)">hoặc chọn màu bất kỳ</span>
+      </label>
+    </div>
+    <div class="field" id="tenNetO">
+      <label>Nét vẽ</label>
+      <div class="net">
+        <span>Độ dày</span>
+        <input id="tenDay" type="range" min="1" max="6" step="0.5" style="flex:1">
+        <b id="tenDaySo">1.8</b>
+      </div>
+      <label style="display:flex;align-items:center;gap:9px;margin-top:8px;font-weight:500;color:var(--ink);cursor:pointer">
+        <input id="tenDut" type="checkbox" style="width:auto;margin:0">
+        <span style="font-size:13.5px">Nét đứt</span>
+      </label>
+    </div>
     <div class="ptmsg" id="tenLoi"></div>
     <div class="row">
       <button class="btn ghost" id="tenHuy">Huỷ</button>
-      <button class="btn" id="tenLuu">Đổi tên</button>
+      <button class="btn" id="tenLuu">Lưu</button>
     </div>
   </div>
 </div>
@@ -3380,7 +3407,7 @@ const ICONS = {
  * vì trên điện thoại phải vuốt ngang mãi mới tìm lại được chúng sau mỗi lần vẽ.
  */
 const TOOLS_THAOTAC = [
-  { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo đỉnh → hình biến đổi · kéo CHỮ → chỉ dời chữ · kéo cạnh → dời cả hình · bấm đúp để đổi tên.' },
+  { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo đỉnh → hình biến đổi · kéo CHỮ → chỉ dời chữ · kéo cạnh → dời cả hình · bấm đúp để sửa tên và màu.' },
   { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá (xoá cả hình phụ thuộc nó).' },
 ];
 
@@ -4097,7 +4124,7 @@ function renderObjList() {
   box.innerHTML = items.map((o) => {
     const col = (o.style && o.style.color) || '#64748b';
     return `<div class="obj" data-id="${o.id}">
-      <span class="sw" style="background:${col};${o.visible ? '' : 'opacity:.25'}"></span>
+      <span class="sw" style="background:${col};${o.visible ? "" : "opacity:.25"};cursor:pointer" title="Đổi màu"></span>
       <span class="nm" title="Bấm để đổi tên">${esc(o.name)}</span>
       <span class="de">${esc(describe(o))}</span>
       <button class="x" data-act="ten" title="${o.showLabel ? 'Ẩn tên trên hình' : 'Hiện tên trên hình'}">${o.showLabel ? 'A' : 'a̶'}</button>
@@ -4256,6 +4283,14 @@ function diemTuDoCua(obj) {
  */
 const CO_DINH = { polygon: 1, pyramid: 1, prism: 1, face: 1 };
 
+/** Bảng màu vở học trò — đủ dùng mà không loè loẹt; vẫn có ô chọn màu bất kỳ */
+const BANG_MAU = [
+  ['#16233d', 'mực đen'], ['#22468f', 'mực xanh'], ['#4338a8', 'tím'],
+  ['#2f7fa8', 'xanh biển'], ['#1f7a5a', 'xanh lá'], ['#8a5a2b', 'chì nâu'],
+  ['#b3261e', 'mực đỏ'], ['#c0271c', 'đỏ cam'], ['#d98324', 'cam'],
+  ['#7a3ea1', 'tím sen'], ['#7a869a', 'chì nhạt'], ['#0f172a', 'đen'],
+];
+
 /** Tách chuỗi tên đỉnh: "MNPQ" -> [M,N,P,Q] · "A₁ A₂" -> [A₁, A₂] */
 function tachTenDinh(chuoi) {
   const s = String(chuoi || '').trim();
@@ -4280,7 +4315,7 @@ function doiTen(o) {
   tenDangSua = o;
   const dinh = (CO_DINH[o.op] ? o.args.map((id) => D().get(id)).filter((p) => p && p.type === 'point') : [])
     .concat(CO_DINH[o.op] ? o.args.map((id) => D().get(id)).filter((p) => p && p.val && p.val.t === 'p3') : []);
-  $('#tenTieuDe').textContent = 'Đổi tên ' + o.name;
+  $('#tenTieuDe').textContent = 'Sửa ' + o.name;
   $('#tenPhu').textContent = describe(o);
   $('#tenMoi').value = o.name;
   $('#tenDinh').value = '';
@@ -4292,11 +4327,30 @@ function doiTen(o) {
   } else {
     oDinh.hidden = true;
   }
+  // --- màu và nét ---
+  const st = o.style || {};
+  const mau = st.color || '#16233d';
+  const oMau = $('#tenMau');
+  oMau.innerHTML = BANG_MAU.map(([c, ten]) =>
+    `<button data-mau="${c}" title="${ten}" style="background:${c}"${c.toLowerCase() === mau.toLowerCase() ? ' class="on"' : ''}></button>`).join('');
+  $('#tenMauRieng').value = /^#[0-9a-f]{6}$/i.test(mau) ? mau : '#16233d';
+  const coNet = !(o.type === 'point' || o.val.t === 'p3' || o.type === 'text' || o.type === 'number');
+  $('#tenNetO').hidden = !coNet;
+  $('#tenDay').value = st.width == null ? 1.8 : st.width;
+  $('#tenDaySo').textContent = String(st.width == null ? 1.8 : st.width);
+  $('#tenDut').checked = !!st.dash;
+
   baoTen('');
   hop.classList.add('on');
   const inp = $('#tenMoi');
   inp.focus();
   if (inp.select) inp.select();
+}
+
+/** Màu đang chọn: ô trong bảng nếu có, không thì lấy ô màu tự chọn */
+function mauDangChon() {
+  const b = $('#tenMau').querySelector ? $('#tenMau').querySelector('button.on') : null;
+  return b ? b.dataset.mau : $('#tenMauRieng').value;
 }
 
 function baoTen(chu, hong) {
@@ -4332,6 +4386,13 @@ function luuTen() {
   snap();
   o.name = ten;
   dsTen.forEach((t, i) => { dinh[i].name = t; });
+  const st = { ...(o.style || {}) };
+  st.color = mauDangChon();
+  if (!$('#tenNetO').hidden) {
+    st.width = parseFloat($('#tenDay').value) || 1.8;
+    st.dash = $('#tenDut').checked ? '6 5' : null;
+  }
+  o.style = st;
   $('#tenmodal').classList.remove('on');
   tenDangSua = null;
   render();
@@ -4650,6 +4711,24 @@ function onMove(e) {
     if (Math.hypot(px.x - drag.px.x, px.y - drag.px.y) > 4) drag.moved = true;
   }
 }
+/**
+ * Tự nhận "bấm đúp" thay vì dùng sự kiện dblclick của trình duyệt.
+ *
+ * Lý do: mỗi lần bấm là app dựng lại toàn bộ chuỗi SVG, nên node dưới con trỏ
+ * ở lần bấm thứ hai đã là node KHÁC. Nhiều trình duyệt vì thế không phát
+ * dblclick nữa. Tự đếm hai lần nhấc ngón gần nhau thì chắc ăn, và chạm hai lần
+ * trên điện thoại cũng ăn theo luôn.
+ */
+let bamTruoc = { t: 0, x: 0, y: 0 };
+function laBamDup(px) {
+  const gio = Date.now();
+  const gan = Math.hypot(px.x - bamTruoc.x, px.y - bamTruoc.y) < 14;
+  const nhanh = gio - bamTruoc.t < 420;
+  bamTruoc = { t: gio, x: px.x, y: px.y };
+  if (gan && nhanh) { bamTruoc.t = 0; return true; }   // xoá dấu để ba lần bấm không thành hai lượt
+  return false;
+}
+
 function onUp(e) {
   const px = pxOf(e);
   NGON.delete(e.pointerId);
@@ -4660,9 +4739,15 @@ function onUp(e) {
     render();
     return;
   }
+  const dungYen = drag && !drag.moved;
   if (drag && drag.kind === 'tool' && !drag.moved) clickTool(px);
   if (drag && drag.kind === 'view' && !is3()) { /* pan xong */ }
   drag = null;
+  // bấm đúp lúc đang ở chế độ Chọn/Kéo → mở hộp sửa tên & màu
+  if (dungYen && (app.tool === 'move' || app.tool === 'rot') && laBamDup(px)) {
+    const o = chuChuKhongPhaiDinh(px) || pick(D(), C(), px, app.mode);
+    if (o) { doiTen(o); return; }
+  }
   render();
 }
 
@@ -4971,7 +5056,7 @@ function bind() {
     if (act === 'del') { snap(); D().remove(o.id); }
     else if (act === 'vis') { snap(); o.visible = !o.visible; }
     else if (act === 'ten') { snap(); o.showLabel = !o.showLabel; }
-    else if (e.target.classList.contains('nm')) { doiTen(o); return; }
+    else if (e.target.classList.contains('nm') || e.target.classList.contains('sw')) { doiTen(o); return; }
     else { app.sel = new Set([o.id]); }
     render();
   });
@@ -5130,6 +5215,19 @@ function bind() {
       if (e.key === 'Escape') { $('#tenmodal').classList.remove('on'); tenDangSua = null; }
     });
   }
+  $('#tenMau').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mau]');
+    if (!b) return;
+    $('#tenMau').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+    b.classList.add('on');
+    $('#tenMauRieng').value = b.dataset.mau;
+  });
+  $('#tenMauRieng').addEventListener('input', () => {
+    // chọn màu riêng thì bỏ chọn trong bảng, để mauDangChon() lấy đúng màu này
+    $('#tenMau').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+  });
+  $('#tenDay').addEventListener('input', (e) => { $('#tenDaySo').textContent = e.target.value; });
+
   $('#tenPhim').addEventListener('click', (e) => {
     const b = e.target.closest('[data-them]');
     if (!b) return;

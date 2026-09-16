@@ -175,6 +175,13 @@ input,textarea,select{font:inherit;color:inherit}
   font-family:var(--font-math);min-width:32px}
 .phim button:hover{border-color:var(--accent);color:var(--accent)}
 #tenMoi,#tenDinh{font-family:var(--font-math);font-size:16px}
+/* 12 màu chia đúng hai hàng sáu, khỏi lẻ ra một ô ở hàng dưới */
+.mau{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.mau button{width:100%;height:32px;border-radius:8px;border:2px solid transparent;padding:0;cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.mau button.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),0 0 0 2px var(--panel) inset}
+.net{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.net b{font-variant-numeric:tabular-nums;color:var(--ink);min-width:26px;text-align:right}
 .ptmsg.on{display:block}
 .ptmsg.ok{background:var(--accent-soft);color:var(--accent)}
 .ptmsg.err{background:var(--errbg);border:1px solid var(--errline);color:var(--errink)}
@@ -482,7 +489,7 @@ input,textarea,select{font:inherit;color:inherit}
 <!-- Đổi tên: đề bài cho tên gì thì hình phải mang đúng tên đó -->
 <div class="modal" id="tenmodal">
   <div class="card">
-    <h3 id="tenTieuDe">Đổi tên</h3>
+    <h3 id="tenTieuDe">Sửa đối tượng</h3>
     <p class="sub" id="tenPhu"></p>
     <div class="field">
       <label>Tên mới</label>
@@ -503,10 +510,30 @@ input,textarea,select{font:inherit;color:inherit}
         <b>A₁ A₂ A₃</b>. Bỏ trống thì giữ nguyên tên cũ.
       </div>
     </div>
+    <div class="field">
+      <label>Màu</label>
+      <div class="mau" id="tenMau"></div>
+      <label style="display:flex;align-items:center;gap:9px;margin-top:9px;font-weight:500;color:var(--ink);cursor:pointer">
+        <input id="tenMauRieng" type="color" style="width:44px;height:30px;padding:2px;border-radius:7px">
+        <span style="font-size:12.5px;color:var(--muted)">hoặc chọn màu bất kỳ</span>
+      </label>
+    </div>
+    <div class="field" id="tenNetO">
+      <label>Nét vẽ</label>
+      <div class="net">
+        <span>Độ dày</span>
+        <input id="tenDay" type="range" min="1" max="6" step="0.5" style="flex:1">
+        <b id="tenDaySo">1.8</b>
+      </div>
+      <label style="display:flex;align-items:center;gap:9px;margin-top:8px;font-weight:500;color:var(--ink);cursor:pointer">
+        <input id="tenDut" type="checkbox" style="width:auto;margin:0">
+        <span style="font-size:13.5px">Nét đứt</span>
+      </label>
+    </div>
     <div class="ptmsg" id="tenLoi"></div>
     <div class="row">
       <button class="btn ghost" id="tenHuy">Huỷ</button>
-      <button class="btn" id="tenLuu">Đổi tên</button>
+      <button class="btn" id="tenLuu">Lưu</button>
     </div>
   </div>
 </div>

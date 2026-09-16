@@ -239,6 +239,60 @@ function doiTenQua(tenHinh, moi, dinh) {
   q('#tenLuu').fire('click');
 }
 
+console.log('\nBấm đúp trên bảng vẽ và đổi màu');
+{
+  q('#scriptbox').value = 'xoahet\nA=(0,0)\nB=(4,0)\nC=(2,3)\nt=tamgiac(A,B,C)';
+  q('#runscript').fire('click');
+  const doc = app.doc['2d'];
+  q('#pickmove').fire('click');
+  const cam = app.cam['2d'];
+  const mh = (x, y) => ({ x: 900 / 2 + (x - cam.cx) * cam.scale, y: 620 / 2 - (y - cam.cy) * cam.scale });
+  const svg4 = q('#svg');
+  const bam = (p) => {
+    svg4.fire('pointerdown', { pointerId: 40, clientX: p.x, clientY: p.y });
+    svg4.fire('pointerup', { pointerId: 40, clientX: p.x, clientY: p.y });
+  };
+  const A = mh(0, 0);
+
+  bam(A);
+  ok('bấm một lần thì KHÔNG mở hộp', !q('#tenmodal').classList.contains('on'));
+  bam(A);
+  ok('bấm đúp lên đỉnh thì mở hộp sửa', q('#tenmodal').classList.contains('on'), q('#tenTieuDe').textContent);
+  ok('đúng đối tượng vừa bấm', q('#tenTieuDe').textContent.includes('A'), q('#tenTieuDe').textContent);
+  ok('là điểm nên ẩn phần nét vẽ', q('#tenNetO').hidden === true);
+
+  // đổi màu bằng ô màu tự chọn
+  q('#tenMoi').value = 'A';
+  q('#tenMauRieng').value = '#d98324';
+  q('#tenLuu').fire('click');
+  ok('đổi được màu của điểm', doc.byName('A').style.color === '#d98324', JSON.stringify(doc.byName('A').style));
+  ok('màu mới hiện lên bảng vẽ', q('#svg').innerHTML.includes('#d98324'));
+
+  // bấm đúp lên CẠNH tam giác (trung điểm AB) — bấm giữa ruột thì không trúng hình nào
+  const G = mh(2, 0);
+  bam(G); bam(G);
+  const mo = q('#tenmodal').classList.contains('on');
+  ok('bấm đúp lên hình cũng mở được', mo, q('#tenTieuDe').textContent);
+  if (mo) {
+    ok('là hình nên hiện phần nét vẽ', q('#tenNetO').hidden === false);
+    const tenCu = q('#tenTieuDe').textContent.replace('Sửa ', '').trim();
+    ok('bấm trúng tam giác t', tenCu === 't', tenCu);
+    q('#tenMoi').value = tenCu;
+    q('#tenMauRieng').value = '#1f7a5a';
+    q('#tenDay').value = '3.5';
+    q('#tenDut').checked = true;
+    q('#tenLuu').fire('click');
+    const t = doc.byName('t');
+    ok('đổi được độ dày nét', t && t.style.width === 3.5, JSON.stringify(t && t.style));
+    ok('bật được nét đứt', t && t.style.dash === '6 5');
+    ok('nét đứt hiện lên SVG', /stroke-dasharray="6 5"/.test(q('#svg').innerHTML));
+  }
+
+  // hai lần bấm CÁCH XA nhau thì không tính là bấm đúp
+  bam(mh(0, 0)); bam(mh(4, 0));
+  ok('bấm hai chỗ khác nhau thì không mở hộp', !q('#tenmodal').classList.contains('on'));
+}
+
 console.log('\nBắt dính giao điểm');
 {
   // dựng hai đường cắt nhau tại (2; 2) và cắt cả hai trục

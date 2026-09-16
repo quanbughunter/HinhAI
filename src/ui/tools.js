@@ -47,7 +47,7 @@ export const ICONS = {
  * vì trên điện thoại phải vuốt ngang mãi mới tìm lại được chúng sau mỗi lần vẽ.
  */
 export const TOOLS_THAOTAC = [
-  { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo đỉnh → hình biến đổi · kéo CHỮ → chỉ dời chữ · kéo cạnh → dời cả hình · bấm đúp để đổi tên.' },
+  { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo đỉnh → hình biến đổi · kéo CHỮ → chỉ dời chữ · kéo cạnh → dời cả hình · bấm đúp để sửa tên và màu.' },
   { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá (xoá cả hình phụ thuộc nó).' },
 ];
 

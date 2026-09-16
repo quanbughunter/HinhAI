@@ -2,7 +2,7 @@
 
 Bảng vẽ hình học phẳng và hình không gian cho học sinh cấp 2 – cấp 3, có trợ lý AI nhận lệnh bằng tiếng Việt.
 
-Không thư viện ngoài · một tệp HTML 239 KB · mở bằng trình duyệt là chạy.
+Không thư viện ngoài · một tệp HTML 244 KB · mở bằng trình duyệt là chạy.
 
 ---
 
@@ -22,7 +22,7 @@ npm run dev          # mở http://localhost:5173
 ```bash
 npm run bundle       # sinh dist/geoai.html
 npm test             # 157 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 103 bài kiểm thử giao diện
+node tests/dom-smoke.mjs   # 116 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
 ```
@@ -143,13 +143,13 @@ góc trái dưới trên điện thoại).
 Mặc định **vẽ xong là con trỏ tự về Chọn/Kéo**. Muốn vẽ liên tiếp nhiều hình cùng loại thì
 tắt trong ⚙ Cài đặt.
 
-### Đặt tên theo đề bài
+### Đặt tên và đổi màu
 
-Đề cho *"hình bình hành MNPQ"* thì hình phải mang đúng tên đó. Mở hộp đổi tên bằng một
-trong bốn cách:
+Đề cho *"hình bình hành MNPQ"* thì hình phải mang đúng tên đó. Mở hộp sửa bằng một trong
+bốn cách:
 
-- **bấm đúp** lên hình hoặc lên chữ trên bảng vẽ
-- bấm vào **tên** trong tab **Đối tượng**
+- **bấm đúp** lên hình hoặc lên chữ trên bảng vẽ (chạm hai lần trên điện thoại)
+- bấm vào **tên** hoặc **ô màu** trong tab **Đối tượng**
 - bấm vào **tên** trong tab **Phương trình**
 - chọn hình rồi bấm **F2**
 
@@ -160,7 +160,10 @@ Có sẵn mấy phím phụ cho dấu phẩy trên `′`, chỉ số dưới `�
 Trùng tên hoặc cho thiếu tên đỉnh thì app báo lỗi và **không đổi gì cả** — không có chuyện
 đổi được nửa chừng rồi bỏ dở.
 
-Trong thanh lệnh thì dùng `doiten A M`.
+Cùng hộp thoại đó còn đổi được **màu** (12 màu vở học trò, hoặc chọn màu bất kỳ),
+**độ dày nét** và bật **nét đứt** — tiện cho đường phụ, đường khuất.
+
+Trong thanh lệnh thì dùng `doiten A M`, `mau d #b3261e`, `net d dut`, `to d 3`.
 
 ### Lưới và trục toạ độ
 
