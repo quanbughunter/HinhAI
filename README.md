@@ -2,7 +2,7 @@
 
 Bảng vẽ hình học phẳng và hình không gian cho học sinh cấp 2 – cấp 3, có trợ lý AI nhận lệnh bằng tiếng Việt.
 
-Không thư viện ngoài · một tệp HTML 233 KB · mở bằng trình duyệt là chạy.
+Không thư viện ngoài · một tệp HTML 239 KB · mở bằng trình duyệt là chạy.
 
 ---
 
@@ -22,7 +22,7 @@ npm run dev          # mở http://localhost:5173
 ```bash
 npm run bundle       # sinh dist/geoai.html
 npm test             # 157 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 89 bài kiểm thử giao diện
+node tests/dom-smoke.mjs   # 103 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
 ```
@@ -143,6 +143,25 @@ góc trái dưới trên điện thoại).
 Mặc định **vẽ xong là con trỏ tự về Chọn/Kéo**. Muốn vẽ liên tiếp nhiều hình cùng loại thì
 tắt trong ⚙ Cài đặt.
 
+### Đặt tên theo đề bài
+
+Đề cho *"hình bình hành MNPQ"* thì hình phải mang đúng tên đó. Mở hộp đổi tên bằng một
+trong bốn cách:
+
+- **bấm đúp** lên hình hoặc lên chữ trên bảng vẽ
+- bấm vào **tên** trong tab **Đối tượng**
+- bấm vào **tên** trong tab **Phương trình**
+- chọn hình rồi bấm **F2**
+
+Với đa giác, hình chóp, lăng trụ thì hộp thoại có thêm ô **đặt tên cả loạt đỉnh**: gõ
+`MNPQ` là bốn đỉnh đổi một lượt. Tên dài hơn một chữ thì ngăn bằng dấu cách: `A₁ A₂ A₃`.
+Có sẵn mấy phím phụ cho dấu phẩy trên `′`, chỉ số dưới `₁₂₃₄` và chữ Hy Lạp `α β Δ ω`.
+
+Trùng tên hoặc cho thiếu tên đỉnh thì app báo lỗi và **không đổi gì cả** — không có chuyện
+đổi được nửa chừng rồi bỏ dở.
+
+Trong thanh lệnh thì dùng `doiten A M`.
+
 ### Lưới và trục toạ độ
 
 Hai nút riêng trên thanh trên (trong menu **⋯** khi dùng điện thoại): **▦ Lưới** và
@@ -166,6 +185,7 @@ Muốn ẩn tên đúng một hình thì vào tab **Đối tượng**, bấm ch�
 | `Ctrl+Z` / `Ctrl+Y` | Hoàn tác / làm lại |
 | `Enter` | Kết thúc đa giác, hình chóp, lăng trụ |
 | `Esc` | Bỏ lựa chọn đang dở |
+| `F2` | Đổi tên đối tượng đang chọn |
 | `Delete` | Xoá đối tượng đang chọn |
 | `Shift` khi kéo | Bám vào lưới |
 | Lăn chuột | Phóng to / thu nhỏ |

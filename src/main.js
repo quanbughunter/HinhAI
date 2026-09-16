@@ -455,18 +455,96 @@ function diemTuDoCua(obj) {
 }
 
 /** Đổi tên một đối tượng */
+/**
+ * Những phép dựng mà đối số chính là các ĐỈNH, nên đổi tên cả loạt được.
+ * Đề bài cho "hình bình hành MNPQ" thì gõ một lần MNPQ là xong, khỏi sửa
+ * từng đỉnh một.
+ */
+const CO_DINH = { polygon: 1, pyramid: 1, prism: 1, face: 1 };
+
+/** Tách chuỗi tên đỉnh: "MNPQ" -> [M,N,P,Q] · "A₁ A₂" -> [A₁, A₂] */
+function tachTenDinh(chuoi) {
+  const s = String(chuoi || '').trim();
+  if (!s) return [];
+  if (/[\s,;]/.test(s)) return s.split(/[\s,;]+/).filter(Boolean);
+  // không có dấu cách: mỗi chữ cái là một đỉnh, nhưng dấu phẩy trên và
+  // chỉ số dưới thì dính vào chữ đứng trước (A', A₁)
+  const ra = [];
+  for (const c of s) {
+    if (ra.length && /['′"₀₁₂₃₄₅₆₇₈₉0-9]/.test(c)) ra[ra.length - 1] += c;
+    else ra.push(c);
+  }
+  return ra;
+}
+
+let tenDangSua = null;
+
 function doiTen(o) {
   if (!o) return;
-  const t = prompt('Tên mới cho "' + o.name + '":', o.name);
-  if (t == null) return;
-  const ten = t.trim();
-  if (!ten) return;
-  const trung = D().byName(ten);
-  if (trung && trung !== o) { flash('Tên "' + ten + '" đã có rồi'); return; }
+  const hop = $('#tenmodal');
+  if (!hop) return;                                  // DOM giả lập trong bài test
+  tenDangSua = o;
+  const dinh = (CO_DINH[o.op] ? o.args.map((id) => D().get(id)).filter((p) => p && p.type === 'point') : [])
+    .concat(CO_DINH[o.op] ? o.args.map((id) => D().get(id)).filter((p) => p && p.val && p.val.t === 'p3') : []);
+  $('#tenTieuDe').textContent = 'Đổi tên ' + o.name;
+  $('#tenPhu').textContent = describe(o);
+  $('#tenMoi').value = o.name;
+  $('#tenDinh').value = '';
+  const oDinh = $('#tenDinhO');
+  if (dinh.length >= 2) {
+    oDinh.hidden = false;
+    $('#tenDinhSo').textContent = `(${dinh.length} đỉnh, đang là ${dinh.map((p) => p.name).join('')})`;
+    $('#tenDinh').placeholder = dinh.map((p) => p.name).join('');
+  } else {
+    oDinh.hidden = true;
+  }
+  baoTen('');
+  hop.classList.add('on');
+  const inp = $('#tenMoi');
+  inp.focus();
+  if (inp.select) inp.select();
+}
+
+function baoTen(chu, hong) {
+  const el = $('#tenLoi');
+  if (!el) return;
+  el.textContent = chu || '';
+  el.className = 'ptmsg' + (chu ? ' on ' + (hong ? 'err' : 'ok') : '');
+}
+
+/** Áp tên mới. Kiểm trùng trước rồi mới đổi, để hỏng thì không đổi nửa vời. */
+function luuTen() {
+  const o = tenDangSua;
+  if (!o) return false;
+  const doc = D();
+  const ten = $('#tenMoi').value.trim();
+  if (!ten) { baoTen('Tên không được để trống.', true); return false; }
+  const trung = doc.byName(ten);
+  if (trung && trung !== o) { baoTen(`Tên "${ten}" đã có rồi. Chọn tên khác nhé.`, true); return false; }
+
+  const dinh = CO_DINH[o.op] ? o.args.map((id) => doc.get(id)).filter(Boolean) : [];
+  const dsTen = tachTenDinh($('#tenDinh').value);
+  if (dsTen.length) {
+    if (dsTen.length !== dinh.length) {
+      baoTen(`Hình này có ${dinh.length} đỉnh mà bạn cho ${dsTen.length} tên.`, true);
+      return false;
+    }
+    if (new Set(dsTen).size !== dsTen.length) { baoTen('Các đỉnh trùng tên nhau.', true); return false; }
+    for (const t of dsTen) {
+      const k = doc.byName(t);
+      if (k && !dinh.includes(k) && k !== o) { baoTen(`Tên "${t}" đã dùng cho hình khác.`, true); return false; }
+    }
+  }
   snap();
   o.name = ten;
+  dsTen.forEach((t, i) => { dinh[i].name = t; });
+  $('#tenmodal').classList.remove('on');
+  tenDangSua = null;
   render();
+  return true;
 }
+
+
 
 /** Snap toạ độ về lưới con gần nhất */
 function snapWorld(p) {
@@ -1076,6 +1154,7 @@ function bind() {
     if (!b) return;
     const o = D().get(b.dataset.id);
     if (!o) return;
+    if (e.target.classList.contains('nm')) { doiTen(o); return; }
     if (e.target.classList.contains('eq')) { moO(b, o, e.target); return; }
     if (e.target.classList.contains('eqin')) return;
     app.sel = app.sel.has(o.id) && app.sel.size === 1 ? new Set() : new Set([o.id]);
@@ -1247,6 +1326,24 @@ function bind() {
       : 'Chưa cài máy chủ trung gian.';
     $('#setmodal').classList.add('on');
   });
+  // --- hộp thoại đổi tên ---
+  $('#tenHuy').addEventListener('click', () => { $('#tenmodal').classList.remove('on'); tenDangSua = null; });
+  $('#tenLuu').addEventListener('click', luuTen);
+  $('#tenmodal').addEventListener('click', (e) => { if (e.target.id === 'tenmodal') { e.currentTarget.classList.remove('on'); tenDangSua = null; } });
+  for (const id of ['#tenMoi', '#tenDinh']) {
+    $(id).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); luuTen(); }
+      if (e.key === 'Escape') { $('#tenmodal').classList.remove('on'); tenDangSua = null; }
+    });
+  }
+  $('#tenPhim').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-them]');
+    if (!b) return;
+    const inp = document.activeElement && document.activeElement.id === 'tenDinh' ? $('#tenDinh') : $('#tenMoi');
+    inp.value += b.dataset.them;
+    inp.focus();
+  });
+
   $('#setcancel').addEventListener('click', () => $('#setmodal').classList.remove('on'));
   $('#setsave').addEventListener('click', () => {
     LS.set('key', $('#apikey').value.trim());
@@ -1264,6 +1361,7 @@ function bind() {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
     if (inField) return;
+    if (e.key === 'F2' && app.sel.size === 1) { doiTen(D().get([...app.sel][0])); return; }
     if (e.key === 'Enter' && app.picks.length) { finishTool(); return; }
     if (e.key === 'Escape') { app.picks = []; app.sel.clear(); render(); return; }
     if (e.key === 'Delete' || e.key === 'Backspace') {

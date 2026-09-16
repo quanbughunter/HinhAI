@@ -170,6 +170,11 @@ input,textarea,select{font:inherit;color:inherit}
 .pthint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.65}
 .pthint b{font-family:var(--font-math);font-weight:600;color:var(--ink)}
 .ptmsg{font-size:12px;margin-top:7px;padding:7px 9px;border-radius:8px;display:none;line-height:1.5}
+.phim{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.phim button{border:1px solid var(--line);border-radius:7px;padding:4px 9px;font-size:13px;color:var(--muted);
+  font-family:var(--font-math);min-width:32px}
+.phim button:hover{border-color:var(--accent);color:var(--accent)}
+#tenMoi,#tenDinh{font-family:var(--font-math);font-size:16px}
 .ptmsg.on{display:block}
 .ptmsg.ok{background:var(--accent-soft);color:var(--accent)}
 .ptmsg.err{background:var(--errbg);border:1px solid var(--errline);color:var(--errink)}
@@ -183,7 +188,9 @@ input,textarea,select{font:inherit;color:inherit}
 .pt:hover{border-color:var(--accent)}
 .pt.on{background:var(--accent-soft);border-color:var(--accent)}
 .pt .hd{display:flex;align-items:baseline;gap:7px;margin-bottom:3px}
-.pt .nm{font-family:var(--font-math);font-style:italic;font-weight:700;font-size:15px;color:var(--accent)}
+.pt .nm{font-family:var(--font-math);font-style:italic;font-weight:700;font-size:15px;color:var(--accent);
+  cursor:text;text-decoration:underline dotted transparent;text-underline-offset:3px}
+.pt .nm:hover{text-decoration-color:var(--accent)}
 .pt .ty{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 .pt .eq{font-family:var(--font-math);font-size:15.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .pt .ex{font-size:11.5px;color:var(--muted);margin-top:3px;white-space:pre-wrap}
@@ -197,7 +204,9 @@ input,textarea,select{font:inherit;color:inherit}
 .obj{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:13px}
 .obj:hover{background:var(--bg)}
 .obj .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
-.obj .nm{font-weight:700;font-family:var(--font-math);font-style:italic;font-size:15px}
+.obj .nm{font-weight:700;font-family:var(--font-math);font-style:italic;font-size:15px;
+  cursor:text;text-decoration:underline dotted var(--line);text-underline-offset:3px}
+.obj .nm:hover{text-decoration-color:var(--accent);color:var(--accent)}
 .obj .de{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .obj .x{color:var(--muted);opacity:0;padding:2px 5px;border-radius:6px;font-size:12px}
 .obj .x[data-act="ten"],.obj .x[data-act="vis"]{opacity:.55}
@@ -467,6 +476,38 @@ input,textarea,select{font:inherit;color:inherit}
     <span class="pfx">›</span>
     <input id="cmd" placeholder="Nhập lệnh nhanh:  M = trungdiem(A,B)   —   Enter để chạy, ↑ để lấy lệnh cũ">
     <span class="st" id="status"></span>
+  </div>
+</div>
+
+<!-- Đổi tên: đề bài cho tên gì thì hình phải mang đúng tên đó -->
+<div class="modal" id="tenmodal">
+  <div class="card">
+    <h3 id="tenTieuDe">Đổi tên</h3>
+    <p class="sub" id="tenPhu"></p>
+    <div class="field">
+      <label>Tên mới</label>
+      <input id="tenMoi" type="text" autocomplete="off" spellcheck="false" autocapitalize="off">
+      <div class="phim" id="tenPhim">
+        <button data-them="'">′ phẩy</button>
+        <button data-them="₁">₁</button><button data-them="₂">₂</button>
+        <button data-them="₃">₃</button><button data-them="₄">₄</button>
+        <button data-them="α">α</button><button data-them="β">β</button>
+        <button data-them="Δ">Δ</button><button data-them="ω">ω</button>
+      </div>
+    </div>
+    <div class="field" id="tenDinhO" hidden>
+      <label>Đặt tên luôn các đỉnh <span id="tenDinhSo"></span></label>
+      <input id="tenDinh" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="MNPQ">
+      <div style="font-size:11.5px;color:var(--muted);margin-top:5px">
+        Gõ liền <b>MNPQ</b> là mỗi chữ một đỉnh. Tên dài hơn một chữ thì ngăn bằng dấu cách:
+        <b>A₁ A₂ A₃</b>. Bỏ trống thì giữ nguyên tên cũ.
+      </div>
+    </div>
+    <div class="ptmsg" id="tenLoi"></div>
+    <div class="row">
+      <button class="btn ghost" id="tenHuy">Huỷ</button>
+      <button class="btn" id="tenLuu">Đổi tên</button>
+    </div>
   </div>
 </div>
 

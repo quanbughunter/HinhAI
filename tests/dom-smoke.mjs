@@ -185,6 +185,60 @@ console.log('\nGõ phương trình ra hình');
   ok('hoàn tác được thao tác gõ phương trình', app.doc['2d'].order.length <= n);
 }
 
+console.log('\nĐổi tên theo đề bài');
+{
+  q('#scriptbox').value = 'xoahet\nA=(0,0)\nB=(4,0)\nC=(4,3)\nD=(0,3)\nt=tugiac(A,B,C,D)';
+  q('#runscript').fire('click');
+  const doc = app.doc['2d'];
+  ok('dựng được tứ giác để thử', !!doc.byName('t') && doc.byName('t').args.length === 4);
+
+  // mở hộp thoại bằng cách bấm tên trong tab Đối tượng
+  q('#objlist').fire('click', { target: Object.assign(new (q('#objlist').constructor)(), {
+    classList: { contains: (c) => c === 'nm' }, dataset: {}, closest: () => ({ dataset: { id: doc.byName('t').id } }),
+  }) });
+  ok('bấm tên thì mở hộp đổi tên', q('#tenmodal').classList.contains('on'));
+  ok('hộp thoại có ô đặt tên cả loạt đỉnh', q('#tenDinhO').hidden === false);
+  ok('nói rõ đang có mấy đỉnh', q('#tenDinhSo').textContent.includes('4 đỉnh') && q('#tenDinhSo').textContent.includes('ABCD'),
+    q('#tenDinhSo').textContent);
+
+  // đổi tên hình và cả bốn đỉnh một lượt
+  q('#tenMoi').value = 'MNPQ';
+  q('#tenDinh').value = 'MNPQ';
+  q('#tenLuu').fire('click');
+  ok('đổi được tên đa giác', !!doc.byName('MNPQ'));
+  ok('đổi luôn tên bốn đỉnh', ['M', 'N', 'P', 'Q'].every((t) => !!doc.byName(t)), doc.list().map((o) => o.name).join(','));
+  ok('tên cũ không còn', !doc.byName('A') && !doc.byName('t'));
+  ok('đóng hộp thoại sau khi đổi', !q('#tenmodal').classList.contains('on'));
+  ok('bảng vẽ hiện tên mới', q('#svg').innerHTML.includes('>M<') && q('#svg').innerHTML.includes('>Q<'));
+
+  // số tên không khớp số đỉnh thì từ chối, không đổi nửa vời
+  const dinhCu = doc.byName('MNPQ').args.map((id) => doc.get(id).name).join('');
+  doiTenQua('MNPQ', 'XYZT', 'XY');
+  ok('cho thiếu tên thì báo lỗi', q('#tenLoi').className.includes('err'), q('#tenLoi').textContent);
+  ok('không đổi gì khi báo lỗi', doc.byName('MNPQ').args.map((id) => doc.get(id).name).join('') === dinhCu);
+  q('#tenHuy').fire('click');
+
+  // trùng tên thì từ chối
+  doiTenQua('MNPQ', 'M', '');
+  ok('trùng tên thì báo lỗi', q('#tenLoi').className.includes('err') && /đã có/.test(q('#tenLoi').textContent), q('#tenLoi').textContent);
+  q('#tenHuy').fire('click');
+
+  // tên có dấu phẩy trên và chỉ số dưới
+  doiTenQua('MNPQ', 'A₁B₁C₁D₁', "A' B' C' D'");
+  ok('đặt được tên có dấu phẩy trên', !!doc.byName("A'") && !!doc.byName("D'"), doc.list().map((o) => o.name).join(','));
+  ok('tên hình nhận chỉ số dưới', !!doc.byName('A₁B₁C₁D₁'));
+}
+function doiTenQua(tenHinh, moi, dinh) {
+  const doc = app.doc['2d'];
+  const o = doc.byName(tenHinh);
+  q('#objlist').fire('click', { target: Object.assign(new (q('#objlist').constructor)(), {
+    classList: { contains: (c) => c === 'nm' }, dataset: {}, closest: () => ({ dataset: { id: o.id } }),
+  }) });
+  q('#tenMoi').value = moi;
+  q('#tenDinh').value = dinh;
+  q('#tenLuu').fire('click');
+}
+
 console.log('\nBắt dính giao điểm');
 {
   // dựng hai đường cắt nhau tại (2; 2) và cắt cả hai trục
