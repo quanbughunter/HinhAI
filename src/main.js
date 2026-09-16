@@ -142,6 +142,62 @@ function moO(the, o, dong) {
   inp.addEventListener('blur', () => { setTimeout(dongO, 120); });
 }
 
+
+/**
+ * Cụm thao tác kéo được.
+ *
+ * Bảng vẽ có bốn góc thì cả bốn đều đã có thứ gì đó: góc trên trái là dòng
+ * hướng dẫn, dưới trái là hàng mẫu nhanh (trên máy tính hàng này xuống tới ba
+ * dòng), dưới phải là cụm phóng to. Đặt cố định chỗ nào cũng có lúc vướng, nên
+ * để người dùng tự kéo tới chỗ trống rồi nhớ lại vị trí ấy.
+ */
+function cumThaoTacKeoDuoc() {
+  const dock = $('#dock'), tay = $('#dockkeo'), stage = $('.stage');
+  if (!dock || !tay || !stage) return;
+
+  const datViTri = (p) => {
+    if (!p) {
+      dock.classList.remove('daKeo');
+      dock.style.left = dock.style.top = dock.style.right = dock.style.bottom = '';
+      return;
+    }
+    const r = stage.getBoundingClientRect();
+    const d = dock.getBoundingClientRect();
+    if (r.width < 60 || d.width < 20) return;          // chưa dựng xong bố cục
+    const x = Math.max(6, Math.min(p.x, r.width - d.width - 6));
+    const y = Math.max(6, Math.min(p.y, r.height - d.height - 6));
+    dock.classList.add('daKeo');
+    dock.style.left = x + 'px'; dock.style.top = y + 'px';
+    dock.style.right = 'auto'; dock.style.bottom = 'auto';
+  };
+
+  const nho = () => LS.get('dock', null);
+  if (nho()) requestAnimationFrame(() => datViTri(nho()));
+
+  let keo = null;
+  tay.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    try { tay.setPointerCapture(e.pointerId); } catch (_) { /* DOM giả lập */ }
+    const d = dock.getBoundingClientRect(), r = stage.getBoundingClientRect();
+    keo = { dx: e.clientX - d.left, dy: e.clientY - d.top, r };
+  });
+  tay.addEventListener('pointermove', (e) => {
+    if (!keo) return;
+    datViTri({ x: e.clientX - keo.dx - keo.r.left, y: e.clientY - keo.dy - keo.r.top });
+  });
+  const buong = () => {
+    if (!keo) return;
+    keo = null;
+    const d = dock.getBoundingClientRect(), r = stage.getBoundingClientRect();
+    LS.set('dock', { x: d.left - r.left, y: d.top - r.top });
+  };
+  tay.addEventListener('pointerup', buong);
+  tay.addEventListener('pointercancel', buong);
+  // bấm đúp tay nắm: trả cụm về chỗ mặc định
+  tay.addEventListener('dblclick', () => { datViTri(null); LS.set('dock', null); flash('Đã trả cụm nút về chỗ cũ'); });
+  window.addEventListener('resize', () => { if (nho()) datViTri(nho()); });
+}
+
 /** Chuyển thẻ trong cột bên phải (Trợ lý AI · Phương trình · Đối tượng · Lệnh) */
 function chonThe(ten) {
   document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x.dataset.pane === ten));
@@ -1025,6 +1081,7 @@ function bind() {
   });
   veNutNhan();
   $('#pickmove').addEventListener('click', () => setTool('move'));
+  cumThaoTacKeoDuoc();
   $('#pickdel').addEventListener('click', () => setTool('del'));
 
   $('#btnGrid').addEventListener('click', () => { app.opts.grid = !app.opts.grid; LS.set('grid', app.opts.grid); render(); });

@@ -188,6 +188,17 @@ console.log('\nCụm thao tác, tự về chế độ chọn, ẩn tên');
   ok('cụm nút nổi có biểu tượng', q('#pickmove').innerHTML.includes('<svg') && q('#pickdel').innerHTML.includes('<svg'));
   ok('thanh công cụ KHÔNG còn Chọn/Kéo và Xoá', !q('#rail').innerHTML.includes('data-tool="move"') && !q('#rail').innerHTML.includes('data-tool="del"'));
 
+  // kéo cụm nút đi chỗ khác
+  const tay = q('#dockkeo'), dock = q('#dock');
+  tay.fire('pointerdown', { pointerId: 20, clientX: 30, clientY: 30 });
+  tay.fire('pointermove', { pointerId: 20, clientX: 230, clientY: 180 });
+  tay.fire('pointerup', { pointerId: 20, clientX: 230, clientY: 180 });
+  ok('kéo được cụm nút đi chỗ khác', !!dock.style.left && !!dock.style.top && dock.classList.contains('daKeo'),
+    JSON.stringify(dock.style));
+  ok('nhớ lại vị trí đã kéo', !!globalThis.localStorage.getItem('geoai.dock'), String(globalThis.localStorage.getItem('geoai.dock')));
+  tay.fire('dblclick', {});
+  ok('bấm đúp tay nắm thì về chỗ cũ', !dock.style.left && !dock.classList.contains('daKeo'));
+
   q('#pickdel').fire('click');
   ok('bấm nút Xoá thì đổi công cụ', app.tool === 'del');
   q('#pickmove').fire('click');

@@ -105,8 +105,17 @@ input,textarea,select{font:inherit;color:inherit}
 .zoombar button{width:30px;height:28px;border-radius:7px;color:var(--muted);font-size:15px;display:grid;place-items:center}
 .zoombar button:hover{background:var(--bg);color:var(--ink)}
 /* Cụm thao tác nổi: hoàn tác · làm lại · chọn/kéo · xoá */
-.dock{position:absolute;left:12px;bottom:52px;display:flex;align-items:center;gap:3px;padding:4px;
-  background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow)}
+/* Mặc định nằm góc trên bên phải bảng vẽ — chỗ duy nhất không vướng gì:
+   góc trên trái là dòng hướng dẫn, dưới trái là hàng mẫu nhanh, dưới phải là cụm zoom.
+   Người dùng kéo đi đâu thì vị trí đó được nhớ lại. */
+.dock{position:absolute;right:12px;top:12px;display:flex;align-items:center;gap:3px;padding:4px;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);
+  z-index:20}
+.dock .keo{width:16px;height:28px;display:grid;place-items:center;color:var(--line);font-size:14px;
+  cursor:grab;touch-action:none;letter-spacing:-2px;flex:0 0 auto}
+.dock .keo:hover{color:var(--muted)}
+.dock .keo:active{cursor:grabbing}
+.dock.daKeo{box-shadow:0 6px 22px -6px rgba(22,35,61,.35)}
 .dock button{width:34px;height:32px;border-radius:8px;color:var(--muted);display:grid;place-items:center;font-size:16px}
 .dock button svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
 .dock button:hover{background:var(--bg);color:var(--ink)}
@@ -271,9 +280,10 @@ input,textarea,select{font:inherit;color:inherit}
      Đây là vùng ngón cái với tới dễ nhất, và không đụng hai bong bóng bên phải. */
   .zoombar{left:11px;right:auto;bottom:52px;flex-direction:row;padding:3px;gap:2px}
   .zoombar button{width:38px;height:34px;font-size:17px}
-  .dock{left:11px;bottom:96px;padding:3px;gap:2px}
+  .dock{left:11px;right:auto;top:auto;bottom:96px;padding:3px;gap:2px}
   .dock button{width:38px;height:34px;font-size:17px}
   .dock button svg{width:21px;height:21px}
+  .dock .keo{width:18px;height:32px;font-size:15px}
   .hud{max-width:calc(100% - 24px);font-size:11.5px;padding:5px 9px;line-height:1.35;
     max-height:44px;overflow:hidden}
 
@@ -373,8 +383,10 @@ input,textarea,select{font:inherit;color:inherit}
       <div class="zoombar">
         <button id="zin">+</button><button id="zout">−</button><button id="zfit" title="Vừa khung">⤢</button>
       </div>
-      <!-- Cụm thao tác: luôn ở đúng một chỗ, khỏi phải vuốt tìm trong dải công cụ -->
+      <!-- Cụm thao tác: luôn trong tầm tay, khỏi phải vuốt tìm trong dải công cụ.
+           Kéo tay nắm để dời đi bất kỳ đâu; bấm đúp tay nắm để trả về chỗ cũ. -->
       <div class="dock" id="dock">
+        <span class="keo" id="dockkeo" title="Kéo để dời cụm nút · bấm đúp để trả về chỗ cũ">⠿</span>
         <button id="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
         <button id="redo" title="Làm lại (Ctrl+Y)">↷</button>
         <span class="vach"></span>
@@ -3693,6 +3705,62 @@ function moO(the, o, dong) {
   inp.addEventListener('blur', () => { setTimeout(dongO, 120); });
 }
 
+
+/**
+ * Cụm thao tác kéo được.
+ *
+ * Bảng vẽ có bốn góc thì cả bốn đều đã có thứ gì đó: góc trên trái là dòng
+ * hướng dẫn, dưới trái là hàng mẫu nhanh (trên máy tính hàng này xuống tới ba
+ * dòng), dưới phải là cụm phóng to. Đặt cố định chỗ nào cũng có lúc vướng, nên
+ * để người dùng tự kéo tới chỗ trống rồi nhớ lại vị trí ấy.
+ */
+function cumThaoTacKeoDuoc() {
+  const dock = $('#dock'), tay = $('#dockkeo'), stage = $('.stage');
+  if (!dock || !tay || !stage) return;
+
+  const datViTri = (p) => {
+    if (!p) {
+      dock.classList.remove('daKeo');
+      dock.style.left = dock.style.top = dock.style.right = dock.style.bottom = '';
+      return;
+    }
+    const r = stage.getBoundingClientRect();
+    const d = dock.getBoundingClientRect();
+    if (r.width < 60 || d.width < 20) return;          // chưa dựng xong bố cục
+    const x = Math.max(6, Math.min(p.x, r.width - d.width - 6));
+    const y = Math.max(6, Math.min(p.y, r.height - d.height - 6));
+    dock.classList.add('daKeo');
+    dock.style.left = x + 'px'; dock.style.top = y + 'px';
+    dock.style.right = 'auto'; dock.style.bottom = 'auto';
+  };
+
+  const nho = () => LS.get('dock', null);
+  if (nho()) requestAnimationFrame(() => datViTri(nho()));
+
+  let keo = null;
+  tay.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    try { tay.setPointerCapture(e.pointerId); } catch (_) { /* DOM giả lập */ }
+    const d = dock.getBoundingClientRect(), r = stage.getBoundingClientRect();
+    keo = { dx: e.clientX - d.left, dy: e.clientY - d.top, r };
+  });
+  tay.addEventListener('pointermove', (e) => {
+    if (!keo) return;
+    datViTri({ x: e.clientX - keo.dx - keo.r.left, y: e.clientY - keo.dy - keo.r.top });
+  });
+  const buong = () => {
+    if (!keo) return;
+    keo = null;
+    const d = dock.getBoundingClientRect(), r = stage.getBoundingClientRect();
+    LS.set('dock', { x: d.left - r.left, y: d.top - r.top });
+  };
+  tay.addEventListener('pointerup', buong);
+  tay.addEventListener('pointercancel', buong);
+  // bấm đúp tay nắm: trả cụm về chỗ mặc định
+  tay.addEventListener('dblclick', () => { datViTri(null); LS.set('dock', null); flash('Đã trả cụm nút về chỗ cũ'); });
+  window.addEventListener('resize', () => { if (nho()) datViTri(nho()); });
+}
+
 /** Chuyển thẻ trong cột bên phải (Trợ lý AI · Phương trình · Đối tượng · Lệnh) */
 function chonThe(ten) {
   document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x.dataset.pane === ten));
@@ -4576,6 +4644,7 @@ function bind() {
   });
   veNutNhan();
   $('#pickmove').addEventListener('click', () => setTool('move'));
+  cumThaoTacKeoDuoc();
   $('#pickdel').addEventListener('click', () => setTool('del'));
 
   $('#btnGrid').addEventListener('click', () => { app.opts.grid = !app.opts.grid; LS.set('grid', app.opts.grid); render(); });
