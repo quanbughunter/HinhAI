@@ -52,6 +52,8 @@ const need = (x, what) => { if (!isObj(x)) throw new Error('Cần ' + what); ret
 def(['diem', 'point', 'd'], (A) => ({ op: 'point', args: [], params: { x: A[0] || 0, y: A[1] || 0 } }));
 def(['trungdiem', 'midpoint', 'td'], (A) => ({ op: 'midpoint', args: A.filter(isObj) }));
 def(['giao', 'giaodiem', 'intersect'], (A) => ({ op: 'intersect', args: [A[0], A[1]], params: { i: isN(A[2]) ? A[2] : 0 } }));
+def(['giaoox', 'giaotruchoanh', 'catox'], (A) => ({ op: 'interAxis', args: [A[0]], params: { truc: 'Ox', i: isN(A[1]) ? A[1] : 0 } }));
+def(['giaooy', 'giaotructung', 'catoy'], (A) => ({ op: 'interAxis', args: [A[0]], params: { truc: 'Oy', i: isN(A[1]) ? A[1] : 0 } }));
 def(['diemtren', 'pointon', 'thuoc'], (A) => ({ op: 'pointOn', args: [A[0]], params: { t: isN(A[1]) ? A[1] : 0.5 } }));
 def(['chia', 'ratio', 'diemchia'], (A) => ({ op: 'ratioPoint', args: [A[0], A[1]], params: { t: isN(A[2]) ? A[2] : 0.5 } }));
 def(['trongtam', 'centroid', 'g'], (A) => ({ op: 'centroid', args: A.slice(0, 3) }));

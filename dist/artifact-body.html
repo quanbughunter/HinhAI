@@ -56,8 +56,14 @@ input,textarea,select{font:inherit;color:inherit}
 .top{display:flex;align-items:center;gap:8px;flex:0 0 auto;
   padding:calc(8px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 8px calc(12px + env(safe-area-inset-left,0px));
   background:var(--panel);border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:-.2px;margin-right:4px}
-.brand .dot{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#22468f,#4338a8);display:grid;place-items:center;color:#fff;font-size:12px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:-.2px;margin-right:4px;
+  padding:3px 7px 3px 3px;border-radius:9px;color:inherit;flex:0 0 auto}
+.brand:hover{background:var(--bg)}
+.brand:active{transform:scale(.96)}
+/* Logo: tam giác đều có kẻ đường cao — tam giác là chữ A, đường cao là chữ I. */
+.brand .dot{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#22468f,#4338a8);
+  display:grid;place-items:center;flex:0 0 auto}
+.brand .dot svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linejoin:round;stroke-linecap:round}
 .seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:2px}
 .seg button{padding:5px 12px;border-radius:7px;font-weight:600;font-size:13px;color:var(--muted);white-space:nowrap}
 .seg button.on{background:var(--panel);color:var(--accent);box-shadow:var(--shadow)}
@@ -330,7 +336,8 @@ input,textarea,select{font:inherit;color:inherit}
 /* Máy nhỏ (iPhone SE, Android 5"): thu gọn thêm một nấc cho khỏi tràn */
 @media (max-width:380px){
   .seg button{padding:5px 8px;font-size:12px}
-  .brand .dot{width:20px;height:20px;font-size:11px}
+  .brand .dot{width:21px;height:21px}
+  .brand .dot svg{width:14px;height:14px}
   .tool{width:42px;height:42px}
   .tbtn{padding:8px 7px}
   .quick button{font-size:11.5px;padding:6px 10px}
@@ -344,7 +351,11 @@ input,textarea,select{font:inherit;color:inherit}
 </style>
 <div id="app">
   <header class="top">
-    <div class="brand"><span class="dot">△</span><span>HìnhAI</span></div>
+    <button class="brand" id="logo" title="Bấm để làm mới — xoá hết hình và bắt đầu lại" aria-label="HìnhAI — làm mới">
+      <span class="dot"><svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3.4L21.3 19.4H2.7z"/><path d="M12 3.4V19.4"/>
+      </svg></span><span>HìnhAI</span>
+    </button>
     <div class="seg" id="modeseg">
       <button data-mode="2d" class="on">Hình phẳng</button>
       <button data-mode="3d">Không gian</button>
@@ -941,11 +952,150 @@ function loaiConic(hs) {
   return D > TI ? 'hypebol' : 'parabol';
 }
 
+/* ==== /src/core/giao.js ==== */
+// ============================================================================
+// giao.js — Tìm mọi GIAO ĐIỂM đang có trên bảng, kể cả giao với hai trục toạ độ.
+//
+// Dùng cho hai việc:
+//   1. Rê chuột lại gần chỗ hai đường cắt nhau thì bắt dính vào đúng điểm đó,
+//      bấm một cái là có điểm — khỏi phải chọn công cụ "giao điểm" rồi chỉ
+//      từng đường.
+//   2. Với miền nghiệm thì hiện sẵn chỗ mỗi biên cắt Ox, Oy — đó chính là các
+//      số học sinh cần để vẽ hình vào vở.
+//
+// Chỉ nhận những giao điểm THẬT SỰ NHÌN THẤY: đoạn thẳng cắt nhau ngoài phạm vi
+// hai đầu mút thì không tính, vì trên hình không có chỗ nào để bấm.
+// ============================================================================
+
+
+
+const TEO = 1e-7;   // ngưỡng coi như 0 (tên riêng để bản gộp không đụng TEO của docpt.js)
+
+/** Hai trục toạ độ, đóng gói dưới dạng "đường thẳng" để dùng chung mọi phép tính */
+const TRUC = {
+  Ox: { t: 'line', kind: 'line', p: { x: 0, y: 0 }, d: { x: 1, y: 0 }, a: { x: -1, y: 0 }, b: { x: 1, y: 0 } },
+  Oy: { t: 'line', kind: 'line', p: { x: 0, y: 0 }, d: { x: 0, y: 1 }, a: { x: 0, y: -1 }, b: { x: 0, y: 1 } },
+};
+
+/** Điểm p có nằm trên phần NHÌN THẤY của hình không (đoạn thì phải trong hai mút) */
+function namTren(val, p) {
+  if (!val) return false;
+  if (val.t !== 'line') return true;
+  if (val.kind === 'line') return true;
+  const dai = vLen(vSub(val.b, val.a));
+  if (dai < TEO) return false;
+  const t = lineParam(val, p) / dai;
+  if (val.kind === 'ray') return t > -1e-6;
+  return t > -1e-6 && t < 1 + 1e-6;     // đoạn thẳng, vectơ
+}
+
+/** Cắt hai đoạn thẳng (toạ độ thật). Trả về điểm giao hoặc null. */
+function catDoan(a1, a2, b1, b2) {
+  const r = { x: a2.x - a1.x, y: a2.y - a1.y };
+  const s = { x: b2.x - b1.x, y: b2.y - b1.y };
+  const d = r.x * s.y - r.y * s.x;
+  if (Math.abs(d) < 1e-14) return null;
+  const q = { x: b1.x - a1.x, y: b1.y - a1.y };
+  const t = (q.x * s.y - q.y * s.x) / d;
+  const u = (q.x * r.y - q.y * r.x) / d;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return { x: a1.x + r.x * t, y: a1.y + r.y * t };
+}
+
+/** Đổi một hình thành đường gấp khúc để cắt bằng cách duyệt từng đoạn */
+function gapKhuc(val, tamNhin) {
+  if (val.t === 'conic') return diemConic(val, tamNhin);
+  if (val.t === 'line') {
+    if (val.kind === 'seg' || val.kind === 'vec') return [[val.a, val.b]];
+    const L = Math.max(tamNhin * 3, 100);
+    const A = { x: val.p.x - val.d.x * L, y: val.p.y - val.d.y * L };
+    const B = { x: val.p.x + val.d.x * L, y: val.p.y + val.d.y * L };
+    return [[val.kind === 'ray' ? val.a : A, B]];
+  }
+  if (val.t === 'circle') {
+    const n = 160, ds = [];
+    for (let i = 0; i <= n; i++) {
+      const t = (i / n) * 2 * Math.PI;
+      ds.push({ x: val.c.x + val.r * Math.cos(t), y: val.c.y + val.r * Math.sin(t) });
+    }
+    return [ds];
+  }
+  return [];
+}
+
+/**
+ * Giao của hai hình. Đường thẳng và đường tròn thì giải đúng bằng công thức;
+ * có conic thì mới phải cắt gần đúng theo đường gấp khúc.
+ */
+function giaoHai(v1, v2, tamNhin = 40) {
+  if (!v1 || !v2) return [];
+  const conic1 = v1.t === 'conic', conic2 = v2.t === 'conic';
+  if (!conic1 && !conic2) {
+    return intersectAny(v1, v2).filter((p) => p && namTren(v1, p) && namTren(v2, p));
+  }
+  if (conic1 && conic2) return [];        // conic cắt conic: bỏ qua, quá nặng để chạy mỗi lần rê chuột
+  const A = gapKhuc(v1, tamNhin), B = gapKhuc(v2, tamNhin);
+  const ra = [];
+  for (const na of A) {
+    for (let i = 0; i + 1 < na.length; i++) {
+      for (const nb of B) {
+        for (let j = 0; j + 1 < nb.length; j++) {
+          const p = catDoan(na[i], na[i + 1], nb[j], nb[j + 1]);
+          if (p && !ra.some((q) => vDist(q, p) < 1e-6)) ra.push(p);
+        }
+      }
+    }
+  }
+  return ra;
+}
+
+const CAT_DUOC = { line: 1, circle: 1, conic: 1 };
+
+/**
+ * Mọi giao điểm hiện có. Mỗi phần tử:
+ *   { p, a, b, i }   a, b là đối tượng; b có thể là chuỗi 'Ox' / 'Oy'
+ *   i là thứ tự nghiệm, cần cho phép dựng "giao điểm" biết lấy nghiệm nào.
+ */
+function timGiao(doc, tamNhin = 40, keCaTruc = true) {
+  const ds = doc.list().filter((o) => o.visible && o.val && CAT_DUOC[o.val.t]);
+  const ra = [];
+  const them = (pts, a, b) => {
+    pts.forEach((p, i) => {
+      if (Number.isFinite(p.x) && Number.isFinite(p.y)) ra.push({ p, a, b, i });
+    });
+  };
+  for (let i = 0; i < ds.length; i++) {
+    for (let j = i + 1; j < ds.length; j++) {
+      them(giaoHai(ds[i].val, ds[j].val, tamNhin), ds[i], ds[j]);
+    }
+    if (keCaTruc) {
+      them(giaoHai(ds[i].val, TRUC.Ox, tamNhin), ds[i], 'Ox');
+      them(giaoHai(ds[i].val, TRUC.Oy, tamNhin), ds[i], 'Oy');
+    }
+  }
+  return ra;
+}
+
+/** Giao của các biên một miền nghiệm với hai trục — dùng để chấm sẵn lên hình */
+function giaoBienVoiTruc(mien) {
+  if (!mien || !mien.hp) return [];
+  const ra = [];
+  mien.hp.forEach((h, k) => {
+    const n2 = h.a * h.a + h.b * h.b;
+    if (n2 < 1e-12) return;
+    // a·x + b·y + c = 0
+    if (Math.abs(h.b) > TEO) ra.push({ k, truc: 'Oy', p: { x: 0, y: -h.c / h.b } });
+    if (Math.abs(h.a) > TEO) ra.push({ k, truc: 'Ox', p: { x: -h.c / h.a, y: 0 } });
+  });
+  return ra;
+}
+
 /* ==== /src/core/ops2d.js ==== */
 // ============================================================================
 // ops2d.js — Bảng phép dựng hình phẳng.
 // Mỗi phép: { type, style?, fn(vals, params, obj, doc) -> value, drag?(obj,pos,doc) }
 // ============================================================================
+
 
 
 
@@ -1028,9 +1178,24 @@ const OPS = {
   intersect: {
     type: 'point', style: PT,
     fn: ([a, b], p) => {
-      const arr = intersectAny(a, b);
+      // giaoHai hiểu được cả conic và biết bỏ giao nằm ngoài đoạn thẳng
+      const arr = giaoHai(a, b);
       if (!arr.length) return null;
       return arr[Math.min(p.i || 0, arr.length - 1)];
+    },
+  },
+  // Giao với trục toạ độ: trục không phải là đối tượng trên bảng nên cho hẳn
+  // hai phép dựng riêng — cũng đúng thứ đề bài hay hỏi ("cắt trục hoành tại...").
+  interAxis: {
+    type: 'point', style: PT,
+    fn: ([a], p) => {
+      const doc1 = p.truc === 'Oy';
+      const arr = giaoHai(a, TRUC[doc1 ? 'Oy' : 'Ox']);
+      if (!arr.length) return null;
+      const q = arr[Math.min(p.i || 0, arr.length - 1)];
+      // Nằm trên trục thì một toạ độ phải bằng 0 CHÍNH XÁC, đừng để sai số
+      // kiểu 2.2e-16 lọt vào bài làm của học sinh.
+      return doc1 ? { x: 0, y: q.y } : { x: q.x, y: 0 };
     },
   },
   midpoint: {
@@ -1963,6 +2128,8 @@ const need = (x, what) => { if (!isObj(x)) throw new Error('Cần ' + what); ret
 def(['diem', 'point', 'd'], (A) => ({ op: 'point', args: [], params: { x: A[0] || 0, y: A[1] || 0 } }));
 def(['trungdiem', 'midpoint', 'td'], (A) => ({ op: 'midpoint', args: A.filter(isObj) }));
 def(['giao', 'giaodiem', 'intersect'], (A) => ({ op: 'intersect', args: [A[0], A[1]], params: { i: isN(A[2]) ? A[2] : 0 } }));
+def(['giaoox', 'giaotruchoanh', 'catox'], (A) => ({ op: 'interAxis', args: [A[0]], params: { truc: 'Ox', i: isN(A[1]) ? A[1] : 0 } }));
+def(['giaooy', 'giaotructung', 'catoy'], (A) => ({ op: 'interAxis', args: [A[0]], params: { truc: 'Oy', i: isN(A[1]) ? A[1] : 0 } }));
 def(['diemtren', 'pointon', 'thuoc'], (A) => ({ op: 'pointOn', args: [A[0]], params: { t: isN(A[1]) ? A[1] : 0.5 } }));
 def(['chia', 'ratio', 'diemchia'], (A) => ({ op: 'ratioPoint', args: [A[0], A[1]], params: { t: isN(A[2]) ? A[2] : 0.5 } }));
 def(['trongtam', 'centroid', 'g'], (A) => ({ op: 'centroid', args: A.slice(0, 3) }));
@@ -2267,6 +2434,7 @@ function splitAssign(line) {
 // ============================================================================
 
 
+
 const NHO = 1e-9;   // ngưỡng coi như bằng 0 (đặt tên riêng để bản gộp không đụng EPS của vec.js)
 
 /** Làm tròn gọn: bỏ đuôi 0 thừa, -0 thành 0 */
@@ -2546,10 +2714,19 @@ function phuongTrinh(o) {
   // ---- miền nghiệm ----
   if (v.t === 'mien') {
     const ds = (o.params && o.params.bpt) || [];
+    // Giao của các biên với hai trục: số liệu để dựng hình vào vở.
+    const da = [];
+    const gt = [];
+    for (const g of giaoBienVoiTruc(v)) {
+      if (da.some((q) => Math.abs(q.x - g.p.x) < 1e-9 && Math.abs(q.y - g.p.y) < 1e-9)) continue;
+      da.push(g.p);
+      gt.push(`${g.truc}: (${soGon(g.p.x)}; ${soGon(g.p.y)})`);
+    }
+    const dong1 = v.rong ? 'Hệ vô nghiệm' : `Miền ${v.pts.length >= 3 ? 'đa giác ' + v.pts.length + ' đỉnh' : 'rỗng'}`;
     return {
       loai: 'Miền nghiệm',
       pt: ds.length ? ds.join('\n') : null,
-      phu: v.rong ? 'Hệ vô nghiệm' : `Miền ${v.pts.length >= 3 ? 'đa giác ' + v.pts.length + ' đỉnh' : 'rỗng'}`,
+      phu: dong1 + (gt.length ? '\nBiên cắt trục tại   ' + gt.join('   ·   ') : ''),
     };
   }
 
@@ -2574,6 +2751,7 @@ function phuongTrinh(o) {
 // render.js — Camera 2D/3D + vẽ toàn bộ khung hình ra chuỗi SVG.
 // Vẽ lại toàn bộ mỗi khung: đơn giản, không bug đồng bộ, đủ nhanh (<1ms/100 đối tượng).
 // ============================================================================
+
 
 
 
@@ -2760,6 +2938,19 @@ function render2(doc, cam, opt) {
         const B = cam.s({ x: P.x + u.x * big, y: P.y + u.y * big });
         out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" stroke="${mau}" stroke-width="${(o.style.width || 1.8) * (chon ? 1.6 : 1)}"${h.chat ? ' stroke-dasharray="7 5"' : ''} stroke-linecap="round"/>`);
       }
+      // Giao của từng biên với Ox, Oy — đây chính là các số học sinh cần để
+      // vẽ lại hình vào vở, nên chấm sẵn kèm toạ độ.
+      if (opt.giaoTruc !== false) {
+        const da = [];
+        for (const g of giaoBienVoiTruc(m)) {
+          if (da.some((q) => Math.abs(q.x - g.p.x) < 1e-9 && Math.abs(q.y - g.p.y) < 1e-9)) continue;
+          da.push(g.p);
+          const s0 = cam.s(g.p);
+          if (s0.x < -20 || s0.x > cam.w + 20 || s0.y < -20 || s0.y > cam.h + 20) continue;
+          out.push(`<circle cx="${f(s0.x)}" cy="${f(s0.y)}" r="3.6" fill="var(--labelhalo,#fff)" stroke="${mau}" stroke-width="1.9"/>`);
+          labels.push(`<text x="${f(s0.x + 8)}" y="${f(s0.y - 7)}" class="lbl plain" fill="${mau}">(${round3(g.p.x)}; ${round3(g.p.y)})</text>`);
+        }
+      }
       if (nenHienTen(o, opt, false)) {
         const trong = m.rong ? [] : catTheoKhung(m.pts, cam);
         if (trong.length) {
@@ -2868,6 +3059,12 @@ function render2(doc, cam, opt) {
     if (hl === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
     out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
     if (nenHienTen(o, opt, true)) labels.push(lab(o, p, o.name, col, 12, -11));
+  }
+  // dấu bắt dính: vòng tròn cam ở chỗ con trỏ đang hút vào
+  if (opt.batGiao) {
+    const s0 = cam.s(opt.batGiao);
+    out.push(`<circle cx="${f(s0.x)}" cy="${f(s0.y)}" r="9" fill="none" stroke="#d98324" stroke-width="2"/>`
+      + `<circle cx="${f(s0.x)}" cy="${f(s0.y)}" r="2.6" fill="#d98324"/>`);
   }
   return out.join('') + labels.join('');
 }
@@ -3149,7 +3346,7 @@ const TOOLS_THAOTAC = [
 // pick kinds: 'point' | 'curve' (đường/đường tròn) | 'any' | 'solid' | 'p3'
 const TOOLS_2D = [
   { g: 'Điểm', t: [
-    { id: 'point', name: 'Điểm', icon: ICONS.point, n: 1, kinds: ['point'], hint: 'Bấm lên bảng để tạo điểm. Bấm lên đường/đường tròn để tạo điểm thuộc hình đó.', make: () => null },
+    { id: 'point', name: 'Điểm', icon: ICONS.point, n: 1, kinds: ['point'], hint: 'Bấm lên bảng để tạo điểm · bấm lên một đường để tạo điểm thuộc đường · đưa con trỏ lại gần chỗ hai đường cắt nhau (kể cả cắt trục) thì tự hút vào đúng giao điểm.', make: () => null },
     { id: 'inter', name: 'Giao điểm', icon: ICONS.inter, n: 2, kinds: ['curve', 'curve'], hint: 'Chọn 2 đường (thẳng / tròn) để lấy giao điểm.',
       make: (p, app) => { app.addAll(p[0], p[1]); return null; } },
     { id: 'mid', name: 'Trung điểm', icon: ICONS.mid, n: 2, kinds: ['point', 'point'], hint: 'Chọn 2 điểm.', op: 'midpoint' },
@@ -3252,7 +3449,7 @@ const DSL_REFERENCE = `
 TOẠ ĐỘ & ĐIỂM (2D)
   A = (x,y)                     điểm tự do
   M = trungdiem(A,B)            trung điểm
-  I = giao(d1,d2)  |  giao(d,c,0) / giao(d,c,1)   giao điểm (số 0/1 chọn nghiệm)
+  I = giao(d1,d2)   ·   P = giaoOx(d)   ·   Q = giaoOy(d)  |  giao(d,c,0) / giao(d,c,1)   giao điểm (số 0/1 chọn nghiệm)
   P = diemtren(c)  |  diemtren(d,0.3)             điểm thuộc đối tượng
   N = chia(A,B,0.25)            điểm chia AB theo tỉ lệ (0→A, 1→B)
   G = trongtam(A,B,C)   O = tamngoaitiep(A,B,C)
@@ -3301,6 +3498,7 @@ MIỀN NGHIỆM BẤT PHƯƠNG TRÌNH BẬC NHẤT HAI ẨN
   m = hemien("x>=0","y>=0","x+y<=4")       miền nghiệm của HỆ (giao các nửa mặt phẳng)
   A = khoang("[-1;3]")                     biểu diễn khoảng/đoạn trên trục số, dùng [ ] hoặc ( )
   Biên vẽ nét liền khi có dấu bằng (≤, ≥), nét đứt khi ngặt (<, >) — app tự lo.
+  App cũng tự chấm sẵn chỗ mỗi biên cắt Ox, Oy kèm toạ độ, KHÔNG cần tự dựng thêm điểm.
 
 HÌNH KHÔNG GIAN (3D)
   A = (x,y,z)                    điểm 3D (3 số)
@@ -3565,6 +3763,7 @@ function localParse(text, doc) {
 
 
 
+
 const $ = (s) => document.querySelector(s);
 const LS = {
   get: (k, d) => { try { const v = localStorage.getItem('geoai.' + k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
@@ -3579,6 +3778,7 @@ const app = {
   picks: [],
   sel: new Set(),
   hover: null,
+  giao: null,          // giao điểm con trỏ đang hút vào
   opts: {
     grid: LS.get('grid', true), axes: LS.get('axes', true),
     tuVeChon: LS.get('tuVeChon', true),   // vẽ xong tự về Chọn/Kéo
@@ -3608,7 +3808,7 @@ function render() {
   const hatch = (i, goc, mau) => `<pattern id="hatch${i}" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(${goc})"><line x1="0" y1="0" x2="0" y2="9" stroke="${mau}" stroke-width="1.15" opacity=".75"/></pattern>`;
   const defs = `<defs>${mk('arw', '#16233d')}${mk('arwr', '#b3261e')}${mk('arwg', '#1f7a5a')}${mk('arwb', '#22468f')}`
     + `${hatch(0, 45, '#b3261e')}${hatch(1, -45, '#22468f')}${hatch(2, 0, '#1f7a5a')}</defs>`;
-  const opt = { ...app.opts, selected: app.sel, hover: app.hover };
+  const opt = { ...app.opts, selected: app.sel, hover: app.hover, batGiao: app.giao ? app.giao.p : null };
   svg.innerHTML = defs + (is3() ? render3(D(), cam, opt) : render2(D(), cam, opt));
   renderObjList();
   renderPT();
@@ -3751,6 +3951,43 @@ function cumThaoTacKeoDuoc() {
   // bấm đúp tay nắm: trả cụm về chỗ mặc định
   tay.addEventListener('dblclick', () => { datViTri(null); LS.set('dock', null); flash('Đã trả cụm nút về chỗ cũ'); });
   window.addEventListener('resize', () => { if (nho()) datViTri(nho()); });
+}
+
+
+/**
+ * Bấm logo = làm mới toàn bộ: xoá hình ở CẢ hai chế độ, đưa khung nhìn về
+ * gốc, dọn lịch sử hoàn tác và cuộc trò chuyện.
+ *
+ * Cố ý KHÔNG đụng tới cài đặt (khoá API, máy chủ trung gian, giao diện sáng
+ * tối, lưới/trục, vị trí cụm nút): đó là thiết lập của máy, không phải bài
+ * đang làm. Và vì thao tác này không hoàn tác được nên có hỏi lại một câu —
+ * logo nằm ngay góc trên, rất dễ bấm nhầm.
+ */
+function lamMoi(hoi = true) {
+  const coGi = app.doc['2d'].order.length || app.doc['3d'].order.length
+    || app.chat.some((m) => m.role === 'user');
+  if (hoi && coGi && typeof confirm === 'function') {
+    if (!confirm('Xoá hết hình và bắt đầu lại từ đầu?\n\nCài đặt, khoá API và giao diện vẫn giữ nguyên.')) return false;
+  }
+  for (const m of ['2d', '3d']) {
+    app.doc[m] = new GeoDoc();
+    app.doc[m].onChange = () => { };
+    app.hist[m] = []; app.future[m] = [];
+  }
+  app.cam['2d'] = new Cam2();
+  app.cam['3d'] = new Cam3();
+  app.sel.clear(); app.picks = [];
+  app.ptSua = null;
+  app.chat = [];
+  const log = $('#chatlog'); if (log) log.innerHTML = '';
+  setMode('2d');
+  setTool('move');
+  baoPT('', false);
+  const oPT = $('#ptin'); if (oPT) oPT.value = '';
+  sysMsg('Chào bạn! Mô tả hình cần vẽ bằng tiếng Việt, mình dựng ngay trên bảng.');
+  render();
+  flash('Đã làm mới');
+  return true;
 }
 
 /** Chuyển thẻ trong cột bên phải (Trợ lý AI · Phương trình · Đối tượng · Lệnh) */
@@ -3908,7 +4145,7 @@ function buildRail() {
   $('#quick').innerHTML = q.map((x, i) => `<button data-q="${i}">${esc(x[0])}</button>`).join('');
 }
 function setTool(id) {
-  app.tool = id; app.picks = []; app.sel.clear();
+  app.tool = id; app.picks = []; app.sel.clear(); app.giao = null;
   document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id));
   const nutMove = $('#pickmove'), nutDel = $('#pickdel');
   if (nutMove) nutMove.classList.toggle('on', id === 'move' || id === 'rot');
@@ -3994,10 +4231,47 @@ function snapWorld(p) {
 }
 
 /** Lấy đối tượng cần thiết cho bước chọn hiện tại; tự tạo điểm nếu cần */
+
+/**
+ * Giao điểm nào đang nằm gần con trỏ nhất (trong bán kính tol pixel).
+ *
+ * Tính lại mỗi lần rê chuột. Với hình cỡ bài tập (dưới ~30 đường) thì mỗi lần
+ * chỉ vài trăm phép tính, không đáng kể; hình to hơn thì bỏ qua để khỏi giật.
+ */
+function giaoGanConTro(px, tol = 14) {
+  if (is3()) return null;                       // hình không gian chưa cần
+  const doc = D(), cam = C();
+  const soDuong = doc.list().filter((o) => o.visible && o.val && /^(line|circle|conic)$/.test(o.val.t)).length;
+  if (!soDuong || soDuong > 40) return null;
+  const tamNhin = Math.max(cam.w, cam.h) / cam.scale;
+  let best = null, bd = tol;
+  for (const g of timGiao(doc, tamNhin, true)) {
+    const s0 = cam.s(g.p);
+    const d = Math.hypot(s0.x - px.x, s0.y - px.y);
+    if (d < bd) { bd = d; best = g; }
+  }
+  return best;
+}
+
+/** Dựng điểm tại một giao điểm đã bắt được — là điểm PHỤ THUỘC nên kéo hình nó vẫn đúng */
+function taoDiemGiao(g) {
+  if (!g) return null;
+  if (typeof g.b === 'string') {
+    return D().add({ op: 'interAxis', args: [g.a], params: { truc: g.b, i: g.i } });
+  }
+  return D().add({ op: 'intersect', args: [g.a, g.b], params: { i: g.i } });
+}
+
 function acquire(px, kind) {
   const doc = D(), cam = C();
-  const hit = pick(doc, cam, px, app.mode);
   const wantPt = kind === 'point' || kind === 'p3';
+  // Đang hút vào một giao điểm thì lấy đúng giao điểm đó, đừng tạo điểm rời.
+  if (wantPt && app.giao) {
+    const o = taoDiemGiao(app.giao);
+    if (o && o.val) { app.giao = null; return o; }
+    if (o) doc.remove(o.id);
+  }
+  const hit = pick(doc, cam, px, app.mode);
   if (hit) {
     const hitIsPt = is3() ? (hit.val && hit.val.t === 'p3') : hit.type === 'point';
     if (!wantPt || hitIsPt) {
@@ -4212,9 +4486,16 @@ function onMove(e) {
     const hit = pick(D(), C(), px, app.mode);
     const nh = chuChuKhongPhaiDinh(px);
     const id = (nh || hit) ? (nh || hit).id : null;
-    if (id !== app.hover) {
+    // bắt dính giao điểm: chỉ khi đang cần một ĐIỂM, và không đè lên điểm sẵn có
+    const canDiem = app.tool !== 'move' && app.tool !== 'rot' && app.tool !== 'del';
+    const deDiem = hit && (is3() ? hit.val && hit.val.t === 'p3' : hit.type === 'point');
+    const g = (canDiem && !deDiem && !nh) ? giaoGanConTro(px) : null;
+    const gCu = app.giao ? `${app.giao.p.x},${app.giao.p.y}` : '';
+    const gMoi = g ? `${g.p.x},${g.p.y}` : '';
+    if (id !== app.hover || gCu !== gMoi) {
       app.hover = id;
-      $('#svg').style.cursor = nh ? 'move' : (hit ? 'pointer' : (app.tool === 'move' ? 'default' : 'crosshair'));
+      app.giao = g;
+      $('#svg').style.cursor = nh ? 'move' : ((hit || g) ? 'pointer' : (app.tool === 'move' ? 'default' : 'crosshair'));
       render();
     }
     return;
@@ -4635,6 +4916,7 @@ function bind() {
     render();
   });
   veNutNhan();
+  $('#logo').addEventListener('click', () => lamMoi(true));
   $('#pickmove').addEventListener('click', () => setTool('move'));
   cumThaoTacKeoDuoc();
   $('#pickdel').addEventListener('click', () => setTool('del'));

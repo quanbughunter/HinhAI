@@ -7,7 +7,7 @@ export const DSL_REFERENCE = `
 TOẠ ĐỘ & ĐIỂM (2D)
   A = (x,y)                     điểm tự do
   M = trungdiem(A,B)            trung điểm
-  I = giao(d1,d2)  |  giao(d,c,0) / giao(d,c,1)   giao điểm (số 0/1 chọn nghiệm)
+  I = giao(d1,d2)   ·   P = giaoOx(d)   ·   Q = giaoOy(d)  |  giao(d,c,0) / giao(d,c,1)   giao điểm (số 0/1 chọn nghiệm)
   P = diemtren(c)  |  diemtren(d,0.3)             điểm thuộc đối tượng
   N = chia(A,B,0.25)            điểm chia AB theo tỉ lệ (0→A, 1→B)
   G = trongtam(A,B,C)   O = tamngoaitiep(A,B,C)
@@ -56,6 +56,7 @@ MIỀN NGHIỆM BẤT PHƯƠNG TRÌNH BẬC NHẤT HAI ẨN
   m = hemien("x>=0","y>=0","x+y<=4")       miền nghiệm của HỆ (giao các nửa mặt phẳng)
   A = khoang("[-1;3]")                     biểu diễn khoảng/đoạn trên trục số, dùng [ ] hoặc ( )
   Biên vẽ nét liền khi có dấu bằng (≤, ≥), nét đứt khi ngặt (<, >) — app tự lo.
+  App cũng tự chấm sẵn chỗ mỗi biên cắt Ox, Oy kèm toạ độ, KHÔNG cần tự dựng thêm điểm.
 
 HÌNH KHÔNG GIAN (3D)
   A = (x,y,z)                    điểm 3D (3 số)

@@ -6,6 +6,7 @@ import { GeoDoc } from './core/model.js';
 import { runScript } from './core/dsl.js';
 import { phuongTrinh } from './core/ptr.js';
 import { docPT, specTuPT, apDungPT } from './core/docpt.js';
+import { timGiao } from './core/giao.js';
 import { Cam2, Cam3, render2, render3, pick, labelBoxes, esc } from './ui/render.js';
 import { TOOLS_2D, TOOLS_3D, TOOLS_THAOTAC, QUICK_2D, QUICK_3D, CHIPS } from './ui/tools.js';
 import { askGemini, askViaProxy, askClaudeRuntime, getClaudeCapability, localParse, describeDoc, DSL_REFERENCE, DEFAULT_PROXY } from './ai/agent.js';
@@ -24,6 +25,7 @@ const app = {
   picks: [],
   sel: new Set(),
   hover: null,
+  giao: null,          // giao điểm con trỏ đang hút vào
   opts: {
     grid: LS.get('grid', true), axes: LS.get('axes', true),
     tuVeChon: LS.get('tuVeChon', true),   // vẽ xong tự về Chọn/Kéo
@@ -53,7 +55,7 @@ function render() {
   const hatch = (i, goc, mau) => `<pattern id="hatch${i}" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(${goc})"><line x1="0" y1="0" x2="0" y2="9" stroke="${mau}" stroke-width="1.15" opacity=".75"/></pattern>`;
   const defs = `<defs>${mk('arw', '#16233d')}${mk('arwr', '#b3261e')}${mk('arwg', '#1f7a5a')}${mk('arwb', '#22468f')}`
     + `${hatch(0, 45, '#b3261e')}${hatch(1, -45, '#22468f')}${hatch(2, 0, '#1f7a5a')}</defs>`;
-  const opt = { ...app.opts, selected: app.sel, hover: app.hover };
+  const opt = { ...app.opts, selected: app.sel, hover: app.hover, batGiao: app.giao ? app.giao.p : null };
   svg.innerHTML = defs + (is3() ? render3(D(), cam, opt) : render2(D(), cam, opt));
   renderObjList();
   renderPT();
@@ -196,6 +198,43 @@ function cumThaoTacKeoDuoc() {
   // bấm đúp tay nắm: trả cụm về chỗ mặc định
   tay.addEventListener('dblclick', () => { datViTri(null); LS.set('dock', null); flash('Đã trả cụm nút về chỗ cũ'); });
   window.addEventListener('resize', () => { if (nho()) datViTri(nho()); });
+}
+
+
+/**
+ * Bấm logo = làm mới toàn bộ: xoá hình ở CẢ hai chế độ, đưa khung nhìn về
+ * gốc, dọn lịch sử hoàn tác và cuộc trò chuyện.
+ *
+ * Cố ý KHÔNG đụng tới cài đặt (khoá API, máy chủ trung gian, giao diện sáng
+ * tối, lưới/trục, vị trí cụm nút): đó là thiết lập của máy, không phải bài
+ * đang làm. Và vì thao tác này không hoàn tác được nên có hỏi lại một câu —
+ * logo nằm ngay góc trên, rất dễ bấm nhầm.
+ */
+function lamMoi(hoi = true) {
+  const coGi = app.doc['2d'].order.length || app.doc['3d'].order.length
+    || app.chat.some((m) => m.role === 'user');
+  if (hoi && coGi && typeof confirm === 'function') {
+    if (!confirm('Xoá hết hình và bắt đầu lại từ đầu?\n\nCài đặt, khoá API và giao diện vẫn giữ nguyên.')) return false;
+  }
+  for (const m of ['2d', '3d']) {
+    app.doc[m] = new GeoDoc();
+    app.doc[m].onChange = () => { };
+    app.hist[m] = []; app.future[m] = [];
+  }
+  app.cam['2d'] = new Cam2();
+  app.cam['3d'] = new Cam3();
+  app.sel.clear(); app.picks = [];
+  app.ptSua = null;
+  app.chat = [];
+  const log = $('#chatlog'); if (log) log.innerHTML = '';
+  setMode('2d');
+  setTool('move');
+  baoPT('', false);
+  const oPT = $('#ptin'); if (oPT) oPT.value = '';
+  sysMsg('Chào bạn! Mô tả hình cần vẽ bằng tiếng Việt, mình dựng ngay trên bảng.');
+  render();
+  flash('Đã làm mới');
+  return true;
 }
 
 /** Chuyển thẻ trong cột bên phải (Trợ lý AI · Phương trình · Đối tượng · Lệnh) */
@@ -353,7 +392,7 @@ function buildRail() {
   $('#quick').innerHTML = q.map((x, i) => `<button data-q="${i}">${esc(x[0])}</button>`).join('');
 }
 function setTool(id) {
-  app.tool = id; app.picks = []; app.sel.clear();
+  app.tool = id; app.picks = []; app.sel.clear(); app.giao = null;
   document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id));
   const nutMove = $('#pickmove'), nutDel = $('#pickdel');
   if (nutMove) nutMove.classList.toggle('on', id === 'move' || id === 'rot');
@@ -439,10 +478,47 @@ function snapWorld(p) {
 }
 
 /** Lấy đối tượng cần thiết cho bước chọn hiện tại; tự tạo điểm nếu cần */
+
+/**
+ * Giao điểm nào đang nằm gần con trỏ nhất (trong bán kính tol pixel).
+ *
+ * Tính lại mỗi lần rê chuột. Với hình cỡ bài tập (dưới ~30 đường) thì mỗi lần
+ * chỉ vài trăm phép tính, không đáng kể; hình to hơn thì bỏ qua để khỏi giật.
+ */
+function giaoGanConTro(px, tol = 14) {
+  if (is3()) return null;                       // hình không gian chưa cần
+  const doc = D(), cam = C();
+  const soDuong = doc.list().filter((o) => o.visible && o.val && /^(line|circle|conic)$/.test(o.val.t)).length;
+  if (!soDuong || soDuong > 40) return null;
+  const tamNhin = Math.max(cam.w, cam.h) / cam.scale;
+  let best = null, bd = tol;
+  for (const g of timGiao(doc, tamNhin, true)) {
+    const s0 = cam.s(g.p);
+    const d = Math.hypot(s0.x - px.x, s0.y - px.y);
+    if (d < bd) { bd = d; best = g; }
+  }
+  return best;
+}
+
+/** Dựng điểm tại một giao điểm đã bắt được — là điểm PHỤ THUỘC nên kéo hình nó vẫn đúng */
+function taoDiemGiao(g) {
+  if (!g) return null;
+  if (typeof g.b === 'string') {
+    return D().add({ op: 'interAxis', args: [g.a], params: { truc: g.b, i: g.i } });
+  }
+  return D().add({ op: 'intersect', args: [g.a, g.b], params: { i: g.i } });
+}
+
 function acquire(px, kind) {
   const doc = D(), cam = C();
-  const hit = pick(doc, cam, px, app.mode);
   const wantPt = kind === 'point' || kind === 'p3';
+  // Đang hút vào một giao điểm thì lấy đúng giao điểm đó, đừng tạo điểm rời.
+  if (wantPt && app.giao) {
+    const o = taoDiemGiao(app.giao);
+    if (o && o.val) { app.giao = null; return o; }
+    if (o) doc.remove(o.id);
+  }
+  const hit = pick(doc, cam, px, app.mode);
   if (hit) {
     const hitIsPt = is3() ? (hit.val && hit.val.t === 'p3') : hit.type === 'point';
     if (!wantPt || hitIsPt) {
@@ -657,9 +733,16 @@ function onMove(e) {
     const hit = pick(D(), C(), px, app.mode);
     const nh = chuChuKhongPhaiDinh(px);
     const id = (nh || hit) ? (nh || hit).id : null;
-    if (id !== app.hover) {
+    // bắt dính giao điểm: chỉ khi đang cần một ĐIỂM, và không đè lên điểm sẵn có
+    const canDiem = app.tool !== 'move' && app.tool !== 'rot' && app.tool !== 'del';
+    const deDiem = hit && (is3() ? hit.val && hit.val.t === 'p3' : hit.type === 'point');
+    const g = (canDiem && !deDiem && !nh) ? giaoGanConTro(px) : null;
+    const gCu = app.giao ? `${app.giao.p.x},${app.giao.p.y}` : '';
+    const gMoi = g ? `${g.p.x},${g.p.y}` : '';
+    if (id !== app.hover || gCu !== gMoi) {
       app.hover = id;
-      $('#svg').style.cursor = nh ? 'move' : (hit ? 'pointer' : (app.tool === 'move' ? 'default' : 'crosshair'));
+      app.giao = g;
+      $('#svg').style.cursor = nh ? 'move' : ((hit || g) ? 'pointer' : (app.tool === 'move' ? 'default' : 'crosshair'));
       render();
     }
     return;
@@ -1080,6 +1163,7 @@ function bind() {
     render();
   });
   veNutNhan();
+  $('#logo').addEventListener('click', () => lamMoi(true));
   $('#pickmove').addEventListener('click', () => setTool('move'));
   cumThaoTacKeoDuoc();
   $('#pickdel').addEventListener('click', () => setTool('del'));

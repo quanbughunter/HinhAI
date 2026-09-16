@@ -6,6 +6,7 @@
 import { vSub, vAdd, vMul, vLen, vNorm, vDist, vPerp, angleABC, projectOnLine } from '../core/vec.js';
 import { p3add, p3sub, p3mul, p3dot, p3cross, p3len, p3norm, P3 } from '../core/ops3d.js';
 import { diemConic } from '../core/conic.js';
+import { giaoBienVoiTruc } from '../core/giao.js';
 
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const f = (n) => (Math.abs(n) < 1e-4 ? 0 : Math.round(n * 100) / 100);
@@ -189,6 +190,19 @@ export function render2(doc, cam, opt) {
         const B = cam.s({ x: P.x + u.x * big, y: P.y + u.y * big });
         out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" stroke="${mau}" stroke-width="${(o.style.width || 1.8) * (chon ? 1.6 : 1)}"${h.chat ? ' stroke-dasharray="7 5"' : ''} stroke-linecap="round"/>`);
       }
+      // Giao của từng biên với Ox, Oy — đây chính là các số học sinh cần để
+      // vẽ lại hình vào vở, nên chấm sẵn kèm toạ độ.
+      if (opt.giaoTruc !== false) {
+        const da = [];
+        for (const g of giaoBienVoiTruc(m)) {
+          if (da.some((q) => Math.abs(q.x - g.p.x) < 1e-9 && Math.abs(q.y - g.p.y) < 1e-9)) continue;
+          da.push(g.p);
+          const s0 = cam.s(g.p);
+          if (s0.x < -20 || s0.x > cam.w + 20 || s0.y < -20 || s0.y > cam.h + 20) continue;
+          out.push(`<circle cx="${f(s0.x)}" cy="${f(s0.y)}" r="3.6" fill="var(--labelhalo,#fff)" stroke="${mau}" stroke-width="1.9"/>`);
+          labels.push(`<text x="${f(s0.x + 8)}" y="${f(s0.y - 7)}" class="lbl plain" fill="${mau}">(${round3(g.p.x)}; ${round3(g.p.y)})</text>`);
+        }
+      }
       if (nenHienTen(o, opt, false)) {
         const trong = m.rong ? [] : catTheoKhung(m.pts, cam);
         if (trong.length) {
@@ -297,6 +311,12 @@ export function render2(doc, cam, opt) {
     if (hl === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
     out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
     if (nenHienTen(o, opt, true)) labels.push(lab(o, p, o.name, col, 12, -11));
+  }
+  // dấu bắt dính: vòng tròn cam ở chỗ con trỏ đang hút vào
+  if (opt.batGiao) {
+    const s0 = cam.s(opt.batGiao);
+    out.push(`<circle cx="${f(s0.x)}" cy="${f(s0.y)}" r="9" fill="none" stroke="#d98324" stroke-width="2"/>`
+      + `<circle cx="${f(s0.x)}" cy="${f(s0.y)}" r="2.6" fill="#d98324"/>`);
   }
   return out.join('') + labels.join('');
 }

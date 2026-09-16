@@ -2,7 +2,7 @@
 
 Bảng vẽ hình học phẳng và hình không gian cho học sinh cấp 2 – cấp 3, có trợ lý AI nhận lệnh bằng tiếng Việt.
 
-Không thư viện ngoài · một tệp HTML 220 KB · mở bằng trình duyệt là chạy.
+Không thư viện ngoài · một tệp HTML 233 KB · mở bằng trình duyệt là chạy.
 
 ---
 
@@ -21,8 +21,8 @@ npm run dev          # mở http://localhost:5173
 
 ```bash
 npm run bundle       # sinh dist/geoai.html
-npm test             # 140 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 64 bài kiểm thử giao diện
+npm test             # 157 bài kiểm thử toán học
+node tests/dom-smoke.mjs   # 89 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
 ```
@@ -118,6 +118,19 @@ Trong mặt phẳng nhận **bậc nhất và mọi đường bậc hai** — đ
 kể cả khi bị xoay (`xy = 1` ra hypebol nghiêng 45°). Trong không gian mới nhận mặt phẳng và
 mặt cầu. Bậc ba trở lên thì app báo rõ chứ không vẽ bừa.
 
+### Bắt dính giao điểm
+
+Chọn công cụ **Điểm** rồi đưa con trỏ lại gần chỗ hai đường cắt nhau — một vòng tròn cam
+hiện ra ngay tại giao điểm, bấm một cái là có điểm. Bắt được cả chỗ đường cắt **trục Ox,
+Oy**, và cả chỗ đường thẳng cắt elip / parabol / hypebol.
+
+Điểm tạo ra là **điểm phụ thuộc**: kéo hình hay sửa phương trình thì nó tự chạy theo, chứ
+không đứng ì một chỗ như điểm chấm tay. Giao nằm ngoài hai đầu mút của đoạn thẳng thì
+không bắt, vì trên hình không có chỗ đó.
+
+Miền nghiệm còn được **chấm sẵn** chỗ mỗi biên cắt hai trục, kèm toạ độ — đúng các số cần
+để chép hình vào vở. Bảng Phương trình cũng liệt kê lại.
+
 ### Cụm nút luôn trong tầm tay
 
 Bốn nút **↶ ↷ · Chọn/Kéo · Xoá** nằm riêng thành một cụm nổi trên bảng vẽ, không trộn vào
@@ -165,6 +178,7 @@ Muốn ẩn tên đúng một hình thì vào tab **Đối tượng**, bấm ch�
 ```
 A = (2,3)                 điểm tự do            A = (2,3,5)   điểm trong không gian
 M = trungdiem(A,B)        I = giao(d1,d2)       I = giao(d,c,0) / giao(d,c,1)
+P = giaoOx(d)             Q = giaoOy(d)         giao với trục hoành / trục tung
 P = diemtren(c)           N = chia(A,B,0.25)    F = chan(P,d)
 G = trongtam(A,B,C)       O = tamngoaitiep(A,B,C)
 I = tamnoitiep(A,B,C)     H = tructam(A,B,C)    H = chanduongcao(A,B,C)
@@ -254,7 +268,7 @@ td=thietdien(K,M,N,P)
 ## Cấu trúc mã
 
 ```
-src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  conic.js  ptr.js  docpt.js  dsl.js
+src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  conic.js  giao.js  ptr.js  docpt.js  dsl.js
 src/ui/     render.js  tools.js                            ← camera, vẽ SVG, công cụ
 src/ai/     agent.js                                       ← prompt + Gemini + luật offline
 src/main.js                                                ← điều phối

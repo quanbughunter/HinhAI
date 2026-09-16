@@ -11,6 +11,7 @@ import {
 } from './vec.js';
 import { mienNghiem, docKhoang } from './bpt.js';
 import { chuanHoaConic } from './conic.js';
+import { giaoHai, TRUC } from './giao.js';
 
 const PT = { color: '#1f3f8f', size: 4.6 };
 const LN = { color: '#16233d', width: 1.8 };
@@ -90,9 +91,24 @@ export const OPS = {
   intersect: {
     type: 'point', style: PT,
     fn: ([a, b], p) => {
-      const arr = intersectAny(a, b);
+      // giaoHai hiểu được cả conic và biết bỏ giao nằm ngoài đoạn thẳng
+      const arr = giaoHai(a, b);
       if (!arr.length) return null;
       return arr[Math.min(p.i || 0, arr.length - 1)];
+    },
+  },
+  // Giao với trục toạ độ: trục không phải là đối tượng trên bảng nên cho hẳn
+  // hai phép dựng riêng — cũng đúng thứ đề bài hay hỏi ("cắt trục hoành tại...").
+  interAxis: {
+    type: 'point', style: PT,
+    fn: ([a], p) => {
+      const doc1 = p.truc === 'Oy';
+      const arr = giaoHai(a, TRUC[doc1 ? 'Oy' : 'Ox']);
+      if (!arr.length) return null;
+      const q = arr[Math.min(p.i || 0, arr.length - 1)];
+      // Nằm trên trục thì một toạ độ phải bằng 0 CHÍNH XÁC, đừng để sai số
+      // kiểu 2.2e-16 lọt vào bài làm của học sinh.
+      return doc1 ? { x: 0, y: q.y } : { x: q.x, y: 0 };
     },
   },
   midpoint: {

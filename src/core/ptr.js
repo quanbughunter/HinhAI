@@ -14,6 +14,7 @@
 // ============================================================================
 
 import { soLieuConic } from './conic.js';
+import { giaoBienVoiTruc } from './giao.js';
 
 const NHO = 1e-9;   // ngưỡng coi như bằng 0 (đặt tên riêng để bản gộp không đụng EPS của vec.js)
 
@@ -294,10 +295,19 @@ export function phuongTrinh(o) {
   // ---- miền nghiệm ----
   if (v.t === 'mien') {
     const ds = (o.params && o.params.bpt) || [];
+    // Giao của các biên với hai trục: số liệu để dựng hình vào vở.
+    const da = [];
+    const gt = [];
+    for (const g of giaoBienVoiTruc(v)) {
+      if (da.some((q) => Math.abs(q.x - g.p.x) < 1e-9 && Math.abs(q.y - g.p.y) < 1e-9)) continue;
+      da.push(g.p);
+      gt.push(`${g.truc}: (${soGon(g.p.x)}; ${soGon(g.p.y)})`);
+    }
+    const dong1 = v.rong ? 'Hệ vô nghiệm' : `Miền ${v.pts.length >= 3 ? 'đa giác ' + v.pts.length + ' đỉnh' : 'rỗng'}`;
     return {
       loai: 'Miền nghiệm',
       pt: ds.length ? ds.join('\n') : null,
-      phu: v.rong ? 'Hệ vô nghiệm' : `Miền ${v.pts.length >= 3 ? 'đa giác ' + v.pts.length + ' đỉnh' : 'rỗng'}`,
+      phu: dong1 + (gt.length ? '\nBiên cắt trục tại   ' + gt.join('   ·   ') : ''),
     };
   }
 

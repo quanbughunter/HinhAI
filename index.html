@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0d1424">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2322468f'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'%3E%3Cpath d='M16 6.5L27 25.5H5z'/%3E%3Cpath d='M16 6.5V25.5'/%3E%3C/g%3E%3C/svg%3E">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
 /* ===================================================================
@@ -64,8 +65,14 @@ input,textarea,select{font:inherit;color:inherit}
 .top{display:flex;align-items:center;gap:8px;flex:0 0 auto;
   padding:calc(8px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 8px calc(12px + env(safe-area-inset-left,0px));
   background:var(--panel);border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:-.2px;margin-right:4px}
-.brand .dot{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#22468f,#4338a8);display:grid;place-items:center;color:#fff;font-size:12px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:-.2px;margin-right:4px;
+  padding:3px 7px 3px 3px;border-radius:9px;color:inherit;flex:0 0 auto}
+.brand:hover{background:var(--bg)}
+.brand:active{transform:scale(.96)}
+/* Logo: tam giác đều có kẻ đường cao — tam giác là chữ A, đường cao là chữ I. */
+.brand .dot{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#22468f,#4338a8);
+  display:grid;place-items:center;flex:0 0 auto}
+.brand .dot svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linejoin:round;stroke-linecap:round}
 .seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:2px}
 .seg button{padding:5px 12px;border-radius:7px;font-weight:600;font-size:13px;color:var(--muted);white-space:nowrap}
 .seg button.on{background:var(--panel);color:var(--accent);box-shadow:var(--shadow)}
@@ -338,7 +345,8 @@ input,textarea,select{font:inherit;color:inherit}
 /* Máy nhỏ (iPhone SE, Android 5"): thu gọn thêm một nấc cho khỏi tràn */
 @media (max-width:380px){
   .seg button{padding:5px 8px;font-size:12px}
-  .brand .dot{width:20px;height:20px;font-size:11px}
+  .brand .dot{width:21px;height:21px}
+  .brand .dot svg{width:14px;height:14px}
   .tool{width:42px;height:42px}
   .tbtn{padding:8px 7px}
   .quick button{font-size:11.5px;padding:6px 10px}
@@ -354,7 +362,11 @@ input,textarea,select{font:inherit;color:inherit}
 <body>
 <div id="app">
   <header class="top">
-    <div class="brand"><span class="dot">△</span><span>HìnhAI</span></div>
+    <button class="brand" id="logo" title="Bấm để làm mới — xoá hết hình và bắt đầu lại" aria-label="HìnhAI — làm mới">
+      <span class="dot"><svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3.4L21.3 19.4H2.7z"/><path d="M12 3.4V19.4"/>
+      </svg></span><span>HìnhAI</span>
+    </button>
     <div class="seg" id="modeseg">
       <button data-mode="2d" class="on">Hình phẳng</button>
       <button data-mode="3d">Không gian</button>

@@ -70,6 +70,8 @@ globalThis.Blob = class { constructor(p) { this.parts = p; } };
 globalThis.URL = { createObjectURL: () => 'blob:x', revokeObjectURL: () => { } };
 globalThis.Image = class { set src(_) { setTimeout(() => this.onerror && this.onerror(), 0); } };
 globalThis.prompt = () => 'ghi chú thử';
+globalThis.traLoiConfirm = true;
+globalThis.confirm = () => globalThis.traLoiConfirm;
 globalThis.alert = () => { };
 globalThis.fetch = async () => { throw new Error('không có mạng trong bài test'); };
 
@@ -183,6 +185,69 @@ console.log('\nGõ phương trình ra hình');
   ok('hoàn tác được thao tác gõ phương trình', app.doc['2d'].order.length <= n);
 }
 
+console.log('\nBắt dính giao điểm');
+{
+  // dựng hai đường cắt nhau tại (2; 2) và cắt cả hai trục
+  q('#cmd').value = 'xoahet';
+  q('#cmd').fire('keydown', { key: 'Enter' });
+  q('#scriptbox').value = 'd1 = pt y = x\nd2 = pt x + y = 4';
+  q('#runscript').fire('click');
+  ok('dựng được hai đường để thử', !!app.doc['2d'].byName('d1') && !!app.doc['2d'].byName('d2'));
+
+  const cam = app.cam['2d'];
+  const manHinh = (x, y) => ({ x: 900 / 2 + (x - cam.cx) * cam.scale, y: 620 / 2 - (y - cam.cy) * cam.scale });
+  const svg3 = q('#svg');
+  q('#rail').fire('click', { target: { closest: () => ({ dataset: { tool: 'point' } }) } });
+
+  // rê chuột tới gần giao điểm (2; 2), lệch 5px
+  const g = manHinh(2, 2);
+  svg3.fire('pointermove', { pointerId: 30, clientX: g.x + 5, clientY: g.y - 4 });
+  ok('rê lại gần thì bắt được giao điểm', !!app.giao, JSON.stringify(app.giao && app.giao.p));
+  ok('bắt đúng toạ độ (2; 2)', app.giao && Math.abs(app.giao.p.x - 2) < 1e-6 && Math.abs(app.giao.p.y - 2) < 1e-6);
+  ok('có vẽ dấu bắt lên bảng', /stroke="#d98324"/.test(svg3.innerHTML));
+
+  // bấm vào → tạo điểm phụ thuộc tại đúng giao điểm
+  const truoc = app.doc['2d'].order.length;
+  svg3.fire('pointerdown', { pointerId: 30, clientX: g.x + 5, clientY: g.y - 4 });
+  svg3.fire('pointerup', { pointerId: 30, clientX: g.x + 5, clientY: g.y - 4 });
+  const moi = app.doc['2d'].list()[app.doc['2d'].order.length - 1];
+  ok('bấm vào thì thêm đúng một điểm', app.doc['2d'].order.length === truoc + 1);
+  ok('điểm đó là GIAO ĐIỂM chứ không phải điểm rời', moi.op === 'intersect', moi.op);
+  ok('đúng toạ độ giao', Math.abs(moi.val.x - 2) < 1e-9 && Math.abs(moi.val.y - 2) < 1e-9, JSON.stringify(moi.val));
+
+  // đổi một đường thì giao điểm phải chạy theo
+  app.doc['2d'].byName('d2').params.c = -6;
+  app.doc['2d'].recompute();
+  ok('đổi đường thì giao điểm đi theo', Math.abs(moi.val.x - 3) < 1e-9, JSON.stringify(moi.val));
+
+  // Vẽ xong một điểm là app tự về Chọn/Kéo, nên muốn chấm tiếp phải chọn lại
+  // công cụ Điểm — đúng như thiết kế.
+  ok('vẽ xong điểm thì tự về Chọn/Kéo', app.tool === 'move');
+  q('#rail').fire('click', { target: { closest: () => ({ dataset: { tool: 'point' } }) } });
+
+  // rê tới chỗ đường cắt trục hoành
+  const t = manHinh(6, 0);
+  svg3.fire('pointermove', { pointerId: 30, clientX: t.x + 4, clientY: t.y + 4 });
+  ok('bắt được cả giao với trục Ox', app.giao && app.giao.b === 'Ox' && Math.abs(app.giao.p.x - 6) < 1e-6,
+    JSON.stringify(app.giao && { b: app.giao.b, p: app.giao.p }));
+  svg3.fire('pointerdown', { pointerId: 31, clientX: t.x + 4, clientY: t.y + 4 });
+  svg3.fire('pointerup', { pointerId: 31, clientX: t.x + 4, clientY: t.y + 4 });
+  const m2 = app.doc['2d'].list()[app.doc['2d'].order.length - 1];
+  ok('tạo được điểm cắt trục', m2.op === 'interAxis' && m2.val.y === 0, m2.op + ' ' + JSON.stringify(m2.val));
+
+  // xa giao điểm thì không bắt
+  svg3.fire('pointermove', { pointerId: 30, clientX: 40, clientY: 560 });
+  ok('rê ra xa thì bỏ bắt', !app.giao);
+}
+
+// miền nghiệm chấm sẵn giao với trục
+{
+  q('#scriptbox').value = 'xoahet\nM = hemien x>=0, y>=0, 2x+3y<=12';
+  q('#runscript').fire('click');
+  ok('miền nghiệm chấm sẵn giao điểm với trục', /circle[^>]*r="3.6"/.test(q('#svg').innerHTML), q('#svg').innerHTML.slice(-400));
+  ok('kèm toạ độ giao điểm', q('#svg').innerHTML.includes('(6; 0)') || q('#svg').innerHTML.includes('(0; 4)'));
+}
+
 console.log('\nCụm thao tác, tự về chế độ chọn, ẩn tên');
 {
   ok('cụm nút nổi có biểu tượng', q('#pickmove').innerHTML.includes('<svg') && q('#pickdel').innerHTML.includes('<svg'));
@@ -215,13 +280,16 @@ console.log('\nCụm thao tác, tự về chế độ chọn, ẩn tên');
   ok('vẽ xong đoạn thì tự về Chọn/Kéo', app.tool === 'move', 'đang là ' + app.tool);
 
   // nút Tên ba nấc
-  const coTen = () => /class="lbl/.test(q('#svg').innerHTML);
+  // TÊN dùng class="lbl"; còn toạ độ, số đo góc thì là class="lbl plain"
+  // và phải giữ nguyên vì đó là nội dung bài chứ không phải nhãn.
+  const coTen = () => /class="lbl"/.test(q('#svg').innerHTML);
   app.opts.nhan = 'du';
   q('#btnNhan').fire('click');
   ok('nấc 1: chỉ hiện tên điểm', app.opts.nhan === 'diem');
   q('#btnNhan').fire('click');
   ok('nấc 2: tắt hết tên', app.opts.nhan === 'tat');
   ok('tắt rồi thì SVG không còn nhãn tên nào', !coTen(), q('#svg').innerHTML.slice(0, 120));
+  ok('nhưng toạ độ giao điểm thì vẫn giữ', /class="lbl plain"/.test(q('#svg').innerHTML));
   q('#btnNhan').fire('click');
   ok('nấc 3: quay lại đủ', app.opts.nhan === 'du');
   ok('bật lại thì tên hiện lại', coTen());
@@ -301,5 +369,29 @@ await new Promise((r) => setTimeout(r, 60));
 ok('trợ lý offline dựng được tam giác đều', !!app.doc['2d'].byName('P') && !!app.doc['2d'].byName('Q'));
 
 ok('không có lỗi phát sinh trong lúc thao tác', !boom, boom ? boom.stack.split('\n')[0] : '');
+// bấm logo để làm mới
+console.log('\nLogo và làm mới');
+// DOM giả lập không dựng cây từ HTML, nên soi thẳng bản gộp
+ok('logo là tam giác đều có kẻ đường cao', html.includes('M12 3.4L21.3 19.4H2.7z') && html.includes('M12 3.4V19.4'));
+ok('bấm logo được (là nút, có id)', html.includes('class="brand" id="logo"'));
+{
+  globalThis.traLoiConfirm = false;
+  const truoc2d = app.doc['2d'].order.length, truoc3d = app.doc['3d'].order.length;
+  q('#logo').fire('click');
+  ok('trả lời Không thì KHÔNG xoá gì', app.doc['2d'].order.length === truoc2d && app.doc['3d'].order.length === truoc3d);
+
+  globalThis.traLoiConfirm = true;
+  const khoaCu = globalThis.localStorage.getItem('geoai.theme');
+  q('#logo').fire('click');
+  ok('làm mới xoá sạch hình phẳng', app.doc['2d'].order.length === 0);
+  ok('làm mới xoá sạch hình không gian', app.doc['3d'].order.length === 0);
+  ok('làm mới dọn cả ngăn hoàn tác', app.hist['2d'].length === 0 && app.hist['3d'].length === 0);
+  ok('làm mới đưa về chế độ Hình phẳng, công cụ Chọn/Kéo', app.mode === '2d' && app.tool === 'move');
+  ok('làm mới dọn cuộc trò chuyện', app.chat.filter((m) => m.role === 'user').length === 0);
+  ok('làm mới KHÔNG đụng cài đặt giao diện', globalThis.localStorage.getItem('geoai.theme') === khoaCu);
+  ok('bảng phương trình về trạng thái trống', q('#ptlist').innerHTML.includes('ptbang'));
+}
+
+
 console.log(`\n===== ${pass} đạt / ${fail} lỗi =====`);
 process.exit(fail ? 1 : 0);

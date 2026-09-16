@@ -54,7 +54,7 @@ export const TOOLS_THAOTAC = [
 // pick kinds: 'point' | 'curve' (đường/đường tròn) | 'any' | 'solid' | 'p3'
 export const TOOLS_2D = [
   { g: 'Điểm', t: [
-    { id: 'point', name: 'Điểm', icon: ICONS.point, n: 1, kinds: ['point'], hint: 'Bấm lên bảng để tạo điểm. Bấm lên đường/đường tròn để tạo điểm thuộc hình đó.', make: () => null },
+    { id: 'point', name: 'Điểm', icon: ICONS.point, n: 1, kinds: ['point'], hint: 'Bấm lên bảng để tạo điểm · bấm lên một đường để tạo điểm thuộc đường · đưa con trỏ lại gần chỗ hai đường cắt nhau (kể cả cắt trục) thì tự hút vào đúng giao điểm.', make: () => null },
     { id: 'inter', name: 'Giao điểm', icon: ICONS.inter, n: 2, kinds: ['curve', 'curve'], hint: 'Chọn 2 đường (thẳng / tròn) để lấy giao điểm.',
       make: (p, app) => { app.addAll(p[0], p[1]); return null; } },
     { id: 'mid', name: 'Trung điểm', icon: ICONS.mid, n: 2, kinds: ['point', 'point'], hint: 'Chọn 2 điểm.', op: 'midpoint' },

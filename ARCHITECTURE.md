@@ -55,6 +55,7 @@ Chi phí: `O(n)` mỗi khung hình. Kéo một điểm trong hình 100 đối t�
 | `src/core/ops2d.js` | ~280 | 45 phép dựng hình phẳng |
 | `src/core/ops3d.js` | ~200 | Khối đa diện, mặt phẳng, **thiết diện**, giao đường–mặt |
 | `src/core/bpt.js` | ~140 | Bất phương trình bậc nhất hai ẩn, cắt nửa mặt phẳng, **miền nghiệm** |
+| `src/core/giao.js` | ~135 | Tìm mọi giao điểm (kể cả với Ox, Oy) để bắt dính con trỏ |
 | `src/core/ptr.js` | ~230 | Viết phương trình cho từng đối tượng, thể tích khối, diện tích mặt |
 | `src/core/conic.js` | ~145 | Elip, parabol, hypebol: chuẩn hoá về dạng chính tắc, sinh điểm, tiêu điểm |
 | `src/core/docpt.js` | ~230 | Đọc phương trình người gõ (thử số để rút hệ số), dựng và sửa hình |
@@ -112,9 +113,9 @@ Bản chạy trên claude.ai dùng khả năng `sample` của Artifact nên **kh
 Lõi dựng hình 2D/3D · 26 công cụ · DSL tiếng Việt · chat AI qua proxy dùng chung ·
 thiết diện · **miền nghiệm bất phương trình** · **bảng phương trình hai chiều** (vẽ ra phương trình, gõ phương trình ra hình) ·
 **elip · parabol · hypebol** kể cả khi bị xoay ·
-kéo nhãn tự do · chụm hai ngón để phóng to · cụm nút thao tác kéo đi được · giao diện điện thoại với chat và bảng
+kéo nhãn tự do · chụm hai ngón để phóng to · cụm nút thao tác kéo đi được · **bắt dính giao điểm** · giao diện điện thoại với chat và bảng
 phương trình dạng bong bóng thu gọn được · hoàn tác · lưu/mở/xuất PNG ·
-204 bài kiểm thử tự động · đóng gói APK tự động bằng GitHub Actions.
+246 bài kiểm thử tự động · đóng gói APK tự động bằng GitHub Actions.
 
 ### Nên làm tiếp (theo thứ tự đáng giá / công sức)
 
@@ -122,7 +123,7 @@ phương trình dạng bong bóng thu gọn được · hoàn tác · lưu/mở/
 |---|---|---|
 | ★★★ | **Quỹ tích** (`quytich(P, M)`) | Kéo M chạy trên đường, vẽ vết của P. Khoảng 40 dòng, giá trị sư phạm rất lớn. |
 | ★★★ | **Thanh trượt tham số** | `a = truot(0, 10)` để khảo sát hình động. |
-| ★★☆ | **Giao của đường thẳng với conic** | Đã vẽ được conic; còn thiếu `giao(d, e)` và `diemtren(e)`. |
+| ★★☆ | **Điểm chạy trên conic** | `giao(d, e)` đã có; còn thiếu `diemtren(e)` để kéo một điểm dọc theo elip. |
 | ★★☆ | **Đồ thị hàm số** `f(x) = x^2 - 3x` | Cần thêm bộ tính biểu thức (~80 dòng). Bộ đọc biểu thức tuyến tính trong `bpt.js` là điểm khởi đầu. |
 | ★★☆ | **Xuất TikZ / LaTeX** | Giáo viên soạn đề rất cần. Từ `doc` sinh thẳng mã TikZ. |
 | ★☆☆ | Đánh dấu cạnh bằng nhau, góc bằng nhau | Ký hiệu \|, \|\|, ///  trên cạnh. |

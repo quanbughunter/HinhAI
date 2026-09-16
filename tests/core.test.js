@@ -4,6 +4,7 @@ import { runScript } from '../src/core/dsl.js';
 import { phuongTrinh, ptDuongThang, ptThamSo3, theTich, dienTich3, lamDep, soGon } from '../src/core/ptr.js';
 import { docPT, specTuPT, apDungPT } from '../src/core/docpt.js';
 import { chuanHoaConic, diemConic, soLieuConic, loaiConic } from '../src/core/conic.js';
+import { timGiao, giaoHai, giaoBienVoiTruc, namTren, TRUC } from '../src/core/giao.js';
 import { angleABC, vDist } from '../src/core/vec.js';
 import { p3dist } from '../src/core/ops3d.js';
 import { docBPT, mienNghiem, thuocMien, dinhHuuHan, docKhoang } from '../src/core/bpt.js';
@@ -426,6 +427,67 @@ T('Elip, parabol, hypebol', () => {
   // lưu / mở lại
   const d2 = GeoDoc.fromJSON(JSON.parse(JSON.stringify(d.toJSON())));
   ok('mở lại vẫn còn hypebol', d2.byName('h').val.kind === 'hypebol');
+});
+
+T('Tìm giao điểm, kể cả giao với hai trục', () => {
+  const d = new GeoDoc();
+  runScript(d, 'A=(-3,0)\nB=(3,4)\ns=doan(A,B)\nO=(0,0)\nc=duongtron(O,3)\nk = pt y = 2');
+  const ds = timGiao(d, 40);
+  const ten = (x) => (typeof x === 'string' ? x : x.name);
+  const co = (a, b, x, y) => ds.some((g) => ((ten(g.a) === a && ten(g.b) === b) || (ten(g.a) === b && ten(g.b) === a))
+    && Math.abs(g.p.x - x) < 1e-6 && Math.abs(g.p.y - y) < 1e-6);
+  ok('đoạn cắt trục hoành', co('s', 'Ox', -3, 0));
+  ok('đoạn cắt trục tung', co('s', 'Oy', 0, 2));
+  ok('đường tròn cắt Ox ở hai chỗ', ds.filter((g) => ten(g.a) === 'c' && g.b === 'Ox').length === 2);
+  ok('đường thẳng cắt đường tròn', co('c', 'k', Math.sqrt(5), 2) && co('c', 'k', -Math.sqrt(5), 2));
+
+  // đoạn thẳng: giao nằm ngoài hai mút thì KHÔNG tính
+  const e = new GeoDoc();
+  runScript(e, 'A=(0,0)\nB=(1,0)\ns=doan(A,B)\nC=(5,-1)\nD=(5,1)\nt=doan(C,D)');
+  ok('bỏ giao nằm ngoài đoạn', timGiao(e, 40, false).length === 0);
+  ok('namTren nhận đúng trong/ngoài đoạn',
+    namTren(e.byName('s').val, { x: 0.5, y: 0 }) && !namTren(e.byName('s').val, { x: 5, y: 0 }));
+
+  // conic cắt đường thẳng
+  const f = new GeoDoc();
+  runScript(f, 'e1 = elip(3,2)\nk = pt y = 1');
+  const gc = timGiao(f, 40, false);
+  ok('elip cắt đường thẳng ở hai chỗ', gc.length === 2, String(gc.length));
+  ok('toạ độ giao elip đúng', gc.every((g) => Math.abs(g.p.x * g.p.x / 9 + 1 / 4 - 1) < 1e-3), JSON.stringify(gc.map((g) => g.p)));
+});
+
+T('Dựng điểm tại giao điểm, kéo hình thì điểm đi theo', () => {
+  const d = new GeoDoc();
+  const r = runScript(d, 'd1 = pt 2x + 3y = 12\nP = giaoOx(d1)\nQ = giaoOy(d1)');
+  ok('lệnh giao với trục chạy được', r.errors.length === 0, JSON.stringify(r.errors));
+  ok('cắt trục hoành tại (6; 0)', d.byName('P').val.x === 6 && d.byName('P').val.y === 0);
+  ok('cắt trục tung tại (0; 4)', d.byName('Q').val.x === 0 && d.byName('Q').val.y === 4);
+
+  // đổi đường thẳng → giao điểm phải tự cập nhật
+  d.byName('d1').params.c = -6;
+  d.recompute();
+  ok('đổi phương trình thì giao điểm đi theo', d.byName('P').val.x === 3 && d.byName('Q').val.y === 2);
+
+  // giao hai đường qua phép dựng intersect, có cả conic
+  const e = new GeoDoc();
+  runScript(e, 'e1 = elip(3,2)\nk = pt y = 1\nR = giao(e1, k, 1)');
+  const R = e.byName('R');
+  ok('giao điểm với conic dựng được', !!R.val && Math.abs(R.val.y - 1) < 1e-3, JSON.stringify(R.val));
+
+  // lưu / mở lại
+  const d2 = GeoDoc.fromJSON(JSON.parse(JSON.stringify(d.toJSON())));
+  ok('mở lại vẫn còn giao điểm với trục', d2.byName('P').val.x === 3);
+});
+
+T('Miền nghiệm cho biết biên cắt trục ở đâu', () => {
+  const d = new GeoDoc();
+  runScript(d, 'M = hemien x>=0, y>=0, 2x+3y<=12');
+  const gt = giaoBienVoiTruc(d.byName('M').val);
+  const co = (x, y) => gt.some((g) => Math.abs(g.p.x - x) < 1e-9 && Math.abs(g.p.y - y) < 1e-9);
+  ok('biên 2x+3y=12 cắt Ox tại (6; 0)', co(6, 0));
+  ok('biên 2x+3y=12 cắt Oy tại (0; 4)', co(0, 4));
+  const e = phuongTrinh(d.byName('M'));
+  ok('bảng phương trình liệt kê giao với trục', /Biên cắt trục tại/.test(e.phu) && /\(6; 0\)/.test(e.phu), e.phu);
 });
 
 console.log(`\n===== ${pass} đạt / ${fail} lỗi =====`);
