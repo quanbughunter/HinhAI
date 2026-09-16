@@ -108,6 +108,21 @@ def(['dientich', 'area'], (A) => ({ op: 'areaM', args: [A[0]] }));
 def(['so', 'number'], (A) => ({ op: 'numberFree', args: [], params: { v: A[0] || 0 } }));
 def(['chu', 'text', 'nhan'], (A) => ({ op: 'text', args: [], params: { s: String(A[0] == null ? '' : A[0]), x: A[1] || 0, y: A[2] || 0 } }));
 
+// --- elip, parabol, hypebol (dạng chính tắc, tâm ở gốc toạ độ)
+const conic = (a, b, c, d, e, f) => ({ op: 'conicEq', args: [], params: { a, b, c, d, e, f } });
+def(['elip', 'ellipse'], (A) => {
+  const a = Math.abs(A[0] || 3), b = Math.abs(A[1] || 2);
+  return conic(1 / (a * a), 0, 1 / (b * b), 0, 0, -1);      // x²/a² + y²/b² = 1
+});
+def(['hypebol', 'hyperbol', 'hyperbola'], (A) => {
+  const a = Math.abs(A[0] || 3), b = Math.abs(A[1] || 2);
+  return conic(1 / (a * a), 0, -1 / (b * b), 0, 0, -1);     // x²/a² - y²/b² = 1
+});
+def(['parabol', 'parabola'], (A) => {
+  const p = A[0] == null ? 1 : A[0];
+  return conic(0, 0, 1, -2 * p, 0, 0);                      // y² = 2px
+});
+
 // --- miền nghiệm
 const chuoiBPT = (A) => A.filter((x) => typeof x === 'string' && x.trim());
 def(['mien', 'miennghiem', 'bpt'], (A) => ({ op: 'region', args: [], params: { bpt: chuoiBPT(A) } }));

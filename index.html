@@ -50,7 +50,7 @@ body{
   overscroll-behavior:none;   /* chặn kéo-để-tải-lại khi vuốt trên bảng vẽ */
 }
 /* Phần khung (không phải nội dung) thì không cho bôi đen — tránh long-press ra menu copy */
-.top,.rail,.quick,.zoombar,.hud,.grab,.tabs,.fab{-webkit-user-select:none;user-select:none}
+.top,.rail,.quick,.zoombar,.dock,.hud,.grab,.tabs,.fab{-webkit-user-select:none;user-select:none}
 button{touch-action:manipulation}   /* bỏ độ trễ 300ms khi chạm */
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -104,6 +104,14 @@ input,textarea,select{font:inherit;color:inherit}
 .zoombar{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:var(--shadow)}
 .zoombar button{width:30px;height:28px;border-radius:7px;color:var(--muted);font-size:15px;display:grid;place-items:center}
 .zoombar button:hover{background:var(--bg);color:var(--ink)}
+/* Cụm thao tác nổi: hoàn tác · làm lại · chọn/kéo · xoá */
+.dock{position:absolute;left:12px;bottom:52px;display:flex;align-items:center;gap:3px;padding:4px;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow)}
+.dock button{width:34px;height:32px;border-radius:8px;color:var(--muted);display:grid;place-items:center;font-size:16px}
+.dock button svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.dock button:hover{background:var(--bg);color:var(--ink)}
+.dock button.on{background:var(--accent-soft);color:var(--accent)}
+.dock .vach{width:1px;height:20px;background:var(--line);margin:0 3px}
 .quick{position:absolute;left:12px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap;max-width:70%}
 .quick button{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12.5px;color:var(--muted);box-shadow:var(--shadow)}
 .quick button:hover{color:var(--accent);border-color:var(--accent)}
@@ -174,7 +182,9 @@ input,textarea,select{font:inherit;color:inherit}
 .obj .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
 .obj .nm{font-weight:700;font-family:var(--font-math);font-style:italic;font-size:15px}
 .obj .de{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.obj .x{color:var(--muted);opacity:0;padding:2px 5px;border-radius:6px}
+.obj .x{color:var(--muted);opacity:0;padding:2px 5px;border-radius:6px;font-size:12px}
+.obj .x[data-act="ten"],.obj .x[data-act="vis"]{opacity:.55}
+@media (hover:none){.obj .x{opacity:.55}}
 .obj:hover .x{opacity:1}
 .obj .x:hover{background:var(--danger);color:var(--panel)}
 
@@ -257,9 +267,13 @@ input,textarea,select{font:inherit;color:inherit}
     scrollbar-width:none;padding-bottom:2px}
   .quick::-webkit-scrollbar{display:none}
   .quick button{flex:0 0 auto;font-size:12px;padding:7px 12px}
-  /* +/− nằm ngang ở góc trái dưới: bên phải đã có hai bong bóng chồng lên nhau rồi */
+  /* Góc trái dưới xếp hai tầng: cụm thao tác trên, cụm phóng to dưới.
+     Đây là vùng ngón cái với tới dễ nhất, và không đụng hai bong bóng bên phải. */
   .zoombar{left:11px;right:auto;bottom:52px;flex-direction:row;padding:3px;gap:2px}
   .zoombar button{width:38px;height:34px;font-size:17px}
+  .dock{left:11px;bottom:96px;padding:3px;gap:2px}
+  .dock button{width:38px;height:34px;font-size:17px}
+  .dock button svg{width:21px;height:21px}
   .hud{max-width:calc(100% - 24px);font-size:11.5px;padding:5px 9px;line-height:1.35;
     max-height:44px;overflow:hidden}
 
@@ -334,11 +348,10 @@ input,textarea,select{font:inherit;color:inherit}
       <button data-mode="2d" class="on">Hình phẳng</button>
       <button data-mode="3d">Không gian</button>
     </div>
-    <button class="tbtn" id="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
-    <button class="tbtn" id="redo" title="Làm lại (Ctrl+Y)">↷</button>
     <div class="spacer"></div>
     <button class="tbtn" id="btnMore" aria-label="Thêm lựa chọn" aria-expanded="false">⋯</button>
     <div class="more" id="more">
+      <button class="tbtn" id="btnNhan" title="Hiện / ẩn tên trên bảng vẽ">Tên: đủ</button>
       <button class="tbtn" id="btnGrid">▦ Lưới</button>
       <button class="tbtn" id="btnLabels" title="Trả mọi tên đỉnh về vị trí mặc định">⤺ Nhãn</button>
       <button class="tbtn" id="btnOpen">Mở</button>
@@ -359,6 +372,14 @@ input,textarea,select{font:inherit;color:inherit}
       <div class="quick" id="quick"></div>
       <div class="zoombar">
         <button id="zin">+</button><button id="zout">−</button><button id="zfit" title="Vừa khung">⤢</button>
+      </div>
+      <!-- Cụm thao tác: luôn ở đúng một chỗ, khỏi phải vuốt tìm trong dải công cụ -->
+      <div class="dock" id="dock">
+        <button id="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
+        <button id="redo" title="Làm lại (Ctrl+Y)">↷</button>
+        <span class="vach"></span>
+        <button id="pickmove" class="on" title="Chọn / Kéo"></button>
+        <button id="pickdel" title="Xoá"></button>
       </div>
     </main>
 
@@ -425,7 +446,17 @@ input,textarea,select{font:inherit;color:inherit}
 
 <div class="modal" id="setmodal">
   <div class="card">
-    <h3>Cài đặt trợ lý AI</h3>
+    <h3>Cài đặt</h3>
+    <div class="field">
+      <label style="display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:500;color:var(--ink);cursor:pointer">
+        <input id="optTuVeChon" type="checkbox" style="width:auto;margin:0">
+        Vẽ xong tự về chế độ Chọn / Kéo
+      </label>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:4px;padding-left:26px">
+        Tắt nếu bạn muốn vẽ liên tiếp nhiều hình cùng loại.</div>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+    <h3 style="margin-top:0">Trợ lý AI</h3>
     <p class="sub">Khoá API được lưu trong trình duyệt của bạn và chỉ gửi thẳng tới Google, không qua máy chủ nào khác.</p>
     <div class="field">
       <label>Google Gemini API key</label>

@@ -39,14 +39,20 @@ export const ICONS = {
   rot: I('<path d="M20 12a8 8 0 11-2.4-5.7M20 4v4h-4"/>'),
   mien: I('<path d="M3 17L21 5"/><path d="M5 19l3-3M9 19l5-5M13 19l6-6M17 19l4-4" stroke-width="1.1"/>'),
   khoang: I('<path d="M3 12h18M7 8v8M17 8v8"/>' + DOT(7, 12, 2.6) + DOT(17, 12, 2.6)),
+  conic: I('<ellipse cx="12" cy="12" rx="9" ry="5.5"/>' + DOT(6, 12, 2) + DOT(18, 12, 2)),
 };
+
+/**
+ * Hai công cụ này KHÔNG nằm trong dải công cụ nữa mà ở cụm nút nổi trên bảng vẽ,
+ * vì trên điện thoại phải vuốt ngang mãi mới tìm lại được chúng sau mỗi lần vẽ.
+ */
+export const TOOLS_THAOTAC = [
+  { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo đỉnh → hình biến đổi · kéo CHỮ → chỉ dời chữ · kéo cạnh → dời cả hình · bấm đúp để đổi tên.' },
+  { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá (xoá cả hình phụ thuộc nó).' },
+];
 
 // pick kinds: 'point' | 'curve' (đường/đường tròn) | 'any' | 'solid' | 'p3'
 export const TOOLS_2D = [
-  { g: 'Chọn', t: [
-    { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo đỉnh → hình biến đổi · kéo CHỮ → chỉ dời chữ · kéo cạnh → dời cả hình · bấm đúp để đổi tên.' },
-    { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá (xoá cả hình phụ thuộc nó).' },
-  ]},
   { g: 'Điểm', t: [
     { id: 'point', name: 'Điểm', icon: ICONS.point, n: 1, kinds: ['point'], hint: 'Bấm lên bảng để tạo điểm. Bấm lên đường/đường tròn để tạo điểm thuộc hình đó.', make: () => null },
     { id: 'inter', name: 'Giao điểm', icon: ICONS.inter, n: 2, kinds: ['curve', 'curve'], hint: 'Chọn 2 đường (thẳng / tròn) để lấy giao điểm.',
@@ -73,6 +79,9 @@ export const TOOLS_2D = [
     { id: 'bisec', name: 'Phân giác', icon: ICONS.bisec, n: 3, kinds: ['point', 'point', 'point'], op: 'bisector', hint: 'Chọn 3 điểm, điểm GIỮA là đỉnh góc.' },
     { id: 'refl', name: 'Đối xứng', icon: ICONS.refl, n: 2, kinds: ['point', 'any'], op: 'reflectPt', hint: 'Chọn điểm cần lấy đối xứng, rồi chọn trục (đường thẳng) hoặc tâm (điểm).' },
   ]},
+  { g: 'Conic', t: [
+    { id: 'conic', name: 'Elip / Parabol / Hypebol', icon: ICONS.conic, n: 0, hint: 'Bấm rồi nhập phương trình, ví dụ x^2/9 + y^2/4 = 1 hoặc y^2 = 4x.' },
+  ]},
   { g: 'Miền nghiệm', t: [
     { id: 'mien', name: 'Miền nghiệm BPT', icon: ICONS.mien, n: 0,
       hint: 'Bấm để nhập bất phương trình, ví dụ 2x+3y<=6. Nhiều bất phương trình thì ngăn bằng dấu phẩy.' },
@@ -87,10 +96,8 @@ export const TOOLS_2D = [
 ];
 
 export const TOOLS_3D = [
-  { g: 'Chọn', t: [
-    { id: 'move', name: 'Chọn / Xoay', icon: ICONS.move, n: 0, hint: 'Kéo nền → xoay góc nhìn · kéo đỉnh → dời đỉnh · kéo CHỮ → chỉ dời chữ khỏi chỗ bị che · bấm đúp để đổi tên.' },
+  { g: 'Góc nhìn', t: [
     { id: 'rot', name: 'Xoay hình', icon: ICONS.rot, n: 0, hint: 'Kéo để xoay góc nhìn.' },
-    { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá.' },
   ]},
   { g: 'Điểm & cạnh', t: [
     { id: 'pt3', name: 'Điểm', icon: ICONS.pt3, n: 1, kinds: ['p3'], hint: 'Bấm lên mặt phẳng đáy để tạo điểm (z = 0).', make: () => null },
@@ -116,6 +123,9 @@ export const QUICK_2D = [
   ['Tam giác đều', 'A=(-3,-2)\nB=(3,-2)\nC=(0,3.196)\nt=tamgiac(A,B,C)'],
   ['Đường tròn', 'O=(0,0)\nA=(4,0)\nc=duongtron(O,A)'],
   ['Hình vuông', 'A=(-3,-3)\nB=(3,-3)\nC=(3,3)\nD=(-3,3)\nt=tugiac(A,B,C,D)'],
+  ['Elip', 'e = elip(4, 2.5)'],
+  ['Parabol', 'p = parabol(2)'],
+  ['Hypebol', 'h = hypebol(3, 2)'],
   ['Miền nghiệm', 'mien 2x+3y<=6'],
   ['Hệ BPT', 'mien x>=0, y>=0, x+y<=4, 2x+y<=6'],
   ['3 đường cao', 'A=(-4,-2)\nB=(5,-2)\nC=(1,4)\nt=tamgiac(A,B,C)\nha=duongcao(A,B,C)\nhb=duongcao(B,C,A)\nhc=duongcao(C,A,B)\nH=tructam(A,B,C)'],

@@ -7,7 +7,7 @@ import { runScript } from './core/dsl.js';
 import { phuongTrinh } from './core/ptr.js';
 import { docPT, specTuPT, apDungPT } from './core/docpt.js';
 import { Cam2, Cam3, render2, render3, pick, labelBoxes, esc } from './ui/render.js';
-import { TOOLS_2D, TOOLS_3D, QUICK_2D, QUICK_3D, CHIPS } from './ui/tools.js';
+import { TOOLS_2D, TOOLS_3D, TOOLS_THAOTAC, QUICK_2D, QUICK_3D, CHIPS } from './ui/tools.js';
 import { askGemini, askViaProxy, askClaudeRuntime, getClaudeCapability, localParse, describeDoc, DSL_REFERENCE, DEFAULT_PROXY } from './ai/agent.js';
 
 const $ = (s) => document.querySelector(s);
@@ -24,7 +24,11 @@ const app = {
   picks: [],
   sel: new Set(),
   hover: null,
-  opts: { grid: LS.get('grid', true), axes: true },
+  opts: {
+    grid: LS.get('grid', true), axes: true,
+    tuVeChon: LS.get('tuVeChon', true),   // vẽ xong tự về Chọn/Kéo
+    nhan: LS.get('nhan', 'du'),           // 'du' | 'diem' | 'tat' — hiện tên tới mức nào
+  },
   hist: { '2d': [], '3d': [] },
   future: { '2d': [], '3d': [] },
   chat: [],
@@ -207,6 +211,7 @@ function renderObjList() {
       <span class="sw" style="background:${col};${o.visible ? '' : 'opacity:.25'}"></span>
       <span class="nm" title="Bấm để đổi tên">${esc(o.name)}</span>
       <span class="de">${esc(describe(o))}</span>
+      <button class="x" data-act="ten" title="${o.showLabel ? 'Ẩn tên trên hình' : 'Hiện tên trên hình'}">${o.showLabel ? 'A' : 'a̶'}</button>
       <button class="x" data-act="vis" title="Ẩn/hiện">${o.visible ? '👁' : '⌀'}</button>
       <button class="x" data-act="del" title="Xoá">✕</button>
     </div>`;
@@ -275,6 +280,7 @@ function loadDoc(json) {
 // ---------------------------------------------------------------- Công cụ
 function toolSets() { return is3() ? TOOLS_3D : TOOLS_2D; }
 function curTool() {
+  for (const t of TOOLS_THAOTAC) if (t.id === app.tool) return t;
   for (const g of toolSets()) for (const t of g.t) if (t.id === app.tool) return t;
   return null;
 }
@@ -282,14 +288,28 @@ function buildRail() {
   $('#rail').innerHTML = toolSets().map((g) => `<div class="grp"><div class="glabel">${esc(g.g)}</div>` +
     g.t.map((t) => `<button class="tool${t.id === app.tool ? ' on' : ''}" data-tool="${t.id}" data-tip="${esc(t.name)}">${t.icon}</button>`).join('') +
     `</div>`).join('');
+  // biểu tượng cho cụm thao tác nổi
+  for (const t of TOOLS_THAOTAC) {
+    const b = $(t.id === 'move' ? '#pickmove' : '#pickdel');
+    if (b) { b.innerHTML = t.icon; b.title = t.name; }
+  }
   const q = is3() ? QUICK_3D : QUICK_2D;
   $('#quick').innerHTML = q.map((x, i) => `<button data-q="${i}">${esc(x[0])}</button>`).join('');
 }
 function setTool(id) {
   app.tool = id; app.picks = []; app.sel.clear();
   document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id));
+  const nutMove = $('#pickmove'), nutDel = $('#pickdel');
+  if (nutMove) nutMove.classList.toggle('on', id === 'move' || id === 'rot');
+  if (nutDel) nutDel.classList.toggle('on', id === 'del');
   $('#svg').style.cursor = id === 'move' ? 'default' : 'crosshair';
   render();
+}
+/** Vẽ xong thì trả con trỏ về Chọn/Kéo — tắt được trong ⚙ Cài đặt */
+function veXongVeChon() {
+  if (!app.opts.tuVeChon) return;
+  if (app.tool === 'move' || app.tool === 'rot' || app.tool === 'del') return;
+  setTool('move');
 }
 
 /** Nhãn (chữ cái) nào đang nằm dưới con trỏ. Nhãn tách rời khỏi điểm của nó. */
@@ -418,6 +438,21 @@ function clickTool(px) {
     }
     return;
   }
+  if (t.id === 'conic') {
+    const q = prompt('Nhập phương trình elip / parabol / hypebol:', 'x^2/9 + y^2/4 = 1');
+    if (q && q.trim()) {
+      const kq = docPT(q.trim(), false);
+      if (kq.loi) flash(kq.loi);
+      else {
+        const sp = specTuPT(kq);
+        snap();
+        const o = D().add(sp);
+        if (!o.val) { D().remove(o.id); flash('Phương trình đúng cú pháp nhưng không vẽ ra hình nào.'); }
+        else { app.sel = new Set([o.id]); veXongVeChon(); render(); }
+      }
+    }
+    return;
+  }
   if (t.id === 'khoang') {
     const q = prompt('Nhập khoảng trên trục số:', '[-1;3]');
     if (q && q.trim()) {
@@ -454,6 +489,7 @@ function finishTool() {
     if (t.make) t.make(picks, api);
     else if (t.op) D().add({ op: t.op, args: picks, params: t.params || {} });
   } catch (e) { flash('Không dựng được: ' + e.message); }
+  veXongVeChon();
   render();
 }
 
@@ -922,6 +958,7 @@ function bind() {
     const act = e.target.dataset.act;
     if (act === 'del') { snap(); D().remove(o.id); }
     else if (act === 'vis') { snap(); o.visible = !o.visible; }
+    else if (act === 'ten') { snap(); o.showLabel = !o.showLabel; }
     else if (e.target.classList.contains('nm')) { doiTen(o); return; }
     else { app.sel = new Set([o.id]); }
     render();
@@ -974,6 +1011,22 @@ function bind() {
     render();
     flash('Đã trả các nhãn về vị trí mặc định');
   });
+  const NHAN_CHU = { du: 'Tên: đủ', diem: 'Tên: chỉ điểm', tat: 'Tên: tắt' };
+  const NHAN_SAU = { du: 'diem', diem: 'tat', tat: 'du' };
+  function veNutNhan() {
+    const b = $('#btnNhan');
+    if (b) b.textContent = NHAN_CHU[app.opts.nhan] || NHAN_CHU.du;
+  }
+  $('#btnNhan').addEventListener('click', () => {
+    app.opts.nhan = NHAN_SAU[app.opts.nhan] || 'diem';
+    LS.set('nhan', app.opts.nhan);
+    veNutNhan();
+    render();
+  });
+  veNutNhan();
+  $('#pickmove').addEventListener('click', () => setTool('move'));
+  $('#pickdel').addEventListener('click', () => setTool('del'));
+
   $('#btnGrid').addEventListener('click', () => { app.opts.grid = !app.opts.grid; LS.set('grid', app.opts.grid); render(); });
   $('#btnSave').addEventListener('click', saveFile);
   $('#btnOpen').addEventListener('click', () => $('#fileopen').click());
@@ -1034,6 +1087,7 @@ function bind() {
     $('#apikey').value = LS.get('key', '');
     $('#model').value = LS.get('model', 'gemini-3.6-flash');
     $('#proxyurl').value = LS.get('proxy', '');
+    $('#optTuVeChon').checked = !!app.opts.tuVeChon;
     $('#proxyhint').textContent = DEFAULT_PROXY
       ? 'Bản này đã cài sẵn máy chủ trung gian, bạn không cần điền gì.'
       : 'Chưa cài máy chủ trung gian.';
@@ -1044,6 +1098,8 @@ function bind() {
     LS.set('key', $('#apikey').value.trim());
     LS.set('model', $('#model').value);
     LS.set('proxy', $('#proxyurl').value.trim().replace(/\/$/, ''));
+    app.opts.tuVeChon = !!$('#optTuVeChon').checked;
+    LS.set('tuVeChon', app.opts.tuVeChon);
     $('#setmodal').classList.remove('on');
     flash('Đã lưu cài đặt');
   });

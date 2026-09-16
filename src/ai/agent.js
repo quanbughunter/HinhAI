@@ -40,7 +40,16 @@ DỰNG THẲNG TỪ PHƯƠNG TRÌNH  (khi đề CHO SẴN phương trình, đừ
   c = pt x^2+y^2-4x+2y-4=0
   P = pt 2x - y + 3z - 5 = 0     mặt phẳng (hình không gian)
   S = pt (x-1)^2+(y-2)^2+(z-3)^2=16    mặt cầu
-  Chỉ nhận bậc nhất, đường tròn và mặt cầu. Elip, parabol, hypebol chưa hỗ trợ.
+  Trong mặt phẳng nhận cả bậc nhất, đường tròn và mọi đường bậc hai (elip, parabol,
+  hypebol, kể cả khi bị xoay). Trong không gian mới nhận mặt phẳng và mặt cầu.
+
+ĐƯỜNG CONIC (elip, parabol, hypebol)
+  e = elip(3, 2)                 x²/9 + y²/4 = 1   (a rồi b)
+  h = hypebol(3, 2)              x²/9 - y²/4 = 1
+  p = parabol(2)                 y² = 4x           (tham số p, tức y² = 2px)
+  Muốn đặt lệch tâm hay xoay thì gõ thẳng phương trình bằng lệnh pt ở trên,
+  ví dụ  e = pt x^2+4y^2-4x+16y+4=0  hoặc  h = pt xy = 1.
+  Bảng Phương trình tự tính tâm, tiêu điểm, tâm sai, tiệm cận.
 
 MIỀN NGHIỆM BẤT PHƯƠNG TRÌNH BẬC NHẤT HAI ẨN
   m = mien("2x+3y<=6")                     miền nghiệm một bất phương trình

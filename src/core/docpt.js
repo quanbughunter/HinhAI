@@ -12,6 +12,8 @@
 // lỗi thay vì dựng bừa.
 // ============================================================================
 
+import { loaiConic } from './conic.js';
+
 const XIU = 1e-7;
 const LA_DIEM = { point: 1, point3: 1 };                       // điểm tự do, dời được thoải mái
 const HAI_DAU = { segment: 1, line: 1, ray: 1, vector: 1 };    // đường xác định bởi đúng hai điểm
@@ -130,22 +132,33 @@ export function docPT(chuoi, khongGian = false) {
     return { loai: 'duong', a: h.G, b: h.H, c: h.K };
   }
 
-  // ---- bậc hai: chỉ nhận đường tròn / mặt cầu (hệ số các bình phương bằng nhau) ----
-  if (coCheo) return { loi: 'Có số hạng xy, yz hoặc zx — chưa vẽ được loại đường này.' };
-  const trongKG = khongGian || !gan(h.C);
-  const ds = trongKG ? [h.A, h.B, h.C] : [h.A, h.B];
-  const k = ds.find((v) => !gan(v));
-  if (ds.some((v) => !gan(v - k))) {
-    return { loi: trongKG ? 'Hệ số x², y², z² phải bằng nhau mới là mặt cầu.' : 'Hệ số x² và y² phải bằng nhau mới là đường tròn (elip, parabol chưa hỗ trợ).' };
+  // ---- bậc hai trong KHÔNG GIAN: mới nhận mặt cầu ----
+  const trongKG = khongGian ? coZ || !gan(h.C) : !gan(h.C);
+  if (trongKG) {
+    if (coCheo) return { loi: 'Có số hạng xy, yz hoặc zx — mặt bậc hai loại này chưa vẽ được.' };
+    const ds3 = [h.A, h.B, h.C];
+    const k3 = ds3.find((v) => !gan(v));
+    if (ds3.some((v) => !gan(v - k3))) return { loi: 'Hệ số x², y², z² phải bằng nhau mới là mặt cầu. Mặt elipxôit, hypebôlôit chưa hỗ trợ.' };
+    const D3 = h.G / k3, E3 = h.H / k3, F3 = h.I / k3, G3 = h.K / k3;
+    const cx3 = -D3 / 2, cy3 = -E3 / 2, cz3 = -F3 / 2;
+    const r3 = cx3 * cx3 + cy3 * cy3 + cz3 * cz3 - G3;
+    if (r3 <= XIU) return { loi: r3 > -XIU ? 'Chỉ là một điểm, bán kính bằng 0.' : 'Vế phải âm — không có mặt cầu nào thoả.' };
+    return { loai: 'cau', x: cx3, y: cy3, z: cz3, r: Math.sqrt(r3) };
   }
+
+  // ---- bậc hai TRONG MẶT PHẲNG: đường tròn, elip, parabol, hypebol ----
+  const hs = { a: h.A, b: h.D, c: h.B, d: h.G, e: h.H, f: h.K };
+  if (loaiConic(hs) !== 'tron') return { loai: 'conic', ...hs, kind: loaiConic(hs) };
+
+  // đường tròn thì viết riêng cho gọn, khỏi qua đường conic tổng quát
+  const k = h.A;
   const D = h.G / k, E = h.H / k, F = h.I / k, G = h.K / k;
-  const cx = -D / 2, cy = -E / 2, cz = trongKG ? -F / 2 : 0;
-  const r2 = cx * cx + cy * cy + cz * cz - G;
+  const cx = -D / 2, cy = -E / 2;
+  const r2 = cx * cx + cy * cy - G;
   if (r2 <= XIU) {
     return { loi: r2 > -XIU ? 'Chỉ là một điểm, bán kính bằng 0.' : 'Vế phải âm — không có hình nào thoả.' };
   }
-  const r = Math.sqrt(r2);
-  return trongKG ? { loai: 'cau', x: cx, y: cy, z: cz, r } : { loai: 'tron', x: cx, y: cy, r };
+  return { loai: 'tron', x: cx, y: cy, r: Math.sqrt(r2) };
 }
 
 // ============================================================================
@@ -160,6 +173,7 @@ export function specTuPT(kq) {
       : { op: 'point', args: [], params: { x: kq.x, y: kq.y } };
     case 'duong': return { op: 'lineEq', args: [], params: { a: kq.a, b: kq.b, c: kq.c } };
     case 'tron': return { op: 'circleEq', args: [], params: { x: kq.x, y: kq.y, r: kq.r } };
+    case 'conic': return { op: 'conicEq', args: [], params: { a: kq.a, b: kq.b, c: kq.c, d: kq.d, e: kq.e, f: kq.f } };
     case 'mp': return { op: 'planeEq', args: [], params: { a: kq.a, b: kq.b, c: kq.c, d: kq.d } };
     case 'cau': return { op: 'sphereEq', args: [], params: { x: kq.x, y: kq.y, z: kq.z, r: kq.r } };
     case 'bpt': return { op: 'region', args: [], params: { bpt: kq.ds } };
@@ -201,6 +215,9 @@ export function apDungPT(doc, o, chuoi) {
   // --- hình vốn định nghĩa bằng phương trình ---
   if (o.op === 'lineEq' && kq.loai === 'duong') { P.a = kq.a; P.b = kq.b; P.c = kq.c; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
   if (o.op === 'circleEq' && kq.loai === 'tron') { P.x = kq.x; P.y = kq.y; P.r = kq.r; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
+  if (o.op === 'conicEq' && kq.loai === 'conic') { P.a = kq.a; P.b = kq.b; P.c = kq.c; P.d = kq.d; P.e = kq.e; P.f = kq.f; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
+  // đổi qua lại giữa đường tròn và conic: đổi luôn kiểu dựng cho khỏi vướng
+  if (o.op === 'conicEq' && kq.loai === 'tron') { P.a = 1; P.b = 0; P.c = 1; P.d = -2 * kq.x; P.e = -2 * kq.y; P.f = kq.x * kq.x + kq.y * kq.y - kq.r * kq.r; return { ok: true, msg: `Đã đổi ${o.name} thành đường tròn.` }; }
   if (o.op === 'planeEq' && kq.loai === 'mp') { P.a = kq.a; P.b = kq.b; P.c = kq.c; P.d = kq.d; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
   if (o.op === 'sphereEq' && kq.loai === 'cau') { P.x = kq.x; P.y = kq.y; P.z = kq.z; P.r = kq.r; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
   if (o.op === 'region' && kq.loai === 'bpt') { P.bpt = kq.ds; return { ok: true, msg: `Đã đổi ${o.name}.` }; }

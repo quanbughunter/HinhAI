@@ -2,7 +2,7 @@
 
 Bảng vẽ hình học phẳng và hình không gian cho học sinh cấp 2 – cấp 3, có trợ lý AI nhận lệnh bằng tiếng Việt.
 
-Không thư viện ngoài · một tệp HTML 197 KB · mở bằng trình duyệt là chạy.
+Không thư viện ngoài · một tệp HTML 217 KB · mở bằng trình duyệt là chạy.
 
 ---
 
@@ -21,8 +21,8 @@ npm run dev          # mở http://localhost:5173
 
 ```bash
 npm run bundle       # sinh dist/geoai.html
-npm test             # 106 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 42 bài kiểm thử giao diện
+npm test             # 140 bài kiểm thử toán học
+node tests/dom-smoke.mjs   # 54 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
 ```
@@ -82,6 +82,9 @@ Chiều ngược lại cũng chạy. Ô trên cùng của thẻ **Phương trìn
 y = 2x - 1                      dạng y = mx + n
 x = 3                           đường thẳng đứng
 (x-2)^2 + (y+1)^2 = 9           đường tròn, viết ² cũng được
+x^2/9 + y^2/4 = 1               elip
+y^2 = 4x                        parabol
+x^2/9 - y^2/4 = 1               hypebol
 x^2 + y^2 - 4x + 2y - 4 = 0     đường tròn dạng khai triển
 A(2; 3)                         điểm, có luôn tên
 2x + 3y <= 6                    miền nghiệm
@@ -111,8 +114,27 @@ d = pt 2x + 3y = 6
 c = pt x^2 + y^2 = 25
 ```
 
-Mới nhận bậc nhất, đường tròn và mặt cầu. Elip, parabol, hypebol chưa hỗ trợ — gõ vào thì
-app báo rõ chứ không vẽ bừa.
+Trong mặt phẳng nhận **bậc nhất và mọi đường bậc hai** — đường tròn, elip, parabol, hypebol,
+kể cả khi bị xoay (`xy = 1` ra hypebol nghiêng 45°). Trong không gian mới nhận mặt phẳng và
+mặt cầu. Bậc ba trở lên thì app báo rõ chứ không vẽ bừa.
+
+### Cụm nút luôn trong tầm tay
+
+Bốn nút **↶ ↷ · Chọn/Kéo · Xoá** nằm riêng thành một cụm nổi trên bảng vẽ, không trộn vào
+dải công cụ — nên vẽ xong không phải vuốt ngang đi tìm. Trên điện thoại cụm này nằm góc
+trái dưới, ngay trên cụm phóng to/thu nhỏ.
+
+Mặc định **vẽ xong là con trỏ tự về Chọn/Kéo**. Muốn vẽ liên tiếp nhiều hình cùng loại thì
+tắt trong ⚙ Cài đặt.
+
+### Ẩn tên cho đỡ rối
+
+Nút **Tên** trên thanh trên bấm lần lượt qua ba nấc: **đủ → chỉ điểm → tắt**. Nấc *chỉ điểm*
+hay dùng nhất — giữ A, B, C trên đỉnh nhưng bỏ tên của đoạn, đa giác, đường tròn.
+
+Muốn ẩn tên đúng một hình thì vào tab **Đối tượng**, bấm chữ **A** ở dòng của nó.
+
+Ẩn tên trên bảng vẽ **không ảnh hưởng bảng Phương trình** — ở đó tên vẫn đầy đủ.
 
 ### Phím tắt
 
@@ -152,6 +174,16 @@ duongtron(O,A)        duongtron(O,5)
 duongtronqua(A,B,C)   noitiep(A,B,C)
 tamgiac(A,B,C)   tugiac(A,B,C,D)   dagiac(A,B,C,D,E)
 ```
+
+### Elip · Parabol · Hypebol
+```
+e = elip(3, 2)        x²/9 + y²/4 = 1      (a rồi b)
+h = hypebol(3, 2)     x²/9 - y²/4 = 1
+p = parabol(2)        y² = 4x              (tham số p, tức y² = 2px)
+```
+Lệch tâm hay bị xoay thì gõ thẳng phương trình: `e = pt x^2+4y^2-4x+16y+4=0`, `h = pt xy=1`.
+Bảng Phương trình tự tính **tâm, a, b, c, tâm sai, tiêu điểm** và **tiệm cận** của hypebol,
+kèm dạng chính tắc khi trục song song với Ox/Oy.
 
 ### Miền nghiệm bất phương trình bậc nhất hai ẩn
 ```
@@ -212,7 +244,7 @@ td=thietdien(K,M,N,P)
 ## Cấu trúc mã
 
 ```
-src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  ptr.js  docpt.js  dsl.js  ← lõi toán
+src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  conic.js  ptr.js  docpt.js  dsl.js
 src/ui/     render.js  tools.js                            ← camera, vẽ SVG, công cụ
 src/ai/     agent.js                                       ← prompt + Gemini + luật offline
 src/main.js                                                ← điều phối

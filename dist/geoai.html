@@ -50,7 +50,7 @@ body{
   overscroll-behavior:none;   /* chặn kéo-để-tải-lại khi vuốt trên bảng vẽ */
 }
 /* Phần khung (không phải nội dung) thì không cho bôi đen — tránh long-press ra menu copy */
-.top,.rail,.quick,.zoombar,.hud,.grab,.tabs,.fab{-webkit-user-select:none;user-select:none}
+.top,.rail,.quick,.zoombar,.dock,.hud,.grab,.tabs,.fab{-webkit-user-select:none;user-select:none}
 button{touch-action:manipulation}   /* bỏ độ trễ 300ms khi chạm */
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -104,6 +104,14 @@ input,textarea,select{font:inherit;color:inherit}
 .zoombar{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:var(--shadow)}
 .zoombar button{width:30px;height:28px;border-radius:7px;color:var(--muted);font-size:15px;display:grid;place-items:center}
 .zoombar button:hover{background:var(--bg);color:var(--ink)}
+/* Cụm thao tác nổi: hoàn tác · làm lại · chọn/kéo · xoá */
+.dock{position:absolute;left:12px;bottom:52px;display:flex;align-items:center;gap:3px;padding:4px;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow)}
+.dock button{width:34px;height:32px;border-radius:8px;color:var(--muted);display:grid;place-items:center;font-size:16px}
+.dock button svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.dock button:hover{background:var(--bg);color:var(--ink)}
+.dock button.on{background:var(--accent-soft);color:var(--accent)}
+.dock .vach{width:1px;height:20px;background:var(--line);margin:0 3px}
 .quick{position:absolute;left:12px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap;max-width:70%}
 .quick button{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12.5px;color:var(--muted);box-shadow:var(--shadow)}
 .quick button:hover{color:var(--accent);border-color:var(--accent)}
@@ -174,7 +182,9 @@ input,textarea,select{font:inherit;color:inherit}
 .obj .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
 .obj .nm{font-weight:700;font-family:var(--font-math);font-style:italic;font-size:15px}
 .obj .de{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.obj .x{color:var(--muted);opacity:0;padding:2px 5px;border-radius:6px}
+.obj .x{color:var(--muted);opacity:0;padding:2px 5px;border-radius:6px;font-size:12px}
+.obj .x[data-act="ten"],.obj .x[data-act="vis"]{opacity:.55}
+@media (hover:none){.obj .x{opacity:.55}}
 .obj:hover .x{opacity:1}
 .obj .x:hover{background:var(--danger);color:var(--panel)}
 
@@ -257,9 +267,13 @@ input,textarea,select{font:inherit;color:inherit}
     scrollbar-width:none;padding-bottom:2px}
   .quick::-webkit-scrollbar{display:none}
   .quick button{flex:0 0 auto;font-size:12px;padding:7px 12px}
-  /* +/− nằm ngang ở góc trái dưới: bên phải đã có hai bong bóng chồng lên nhau rồi */
+  /* Góc trái dưới xếp hai tầng: cụm thao tác trên, cụm phóng to dưới.
+     Đây là vùng ngón cái với tới dễ nhất, và không đụng hai bong bóng bên phải. */
   .zoombar{left:11px;right:auto;bottom:52px;flex-direction:row;padding:3px;gap:2px}
   .zoombar button{width:38px;height:34px;font-size:17px}
+  .dock{left:11px;bottom:96px;padding:3px;gap:2px}
+  .dock button{width:38px;height:34px;font-size:17px}
+  .dock button svg{width:21px;height:21px}
   .hud{max-width:calc(100% - 24px);font-size:11.5px;padding:5px 9px;line-height:1.35;
     max-height:44px;overflow:hidden}
 
@@ -334,11 +348,10 @@ input,textarea,select{font:inherit;color:inherit}
       <button data-mode="2d" class="on">Hình phẳng</button>
       <button data-mode="3d">Không gian</button>
     </div>
-    <button class="tbtn" id="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
-    <button class="tbtn" id="redo" title="Làm lại (Ctrl+Y)">↷</button>
     <div class="spacer"></div>
     <button class="tbtn" id="btnMore" aria-label="Thêm lựa chọn" aria-expanded="false">⋯</button>
     <div class="more" id="more">
+      <button class="tbtn" id="btnNhan" title="Hiện / ẩn tên trên bảng vẽ">Tên: đủ</button>
       <button class="tbtn" id="btnGrid">▦ Lưới</button>
       <button class="tbtn" id="btnLabels" title="Trả mọi tên đỉnh về vị trí mặc định">⤺ Nhãn</button>
       <button class="tbtn" id="btnOpen">Mở</button>
@@ -359,6 +372,14 @@ input,textarea,select{font:inherit;color:inherit}
       <div class="quick" id="quick"></div>
       <div class="zoombar">
         <button id="zin">+</button><button id="zout">−</button><button id="zfit" title="Vừa khung">⤢</button>
+      </div>
+      <!-- Cụm thao tác: luôn ở đúng một chỗ, khỏi phải vuốt tìm trong dải công cụ -->
+      <div class="dock" id="dock">
+        <button id="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
+        <button id="redo" title="Làm lại (Ctrl+Y)">↷</button>
+        <span class="vach"></span>
+        <button id="pickmove" class="on" title="Chọn / Kéo"></button>
+        <button id="pickdel" title="Xoá"></button>
       </div>
     </main>
 
@@ -425,7 +446,17 @@ input,textarea,select{font:inherit;color:inherit}
 
 <div class="modal" id="setmodal">
   <div class="card">
-    <h3>Cài đặt trợ lý AI</h3>
+    <h3>Cài đặt</h3>
+    <div class="field">
+      <label style="display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:500;color:var(--ink);cursor:pointer">
+        <input id="optTuVeChon" type="checkbox" style="width:auto;margin:0">
+        Vẽ xong tự về chế độ Chọn / Kéo
+      </label>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:4px;padding-left:26px">
+        Tắt nếu bạn muốn vẽ liên tiếp nhiều hình cùng loại.</div>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+    <h3 style="margin-top:0">Trợ lý AI</h3>
     <p class="sub">Khoá API được lưu trong trình duyệt của bạn và chỉ gửi thẳng tới Google, không qua máy chủ nào khác.</p>
     <div class="field">
       <label>Google Gemini API key</label>
@@ -759,11 +790,159 @@ function docKhoang(chuoi) {
   return { t: 'khoang', a: so(m[2]), b: so(m[3]), dongA: m[1] === '[', dongB: m[4] === ']' };
 }
 
+/* ==== /src/core/conic.js ==== */
+// ============================================================================
+// conic.js — Elip, parabol, hypebol.
+//
+// Mọi đường bậc hai đều viết được dưới dạng
+//        a·x² + b·xy + c·y² + d·x + e·y + f = 0
+// Việc của tệp này là đưa nó về DẠNG CHÍNH TẮC: xoay hệ trục cho mất số hạng
+// xy, rồi tịnh tiến cho mất số hạng bậc nhất. Còn lại đúng ba dáng quen thuộc:
+//
+//        U²/A² + V²/B² = 1      elip
+//        U²/A² − V²/B² = 1      hypebol
+//        U²        = k·V        parabol
+//
+// Sau khi có tâm (hoặc đỉnh) cùng hai vectơ trục u, v thì việc vẽ chỉ còn là
+// chạy tham số — và tiêu điểm, tâm sai, đường chuẩn, tiệm cận cũng rơi ra luôn,
+// đúng những thứ đề bài hay hỏi.
+// ============================================================================
+
+const TI = 1e-9;
+
+/**
+ * Đưa a·x² + b·xy + c·y² + d·x + e·y + f = 0 về dạng chính tắc.
+ * Trả về { kind, ... } hoặc { loi } nếu suy biến / không có điểm thực.
+ *   elip, hypebol → { tam, u, v, A, B }
+ *   parabol       → { dinh, u, v, k }      P(s) = dinh + s·u + (s²/k)·v
+ */
+function chuanHoaConic(hs) {
+  const { a, b, c, d, e, f } = hs;
+  if (Math.abs(a) < TI && Math.abs(b) < TI && Math.abs(c) < TI) return { loi: 'Không phải đường bậc hai.' };
+
+  // --- xoay cho mất số hạng xy ---
+  const goc = 0.5 * Math.atan2(b, a - c);
+  const co = Math.cos(goc), si = Math.sin(goc);
+  const a1 = a * co * co + b * co * si + c * si * si;
+  const c1 = a * si * si - b * co * si + c * co * co;
+  const d1 = d * co + e * si;
+  const e1 = -d * si + e * co;
+  const f1 = f;
+  const u = { x: co, y: si };          // trục X mới, trong toạ độ gốc
+  const v = { x: -si, y: co };         // trục Y mới
+  const veGoc = (X, Y) => ({ x: co * X - si * Y, y: si * X + co * Y });
+
+  const coA = Math.abs(a1) > 1e-8 * (1 + Math.abs(c1));
+  const coC = Math.abs(c1) > 1e-8 * (1 + Math.abs(a1));
+
+  // --- có tâm: elip hoặc hypebol ---
+  if (coA && coC) {
+    const X0 = -d1 / (2 * a1), Y0 = -e1 / (2 * c1);
+    const R = a1 * X0 * X0 + c1 * Y0 * Y0 - f1;     // a1·U² + c1·V² = R
+    if (Math.abs(R) < TI * (1 + Math.abs(f1))) {
+      return { loi: a1 * c1 > 0 ? 'Chỉ là một điểm.' : 'Suy biến thành hai đường thẳng cắt nhau.' };
+    }
+    const ra = R / a1, rb = R / c1;
+    const tam = veGoc(X0, Y0);
+    if (ra > 0 && rb > 0) {
+      // elip — quy ước trục lớn đứng trước
+      const A = Math.sqrt(ra), B = Math.sqrt(rb);
+      // trục lớn đứng trước: nếu trục theo v dài hơn thì đổi vai hai vectơ cho nhau
+      return A >= B
+        ? { kind: 'elip', tam, u, v, A, B }
+        : { kind: 'elip', tam, u: v, v: u, A: B, B: A };
+    }
+    if (ra > 0) return { kind: 'hypebol', tam, u, v, A: Math.sqrt(ra), B: Math.sqrt(-rb) };
+    if (rb > 0) return { kind: 'hypebol', tam, u: v, v: u, A: Math.sqrt(rb), B: Math.sqrt(-ra) };
+    return { loi: 'Không có điểm thực nào thoả phương trình.' };
+  }
+
+  // --- không có tâm: parabol ---
+  // Trục đối xứng nằm dọc theo hướng có số hạng bình phương.
+  if (coA) {
+    if (Math.abs(e1) < TI) return { loi: 'Suy biến thành đường thẳng song song.' };
+    const X0 = -d1 / (2 * a1);
+    const Yv = (a1 * X0 * X0 - f1) / e1;
+    const k = -e1 / a1;                 // U² = k·V
+    return { kind: 'parabol', dinh: veGoc(X0, Yv), u, v, k };
+  }
+  if (Math.abs(d1) < TI) return { loi: 'Suy biến thành đường thẳng song song.' };
+  const Y0 = -e1 / (2 * c1);
+  const Xv = (c1 * Y0 * Y0 - f1) / d1;
+  const k = -d1 / c1;
+  return { kind: 'parabol', dinh: veGoc(Xv, Y0), u: v, v: u, k };
+}
+
+/**
+ * Sinh các nhánh điểm để vẽ. `tam` là quãng nhìn thấy (đơn vị toạ độ thật),
+ * dùng để biết nên chạy tham số tới đâu thì phủ kín màn hình.
+ */
+function diemConic(K, tamNhin = 40) {
+  if (!K || K.loi) return [];
+  const di = (g, s, t) => ({ x: g.x + K.u.x * s + K.v.x * t, y: g.y + K.u.y * s + K.v.y * t });
+
+  if (K.kind === 'elip') {
+    const n = 180, ds = [];
+    for (let i = 0; i <= n; i++) {
+      const t = (i / n) * 2 * Math.PI;
+      ds.push(di(K.tam, K.A * Math.cos(t), K.B * Math.sin(t)));
+    }
+    return [ds];
+  }
+
+  if (K.kind === 'hypebol') {
+    const T = Math.asinh(Math.max(2, tamNhin / Math.max(1e-6, K.B))) * 1.05;
+    const n = 140;
+    const nhanh = (dau) => {
+      const ds = [];
+      for (let i = 0; i <= n; i++) {
+        const t = -T + (2 * T * i) / n;
+        ds.push(di(K.tam, dau * K.A * Math.cosh(t), K.B * Math.sinh(t)));
+      }
+      return ds;
+    };
+    return [nhanh(1), nhanh(-1)];
+  }
+
+  // parabol: chạy s sao cho phủ hết tầm nhìn theo cả hai hướng
+  const S = Math.max(tamNhin, Math.sqrt(Math.abs(K.k) * tamNhin)) * 1.2;
+  const n = 160, ds = [];
+  for (let i = 0; i <= n; i++) {
+    const s = -S + (2 * S * i) / n;
+    ds.push(di(K.dinh, s, (s * s) / K.k));
+  }
+  return [ds];
+}
+
+/** Tiêu điểm, tâm sai, đường chuẩn, tiệm cận — những thứ đề bài hay hỏi */
+function soLieuConic(K) {
+  if (!K || K.loi) return null;
+  const di = (g, s, t) => ({ x: g.x + K.u.x * s + K.v.x * t, y: g.y + K.u.y * s + K.v.y * t });
+  if (K.kind === 'elip') {
+    const c = Math.sqrt(Math.max(0, K.A * K.A - K.B * K.B));
+    return { c, e: c / K.A, F: [di(K.tam, -c, 0), di(K.tam, c, 0)] };
+  }
+  if (K.kind === 'hypebol') {
+    const c = Math.sqrt(K.A * K.A + K.B * K.B);
+    return { c, e: c / K.A, F: [di(K.tam, -c, 0), di(K.tam, c, 0)], hsTiemCan: K.B / K.A };
+  }
+  const p = Math.abs(K.k) / 4;          // U² = 4p·V
+  return { p, F: [di(K.dinh, 0, K.k / 4)] };
+}
+
+/** Nhận dạng nhanh bằng biệt thức, không cần chuẩn hoá */
+function loaiConic(hs) {
+  const D = hs.b * hs.b - 4 * hs.a * hs.c;
+  if (D < -TI) return Math.abs(hs.a - hs.c) < TI && Math.abs(hs.b) < TI ? 'tron' : 'elip';
+  return D > TI ? 'hypebol' : 'parabol';
+}
+
 /* ==== /src/core/ops2d.js ==== */
 // ============================================================================
 // ops2d.js — Bảng phép dựng hình phẳng.
 // Mỗi phép: { type, style?, fn(vals, params, obj, doc) -> value, drag?(obj,pos,doc) }
 // ============================================================================
+
 
 
 
@@ -976,6 +1155,14 @@ const OPS = {
   circleEq: { // đường tròn tâm (x; y) bán kính r
     type: 'circle', style: CR,
     fn: (_, p) => (+p.r > 0 ? mkCircle(V(+p.x || 0, +p.y || 0), +p.r) : null),
+  },
+  conicEq: { // elip / parabol / hypebol:  a·x² + b·xy + c·y² + d·x + e·y + f = 0
+    type: 'conic', style: { color: '#7a3ea1', width: 1.9 },
+    fn: (_, p) => {
+      const hs = { a: +p.a || 0, b: +p.b || 0, c: +p.c || 0, d: +p.d || 0, e: +p.e || 0, f: +p.f || 0 };
+      const K = chuanHoaConic(hs);
+      return K.loi ? null : { t: 'conic', hs, ...K };
+    },
   },
 
   circleCP: { // tâm O đi qua A
@@ -1472,6 +1659,7 @@ class GeoDoc {
 // lỗi thay vì dựng bừa.
 // ============================================================================
 
+
 const XIU = 1e-7;
 const LA_DIEM = { point: 1, point3: 1 };                       // điểm tự do, dời được thoải mái
 const HAI_DAU = { segment: 1, line: 1, ray: 1, vector: 1 };    // đường xác định bởi đúng hai điểm
@@ -1590,22 +1778,33 @@ function docPT(chuoi, khongGian = false) {
     return { loai: 'duong', a: h.G, b: h.H, c: h.K };
   }
 
-  // ---- bậc hai: chỉ nhận đường tròn / mặt cầu (hệ số các bình phương bằng nhau) ----
-  if (coCheo) return { loi: 'Có số hạng xy, yz hoặc zx — chưa vẽ được loại đường này.' };
-  const trongKG = khongGian || !gan(h.C);
-  const ds = trongKG ? [h.A, h.B, h.C] : [h.A, h.B];
-  const k = ds.find((v) => !gan(v));
-  if (ds.some((v) => !gan(v - k))) {
-    return { loi: trongKG ? 'Hệ số x², y², z² phải bằng nhau mới là mặt cầu.' : 'Hệ số x² và y² phải bằng nhau mới là đường tròn (elip, parabol chưa hỗ trợ).' };
+  // ---- bậc hai trong KHÔNG GIAN: mới nhận mặt cầu ----
+  const trongKG = khongGian ? coZ || !gan(h.C) : !gan(h.C);
+  if (trongKG) {
+    if (coCheo) return { loi: 'Có số hạng xy, yz hoặc zx — mặt bậc hai loại này chưa vẽ được.' };
+    const ds3 = [h.A, h.B, h.C];
+    const k3 = ds3.find((v) => !gan(v));
+    if (ds3.some((v) => !gan(v - k3))) return { loi: 'Hệ số x², y², z² phải bằng nhau mới là mặt cầu. Mặt elipxôit, hypebôlôit chưa hỗ trợ.' };
+    const D3 = h.G / k3, E3 = h.H / k3, F3 = h.I / k3, G3 = h.K / k3;
+    const cx3 = -D3 / 2, cy3 = -E3 / 2, cz3 = -F3 / 2;
+    const r3 = cx3 * cx3 + cy3 * cy3 + cz3 * cz3 - G3;
+    if (r3 <= XIU) return { loi: r3 > -XIU ? 'Chỉ là một điểm, bán kính bằng 0.' : 'Vế phải âm — không có mặt cầu nào thoả.' };
+    return { loai: 'cau', x: cx3, y: cy3, z: cz3, r: Math.sqrt(r3) };
   }
+
+  // ---- bậc hai TRONG MẶT PHẲNG: đường tròn, elip, parabol, hypebol ----
+  const hs = { a: h.A, b: h.D, c: h.B, d: h.G, e: h.H, f: h.K };
+  if (loaiConic(hs) !== 'tron') return { loai: 'conic', ...hs, kind: loaiConic(hs) };
+
+  // đường tròn thì viết riêng cho gọn, khỏi qua đường conic tổng quát
+  const k = h.A;
   const D = h.G / k, E = h.H / k, F = h.I / k, G = h.K / k;
-  const cx = -D / 2, cy = -E / 2, cz = trongKG ? -F / 2 : 0;
-  const r2 = cx * cx + cy * cy + cz * cz - G;
+  const cx = -D / 2, cy = -E / 2;
+  const r2 = cx * cx + cy * cy - G;
   if (r2 <= XIU) {
     return { loi: r2 > -XIU ? 'Chỉ là một điểm, bán kính bằng 0.' : 'Vế phải âm — không có hình nào thoả.' };
   }
-  const r = Math.sqrt(r2);
-  return trongKG ? { loai: 'cau', x: cx, y: cy, z: cz, r } : { loai: 'tron', x: cx, y: cy, r };
+  return { loai: 'tron', x: cx, y: cy, r: Math.sqrt(r2) };
 }
 
 // ============================================================================
@@ -1620,6 +1819,7 @@ function specTuPT(kq) {
       : { op: 'point', args: [], params: { x: kq.x, y: kq.y } };
     case 'duong': return { op: 'lineEq', args: [], params: { a: kq.a, b: kq.b, c: kq.c } };
     case 'tron': return { op: 'circleEq', args: [], params: { x: kq.x, y: kq.y, r: kq.r } };
+    case 'conic': return { op: 'conicEq', args: [], params: { a: kq.a, b: kq.b, c: kq.c, d: kq.d, e: kq.e, f: kq.f } };
     case 'mp': return { op: 'planeEq', args: [], params: { a: kq.a, b: kq.b, c: kq.c, d: kq.d } };
     case 'cau': return { op: 'sphereEq', args: [], params: { x: kq.x, y: kq.y, z: kq.z, r: kq.r } };
     case 'bpt': return { op: 'region', args: [], params: { bpt: kq.ds } };
@@ -1661,6 +1861,9 @@ function apDungPT(doc, o, chuoi) {
   // --- hình vốn định nghĩa bằng phương trình ---
   if (o.op === 'lineEq' && kq.loai === 'duong') { P.a = kq.a; P.b = kq.b; P.c = kq.c; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
   if (o.op === 'circleEq' && kq.loai === 'tron') { P.x = kq.x; P.y = kq.y; P.r = kq.r; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
+  if (o.op === 'conicEq' && kq.loai === 'conic') { P.a = kq.a; P.b = kq.b; P.c = kq.c; P.d = kq.d; P.e = kq.e; P.f = kq.f; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
+  // đổi qua lại giữa đường tròn và conic: đổi luôn kiểu dựng cho khỏi vướng
+  if (o.op === 'conicEq' && kq.loai === 'tron') { P.a = 1; P.b = 0; P.c = 1; P.d = -2 * kq.x; P.e = -2 * kq.y; P.f = kq.x * kq.x + kq.y * kq.y - kq.r * kq.r; return { ok: true, msg: `Đã đổi ${o.name} thành đường tròn.` }; }
   if (o.op === 'planeEq' && kq.loai === 'mp') { P.a = kq.a; P.b = kq.b; P.c = kq.c; P.d = kq.d; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
   if (o.op === 'sphereEq' && kq.loai === 'cau') { P.x = kq.x; P.y = kq.y; P.z = kq.z; P.r = kq.r; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
   if (o.op === 'region' && kq.loai === 'bpt') { P.bpt = kq.ds; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
@@ -1811,6 +2014,21 @@ def(['goc', 'angle'], (A) => ({ op: 'angleM', args: A.slice(0, 3) }));
 def(['dientich', 'area'], (A) => ({ op: 'areaM', args: [A[0]] }));
 def(['so', 'number'], (A) => ({ op: 'numberFree', args: [], params: { v: A[0] || 0 } }));
 def(['chu', 'text', 'nhan'], (A) => ({ op: 'text', args: [], params: { s: String(A[0] == null ? '' : A[0]), x: A[1] || 0, y: A[2] || 0 } }));
+
+// --- elip, parabol, hypebol (dạng chính tắc, tâm ở gốc toạ độ)
+const conic = (a, b, c, d, e, f) => ({ op: 'conicEq', args: [], params: { a, b, c, d, e, f } });
+def(['elip', 'ellipse'], (A) => {
+  const a = Math.abs(A[0] || 3), b = Math.abs(A[1] || 2);
+  return conic(1 / (a * a), 0, 1 / (b * b), 0, 0, -1);      // x²/a² + y²/b² = 1
+});
+def(['hypebol', 'hyperbol', 'hyperbola'], (A) => {
+  const a = Math.abs(A[0] || 3), b = Math.abs(A[1] || 2);
+  return conic(1 / (a * a), 0, -1 / (b * b), 0, 0, -1);     // x²/a² - y²/b² = 1
+});
+def(['parabol', 'parabola'], (A) => {
+  const p = A[0] == null ? 1 : A[0];
+  return conic(0, 0, 1, -2 * p, 0, 0);                      // y² = 2px
+});
 
 // --- miền nghiệm
 const chuoiBPT = (A) => A.filter((x) => typeof x === 'string' && x.trim());
@@ -2044,6 +2262,7 @@ function splitAssign(line) {
 //   đường trong không gian: phương trình tham số
 // ============================================================================
 
+
 const NHO = 1e-9;   // ngưỡng coi như bằng 0 (đặt tên riêng để bản gộp không đụng EPS của vec.js)
 
 /** Làm tròn gọn: bỏ đuôi 0 thừa, -0 thành 0 */
@@ -2166,6 +2385,34 @@ const dtGiay = (pts) => {
 };
 
 const TEN_KIND = { seg: 'Đoạn thẳng', ray: 'Tia', vec: 'Vectơ', line: 'Đường thẳng' };
+const TEN_CONIC = { elip: 'Elip', parabol: 'Parabol', hypebol: 'Hypebol' };
+
+/**
+ * Dạng chính tắc, chỉ viết được khi trục của conic song song với Ox / Oy —
+ * đúng gần hết bài tập trong sách. Conic bị xoay thì bỏ qua dòng này.
+ */
+function ptChinhTac(v) {
+  const doc1 = Math.abs(Math.abs(v.u.x) - 1) < 1e-7;   // trục chính nằm ngang
+  const doc2 = Math.abs(Math.abs(v.u.y) - 1) < 1e-7;   // trục chính thẳng đứng
+  if (!doc1 && !doc2) return null;
+  const bien = (ten, g) => (Math.abs(g) < NHO ? `${ten}²` : `(${ten} ${g > 0 ? '-' : '+'} ${soGon(Math.abs(g))})²`);
+  if (v.kind === 'parabol') {
+    // k đo theo vectơ v của hệ trục riêng; đổi về trục Ox/Oy thì phải nhân
+    // với thành phần của v, nếu không thì sai dấu.
+    const he = v.k * (doc1 ? v.v.y : v.v.x);
+    const s = doc1 ? bien('x', v.dinh.x) : bien('y', v.dinh.y);
+    const t = doc1 ? ['y', v.dinh.y] : ['x', v.dinh.x];
+    const ve = Math.abs(t[1]) < NHO ? t[0] : `(${t[0]} ${t[1] > 0 ? '-' : '+'} ${soGon(Math.abs(t[1]))})`;
+    const dau = he < 0 ? '-' : '';
+    const so = Math.abs(Math.abs(he) - 1) < NHO ? '' : soGon(Math.abs(he));
+    return `${s} = ${dau}${so}${ve}`;
+  }
+  const x2 = bien('x', v.tam.x), y2 = bien('y', v.tam.y);
+  const a2 = soGon(v.A * v.A), b2 = soGon(v.B * v.B);
+  // elip viết x trước theo thói quen; hypebol phải để số hạng DƯƠNG trước
+  if (v.kind === 'elip') return doc1 ? `${x2}/${a2} + ${y2}/${b2} = 1` : `${x2}/${b2} + ${y2}/${a2} = 1`;
+  return doc1 ? `${x2}/${a2} − ${y2}/${b2} = 1` : `${y2}/${a2} − ${x2}/${b2} = 1`;
+}
 
 /**
  * Phương trình của một đối tượng.
@@ -2212,6 +2459,27 @@ function phuongTrinh(o) {
       pt: `${tx} + ${ty} = ${soGon(v.r * v.r)}`,
       phu: `Tâm (${a}; ${b})   ·   R = ${soGon(v.r)}`,
     };
+  }
+
+  // ---- elip / parabol / hypebol ----
+  if (v.t === 'conic') {
+    const [A2, B2, C2, D2, E2, F2] = lamDep([v.hs.a, v.hs.b, v.hs.c, v.hs.d, v.hs.e, v.hs.f]);
+    const tq = daThuc([[A2, 'x²'], [B2, 'xy'], [C2, 'y²'], [D2, 'x'], [E2, 'y']], F2) + ' = 0';
+    const S = soLieuConic(v);
+    const diem = (p) => `(${soGon(p.x)}; ${soGon(p.y)})`;
+    const ct = ptChinhTac(v);
+    let phu = ct ? ct + '\n' : '';
+    if (v.kind === 'elip') {
+      phu += `Tâm ${diem(v.tam)}   ·   a = ${soGon(v.A)}, b = ${soGon(v.B)}, c = ${soGon(S.c)}`
+        + `\nTâm sai e = ${soGon(S.e)}   ·   Tiêu điểm ${diem(S.F[0])}, ${diem(S.F[1])}`;
+    } else if (v.kind === 'hypebol') {
+      phu += `Tâm ${diem(v.tam)}   ·   a = ${soGon(v.A)}, b = ${soGon(v.B)}, c = ${soGon(S.c)}`
+        + `\nTâm sai e = ${soGon(S.e)}   ·   Tiêu điểm ${diem(S.F[0])}, ${diem(S.F[1])}`
+        + `\nTiệm cận: hệ số góc ±${soGon(S.hsTiemCan)} so với trục thực`;
+    } else {
+      phu += `Đỉnh ${diem(v.dinh)}   ·   Tham số tiêu p = ${soGon(S.p)}   ·   Tiêu điểm ${diem(S.F[0])}`;
+    }
+    return { loai: TEN_CONIC[v.kind] || 'Đường bậc hai', pt: tq, phu };
   }
 
   // ---- mặt cầu ----
@@ -2302,6 +2570,7 @@ function phuongTrinh(o) {
 // render.js — Camera 2D/3D + vẽ toàn bộ khung hình ra chuỗi SVG.
 // Vẽ lại toàn bộ mỗi khung: đơn giản, không bug đồng bộ, đủ nhanh (<1ms/100 đối tượng).
 // ============================================================================
+
 
 
 
@@ -2441,6 +2710,21 @@ function styleAttr(o, sel) {
   return `stroke="${c}" stroke-width="${w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}`;
 }
 
+
+/**
+ * Có vẽ TÊN của đối tượng này lên bảng không.
+ * Ba nấc: 'du' hiện hết · 'diem' chỉ hiện tên điểm · 'tat' giấu sạch.
+ * Chỉ áp cho TÊN; số đo góc, độ dài và ghi chú vẫn hiện bình thường vì đó là
+ * nội dung bài chứ không phải nhãn trang trí.
+ */
+function nenHienTen(o, opt, laDiem) {
+  if (!o.showLabel) return false;
+  const m = (opt && opt.nhan) || 'du';
+  if (m === 'tat') return false;
+  if (m === 'diem') return !!laDiem;
+  return true;
+}
+
 function render2(doc, cam, opt) {
   NHAN = [];
   const out = [grid2(cam, opt)];
@@ -2472,7 +2756,7 @@ function render2(doc, cam, opt) {
         const B = cam.s({ x: P.x + u.x * big, y: P.y + u.y * big });
         out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" stroke="${mau}" stroke-width="${(o.style.width || 1.8) * (chon ? 1.6 : 1)}"${h.chat ? ' stroke-dasharray="7 5"' : ''} stroke-linecap="round"/>`);
       }
-      if (o.showLabel) {
+      if (nenHienTen(o, opt, false)) {
         const trong = m.rong ? [] : catTheoKhung(m.pts, cam);
         if (trong.length) {
           const c = trong.reduce((a, p) => vAdd(a, p), { x: 0, y: 0 });
@@ -2499,7 +2783,7 @@ function render2(doc, cam, opt) {
       const mut = (X, dong) => `<circle cx="${f(X)}" cy="${f(A.y)}" r="5" fill="${dong ? mau : 'var(--panel,#fff)'}" stroke="${mau}" stroke-width="2.2"/>`;
       if (k.a >= tl.x - 1) out.push(mut(cam.s({ x: k.a, y: 0 }).x, k.dongA));
       if (k.b <= br.x + 1) out.push(mut(cam.s({ x: k.b, y: 0 }).x, k.dongB));
-      if (o.showLabel) labels.push(lab(o, { x: (A.x + B.x) / 2, y: A.y }, o.name, mau, 0, -18));
+      if (nenHienTen(o, opt, false)) labels.push(lab(o, { x: (A.x + B.x) / 2, y: A.y }, o.name, mau, 0, -18));
       continue;
     }
   }
@@ -2509,7 +2793,7 @@ function render2(doc, cam, opt) {
     if (!o.visible || !o.val || o.type !== 'polygon') continue;
     const pts = o.val.pts.map((p) => cam.s(p)).map((p) => `${f(p.x)},${f(p.y)}`).join(' ');
     out.push(`<polygon points="${pts}" fill="${o.style.fill || 'rgba(67,56,168,.09)'}" ${styleAttr(o, sel.has(o.id))} stroke-linejoin="round"/>`);
-    if (o.showLabel) {
+    if (nenHienTen(o, opt, false)) {
       const c = o.val.pts.reduce((a, p) => vAdd(a, p), { x: 0, y: 0 });
       labels.push(lab(o, cam.s(vMul(c, 1 / o.val.pts.length)), o.name, o.style.color, 0, 0));
     }
@@ -2520,14 +2804,23 @@ function render2(doc, cam, opt) {
     if (o.type === 'circle') {
       const c = cam.s(o.val.c);
       out.push(`<circle cx="${f(c.x)}" cy="${f(c.y)}" r="${f(o.val.r * cam.scale)}" fill="none" ${styleAttr(o, sel.has(o.id))}/>`);
-      if (o.showLabel) labels.push(lab(o, { x: c.x, y: c.y - o.val.r * cam.scale }, o.name, o.style.color, 0, -6));
+      if (nenHienTen(o, opt, false)) labels.push(lab(o, { x: c.x, y: c.y - o.val.r * cam.scale }, o.name, o.style.color, 0, -6));
     } else if (o.type === 'line') {
       const [a, b] = lineEndpoints(o.val, cam);
       const A = cam.s(a), B = cam.s(b);
       out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" ${styleAttr(o, sel.has(o.id))} stroke-linecap="round"${o.val.arrow ? ' marker-end="url(#arwr)"' : ''}/>`);
-      if (o.showLabel) {
+      if (nenHienTen(o, opt, false)) {
         const m = { x: A.x + (B.x - A.x) * 0.72, y: A.y + (B.y - A.y) * 0.72 };
         labels.push(lab(o, m, o.name, o.style.color, 8, -6));
+      }
+    } else if (o.type === 'conic') {
+      // elip / parabol / hypebol: chạy tham số ra một dãy điểm rồi nối lại
+      for (const nhanh of nhanhConic(o.val, cam)) {
+        out.push(`<polyline points="${nhanh.map((p) => `${f(p.x)},${f(p.y)}`).join(' ')}" fill="none" ${styleAttr(o, sel.has(o.id))} stroke-linejoin="round" stroke-linecap="round"/>`);
+      }
+      if (nenHienTen(o, opt, false)) {
+        const neo = nhanConic(o.val);
+        if (neo) labels.push(lab(o, cam.s(neo), o.name, o.style.color, 9, -7));
       }
     }
   }
@@ -2570,9 +2863,39 @@ function render2(doc, cam, opt) {
     const col = sel.has(o.id) ? '#d98324' : o.style.color;
     if (hl === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
     out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
-    if (o.showLabel) labels.push(lab(o, p, o.name, col, 12, -11));
+    if (nenHienTen(o, opt, true)) labels.push(lab(o, p, o.name, col, 12, -11));
   }
   return out.join('') + labels.join('');
+}
+
+/**
+ * Đổi các nhánh conic sang toạ độ màn hình, ngắt đoạn ở chỗ chạy ra quá xa
+ * khung nhìn. Không ngắt thì hypebol và parabol sinh ra toạ độ khổng lồ,
+ * trình duyệt vẽ vẫn được nhưng nét bị răng cưa và tốn công vô ích.
+ */
+function nhanhConic(K, cam) {
+  const xa = Math.max(cam.w, cam.h) * 4;
+  const ra = [];
+  for (const nhanh of diemConic(K, Math.max(cam.w, cam.h) / cam.scale)) {
+    let doan = [];
+    for (const p of nhanh) {
+      const s = cam.s(p);
+      if (Math.abs(s.x) > xa || Math.abs(s.y) > xa) {
+        if (doan.length > 1) ra.push(doan);
+        doan = [];
+        continue;
+      }
+      doan.push(s);
+    }
+    if (doan.length > 1) ra.push(doan);
+  }
+  return ra;
+}
+/** Chỗ neo nhãn của một conic: mép trục lớn với elip/hypebol, đỉnh với parabol */
+function nhanConic(K) {
+  if (!K || !K.u) return null;
+  if (K.kind === 'parabol') return K.dinh;
+  return { x: K.tam.x + K.u.x * K.A, y: K.tam.y + K.u.y * K.A };
 }
 
 const round3 = (v) => Math.round(v * 1000) / 1000;
@@ -2667,11 +2990,11 @@ function render3(doc, cam, opt) {
         c = { x: A.x + dir.x / l * big, y: A.y + dir.y / l * big };
       }
       out.push(`<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(c.x)}" y2="${f(c.y)}" ${styleAttr(o, on)} stroke-linecap="round"/>`);
-      if (o.showLabel) labels.push(lab(o, { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, o.name, o.style.color, 8, -6));
+      if (nenHienTen(o, opt, false)) labels.push(lab(o, { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, o.name, o.style.color, 8, -6));
     } else if (o.val.t === 'f3') {
       const pts = o.val.pts.map(S);
       out.push(`<polygon points="${pts.map((p) => `${f(p.x)},${f(p.y)}`).join(' ')}" fill="none" ${styleAttr(o, on)} stroke-linejoin="round"/>`);
-      if (o.showLabel) {
+      if (nenHienTen(o, opt, false)) {
         const c = pts.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
         labels.push(lab(o, { x: c.x / pts.length, y: c.y / pts.length }, o.name, o.style.color, 0, 0));
       }
@@ -2680,7 +3003,7 @@ function render3(doc, cam, opt) {
       out.push(`<circle cx="${f(c.x)}" cy="${f(c.y)}" r="${f(r)}" fill="${o.style.fill}" ${styleAttr(o, on)}/>`);
       const ry = Math.max(3, Math.abs(Math.sin(cam.pitch)) * r);
       out.push(`<ellipse cx="${f(c.x)}" cy="${f(c.y)}" rx="${f(r)}" ry="${f(ry)}" fill="none" stroke="${o.style.color}" stroke-width="1.1" opacity=".55" stroke-dasharray="5 4"/>`);
-      if (o.showLabel) labels.push(lab(o, { x: c.x, y: c.y - r }, o.name, o.style.color, 0, -6));
+      if (nenHienTen(o, opt, false)) labels.push(lab(o, { x: c.x, y: c.y - r }, o.name, o.style.color, 0, -6));
     } else if (o.val.t === 'num' && o.val.anchor3) {
       labels.push(lab(o, S(o.val.anchor3), `${o.name} = ${round3(o.val.v)}`, o.style.color, 0, -8));
     }
@@ -2693,7 +3016,7 @@ function render3(doc, cam, opt) {
     const col = sel.has(o.id) ? '#d98324' : o.style.color;
     if (opt.hover === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
     out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
-    if (o.showLabel) labels.push(lab(o, p, o.name, col, 12, -11));
+    if (nenHienTen(o, opt, true)) labels.push(lab(o, p, o.name, col, 12, -11));
   }
   return out.join('') + labels.join('');
 }
@@ -2736,6 +3059,10 @@ function pick(doc, cam, px, mode, tol = 13) {
     } else if (!is3 && o.val.t === 'mien') {
       if (o.val.pts.length >= 3) {
         d = Math.min(...o.val.pts.map((p, i) => distSegPx(cam.s(p), cam.s(o.val.pts[(i + 1) % o.val.pts.length]), px)));
+      }
+    } else if (!is3 && o.type === 'conic') {
+      for (const nhanh of nhanhConic(o.val, cam)) {
+        for (let i = 0; i + 1 < nhanh.length; i++) d = Math.min(d, distSegPx(nhanh[i], nhanh[i + 1], px));
       }
     } else if (!is3 && o.val.t === 'khoang') {
       d = distSegPx(cam.s({ x: o.val.a, y: 0 }), cam.s({ x: o.val.b, y: 0 }), px);
@@ -2803,14 +3130,20 @@ const ICONS = {
   rot: I('<path d="M20 12a8 8 0 11-2.4-5.7M20 4v4h-4"/>'),
   mien: I('<path d="M3 17L21 5"/><path d="M5 19l3-3M9 19l5-5M13 19l6-6M17 19l4-4" stroke-width="1.1"/>'),
   khoang: I('<path d="M3 12h18M7 8v8M17 8v8"/>' + DOT(7, 12, 2.6) + DOT(17, 12, 2.6)),
+  conic: I('<ellipse cx="12" cy="12" rx="9" ry="5.5"/>' + DOT(6, 12, 2) + DOT(18, 12, 2)),
 };
+
+/**
+ * Hai công cụ này KHÔNG nằm trong dải công cụ nữa mà ở cụm nút nổi trên bảng vẽ,
+ * vì trên điện thoại phải vuốt ngang mãi mới tìm lại được chúng sau mỗi lần vẽ.
+ */
+const TOOLS_THAOTAC = [
+  { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo đỉnh → hình biến đổi · kéo CHỮ → chỉ dời chữ · kéo cạnh → dời cả hình · bấm đúp để đổi tên.' },
+  { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá (xoá cả hình phụ thuộc nó).' },
+];
 
 // pick kinds: 'point' | 'curve' (đường/đường tròn) | 'any' | 'solid' | 'p3'
 const TOOLS_2D = [
-  { g: 'Chọn', t: [
-    { id: 'move', name: 'Chọn / Kéo', icon: ICONS.move, n: 0, hint: 'Kéo đỉnh → hình biến đổi · kéo CHỮ → chỉ dời chữ · kéo cạnh → dời cả hình · bấm đúp để đổi tên.' },
-    { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá (xoá cả hình phụ thuộc nó).' },
-  ]},
   { g: 'Điểm', t: [
     { id: 'point', name: 'Điểm', icon: ICONS.point, n: 1, kinds: ['point'], hint: 'Bấm lên bảng để tạo điểm. Bấm lên đường/đường tròn để tạo điểm thuộc hình đó.', make: () => null },
     { id: 'inter', name: 'Giao điểm', icon: ICONS.inter, n: 2, kinds: ['curve', 'curve'], hint: 'Chọn 2 đường (thẳng / tròn) để lấy giao điểm.',
@@ -2837,6 +3170,9 @@ const TOOLS_2D = [
     { id: 'bisec', name: 'Phân giác', icon: ICONS.bisec, n: 3, kinds: ['point', 'point', 'point'], op: 'bisector', hint: 'Chọn 3 điểm, điểm GIỮA là đỉnh góc.' },
     { id: 'refl', name: 'Đối xứng', icon: ICONS.refl, n: 2, kinds: ['point', 'any'], op: 'reflectPt', hint: 'Chọn điểm cần lấy đối xứng, rồi chọn trục (đường thẳng) hoặc tâm (điểm).' },
   ]},
+  { g: 'Conic', t: [
+    { id: 'conic', name: 'Elip / Parabol / Hypebol', icon: ICONS.conic, n: 0, hint: 'Bấm rồi nhập phương trình, ví dụ x^2/9 + y^2/4 = 1 hoặc y^2 = 4x.' },
+  ]},
   { g: 'Miền nghiệm', t: [
     { id: 'mien', name: 'Miền nghiệm BPT', icon: ICONS.mien, n: 0,
       hint: 'Bấm để nhập bất phương trình, ví dụ 2x+3y<=6. Nhiều bất phương trình thì ngăn bằng dấu phẩy.' },
@@ -2851,10 +3187,8 @@ const TOOLS_2D = [
 ];
 
 const TOOLS_3D = [
-  { g: 'Chọn', t: [
-    { id: 'move', name: 'Chọn / Xoay', icon: ICONS.move, n: 0, hint: 'Kéo nền → xoay góc nhìn · kéo đỉnh → dời đỉnh · kéo CHỮ → chỉ dời chữ khỏi chỗ bị che · bấm đúp để đổi tên.' },
+  { g: 'Góc nhìn', t: [
     { id: 'rot', name: 'Xoay hình', icon: ICONS.rot, n: 0, hint: 'Kéo để xoay góc nhìn.' },
-    { id: 'del', name: 'Xoá', icon: ICONS.del, n: 0, hint: 'Bấm vào đối tượng để xoá.' },
   ]},
   { g: 'Điểm & cạnh', t: [
     { id: 'pt3', name: 'Điểm', icon: ICONS.pt3, n: 1, kinds: ['p3'], hint: 'Bấm lên mặt phẳng đáy để tạo điểm (z = 0).', make: () => null },
@@ -2880,6 +3214,9 @@ const QUICK_2D = [
   ['Tam giác đều', 'A=(-3,-2)\nB=(3,-2)\nC=(0,3.196)\nt=tamgiac(A,B,C)'],
   ['Đường tròn', 'O=(0,0)\nA=(4,0)\nc=duongtron(O,A)'],
   ['Hình vuông', 'A=(-3,-3)\nB=(3,-3)\nC=(3,3)\nD=(-3,3)\nt=tugiac(A,B,C,D)'],
+  ['Elip', 'e = elip(4, 2.5)'],
+  ['Parabol', 'p = parabol(2)'],
+  ['Hypebol', 'h = hypebol(3, 2)'],
   ['Miền nghiệm', 'mien 2x+3y<=6'],
   ['Hệ BPT', 'mien x>=0, y>=0, x+y<=4, 2x+y<=6'],
   ['3 đường cao', 'A=(-4,-2)\nB=(5,-2)\nC=(1,4)\nt=tamgiac(A,B,C)\nha=duongcao(A,B,C)\nhb=duongcao(B,C,A)\nhc=duongcao(C,A,B)\nH=tructam(A,B,C)'],
@@ -2944,7 +3281,16 @@ DỰNG THẲNG TỪ PHƯƠNG TRÌNH  (khi đề CHO SẴN phương trình, đừ
   c = pt x^2+y^2-4x+2y-4=0
   P = pt 2x - y + 3z - 5 = 0     mặt phẳng (hình không gian)
   S = pt (x-1)^2+(y-2)^2+(z-3)^2=16    mặt cầu
-  Chỉ nhận bậc nhất, đường tròn và mặt cầu. Elip, parabol, hypebol chưa hỗ trợ.
+  Trong mặt phẳng nhận cả bậc nhất, đường tròn và mọi đường bậc hai (elip, parabol,
+  hypebol, kể cả khi bị xoay). Trong không gian mới nhận mặt phẳng và mặt cầu.
+
+ĐƯỜNG CONIC (elip, parabol, hypebol)
+  e = elip(3, 2)                 x²/9 + y²/4 = 1   (a rồi b)
+  h = hypebol(3, 2)              x²/9 - y²/4 = 1
+  p = parabol(2)                 y² = 4x           (tham số p, tức y² = 2px)
+  Muốn đặt lệch tâm hay xoay thì gõ thẳng phương trình bằng lệnh pt ở trên,
+  ví dụ  e = pt x^2+4y^2-4x+16y+4=0  hoặc  h = pt xy = 1.
+  Bảng Phương trình tự tính tâm, tiêu điểm, tâm sai, tiệm cận.
 
 MIỀN NGHIỆM BẤT PHƯƠNG TRÌNH BẬC NHẤT HAI ẨN
   m = mien("2x+3y<=6")                     miền nghiệm một bất phương trình
@@ -3229,7 +3575,11 @@ const app = {
   picks: [],
   sel: new Set(),
   hover: null,
-  opts: { grid: LS.get('grid', true), axes: true },
+  opts: {
+    grid: LS.get('grid', true), axes: true,
+    tuVeChon: LS.get('tuVeChon', true),   // vẽ xong tự về Chọn/Kéo
+    nhan: LS.get('nhan', 'du'),           // 'du' | 'diem' | 'tat' — hiện tên tới mức nào
+  },
   hist: { '2d': [], '3d': [] },
   future: { '2d': [], '3d': [] },
   chat: [],
@@ -3412,6 +3762,7 @@ function renderObjList() {
       <span class="sw" style="background:${col};${o.visible ? '' : 'opacity:.25'}"></span>
       <span class="nm" title="Bấm để đổi tên">${esc(o.name)}</span>
       <span class="de">${esc(describe(o))}</span>
+      <button class="x" data-act="ten" title="${o.showLabel ? 'Ẩn tên trên hình' : 'Hiện tên trên hình'}">${o.showLabel ? 'A' : 'a̶'}</button>
       <button class="x" data-act="vis" title="Ẩn/hiện">${o.visible ? '👁' : '⌀'}</button>
       <button class="x" data-act="del" title="Xoá">✕</button>
     </div>`;
@@ -3480,6 +3831,7 @@ function loadDoc(json) {
 // ---------------------------------------------------------------- Công cụ
 function toolSets() { return is3() ? TOOLS_3D : TOOLS_2D; }
 function curTool() {
+  for (const t of TOOLS_THAOTAC) if (t.id === app.tool) return t;
   for (const g of toolSets()) for (const t of g.t) if (t.id === app.tool) return t;
   return null;
 }
@@ -3487,14 +3839,28 @@ function buildRail() {
   $('#rail').innerHTML = toolSets().map((g) => `<div class="grp"><div class="glabel">${esc(g.g)}</div>` +
     g.t.map((t) => `<button class="tool${t.id === app.tool ? ' on' : ''}" data-tool="${t.id}" data-tip="${esc(t.name)}">${t.icon}</button>`).join('') +
     `</div>`).join('');
+  // biểu tượng cho cụm thao tác nổi
+  for (const t of TOOLS_THAOTAC) {
+    const b = $(t.id === 'move' ? '#pickmove' : '#pickdel');
+    if (b) { b.innerHTML = t.icon; b.title = t.name; }
+  }
   const q = is3() ? QUICK_3D : QUICK_2D;
   $('#quick').innerHTML = q.map((x, i) => `<button data-q="${i}">${esc(x[0])}</button>`).join('');
 }
 function setTool(id) {
   app.tool = id; app.picks = []; app.sel.clear();
   document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id));
+  const nutMove = $('#pickmove'), nutDel = $('#pickdel');
+  if (nutMove) nutMove.classList.toggle('on', id === 'move' || id === 'rot');
+  if (nutDel) nutDel.classList.toggle('on', id === 'del');
   $('#svg').style.cursor = id === 'move' ? 'default' : 'crosshair';
   render();
+}
+/** Vẽ xong thì trả con trỏ về Chọn/Kéo — tắt được trong ⚙ Cài đặt */
+function veXongVeChon() {
+  if (!app.opts.tuVeChon) return;
+  if (app.tool === 'move' || app.tool === 'rot' || app.tool === 'del') return;
+  setTool('move');
 }
 
 /** Nhãn (chữ cái) nào đang nằm dưới con trỏ. Nhãn tách rời khỏi điểm của nó. */
@@ -3623,6 +3989,21 @@ function clickTool(px) {
     }
     return;
   }
+  if (t.id === 'conic') {
+    const q = prompt('Nhập phương trình elip / parabol / hypebol:', 'x^2/9 + y^2/4 = 1');
+    if (q && q.trim()) {
+      const kq = docPT(q.trim(), false);
+      if (kq.loi) flash(kq.loi);
+      else {
+        const sp = specTuPT(kq);
+        snap();
+        const o = D().add(sp);
+        if (!o.val) { D().remove(o.id); flash('Phương trình đúng cú pháp nhưng không vẽ ra hình nào.'); }
+        else { app.sel = new Set([o.id]); veXongVeChon(); render(); }
+      }
+    }
+    return;
+  }
   if (t.id === 'khoang') {
     const q = prompt('Nhập khoảng trên trục số:', '[-1;3]');
     if (q && q.trim()) {
@@ -3659,6 +4040,7 @@ function finishTool() {
     if (t.make) t.make(picks, api);
     else if (t.op) D().add({ op: t.op, args: picks, params: t.params || {} });
   } catch (e) { flash('Không dựng được: ' + e.message); }
+  veXongVeChon();
   render();
 }
 
@@ -4127,6 +4509,7 @@ function bind() {
     const act = e.target.dataset.act;
     if (act === 'del') { snap(); D().remove(o.id); }
     else if (act === 'vis') { snap(); o.visible = !o.visible; }
+    else if (act === 'ten') { snap(); o.showLabel = !o.showLabel; }
     else if (e.target.classList.contains('nm')) { doiTen(o); return; }
     else { app.sel = new Set([o.id]); }
     render();
@@ -4179,6 +4562,22 @@ function bind() {
     render();
     flash('Đã trả các nhãn về vị trí mặc định');
   });
+  const NHAN_CHU = { du: 'Tên: đủ', diem: 'Tên: chỉ điểm', tat: 'Tên: tắt' };
+  const NHAN_SAU = { du: 'diem', diem: 'tat', tat: 'du' };
+  function veNutNhan() {
+    const b = $('#btnNhan');
+    if (b) b.textContent = NHAN_CHU[app.opts.nhan] || NHAN_CHU.du;
+  }
+  $('#btnNhan').addEventListener('click', () => {
+    app.opts.nhan = NHAN_SAU[app.opts.nhan] || 'diem';
+    LS.set('nhan', app.opts.nhan);
+    veNutNhan();
+    render();
+  });
+  veNutNhan();
+  $('#pickmove').addEventListener('click', () => setTool('move'));
+  $('#pickdel').addEventListener('click', () => setTool('del'));
+
   $('#btnGrid').addEventListener('click', () => { app.opts.grid = !app.opts.grid; LS.set('grid', app.opts.grid); render(); });
   $('#btnSave').addEventListener('click', saveFile);
   $('#btnOpen').addEventListener('click', () => $('#fileopen').click());
@@ -4239,6 +4638,7 @@ function bind() {
     $('#apikey').value = LS.get('key', '');
     $('#model').value = LS.get('model', 'gemini-3.6-flash');
     $('#proxyurl').value = LS.get('proxy', '');
+    $('#optTuVeChon').checked = !!app.opts.tuVeChon;
     $('#proxyhint').textContent = DEFAULT_PROXY
       ? 'Bản này đã cài sẵn máy chủ trung gian, bạn không cần điền gì.'
       : 'Chưa cài máy chủ trung gian.';
@@ -4249,6 +4649,8 @@ function bind() {
     LS.set('key', $('#apikey').value.trim());
     LS.set('model', $('#model').value);
     LS.set('proxy', $('#proxyurl').value.trim().replace(/\/$/, ''));
+    app.opts.tuVeChon = !!$('#optTuVeChon').checked;
+    LS.set('tuVeChon', app.opts.tuVeChon);
     $('#setmodal').classList.remove('on');
     flash('Đã lưu cài đặt');
   });

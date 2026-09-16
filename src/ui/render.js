@@ -5,6 +5,7 @@
 
 import { vSub, vAdd, vMul, vLen, vNorm, vDist, vPerp, angleABC, projectOnLine } from '../core/vec.js';
 import { p3add, p3sub, p3mul, p3dot, p3cross, p3len, p3norm, P3 } from '../core/ops3d.js';
+import { diemConic } from '../core/conic.js';
 
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const f = (n) => (Math.abs(n) < 1e-4 ? 0 : Math.round(n * 100) / 100);
@@ -142,6 +143,21 @@ function styleAttr(o, sel) {
   return `stroke="${c}" stroke-width="${w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}`;
 }
 
+
+/**
+ * Có vẽ TÊN của đối tượng này lên bảng không.
+ * Ba nấc: 'du' hiện hết · 'diem' chỉ hiện tên điểm · 'tat' giấu sạch.
+ * Chỉ áp cho TÊN; số đo góc, độ dài và ghi chú vẫn hiện bình thường vì đó là
+ * nội dung bài chứ không phải nhãn trang trí.
+ */
+function nenHienTen(o, opt, laDiem) {
+  if (!o.showLabel) return false;
+  const m = (opt && opt.nhan) || 'du';
+  if (m === 'tat') return false;
+  if (m === 'diem') return !!laDiem;
+  return true;
+}
+
 export function render2(doc, cam, opt) {
   NHAN = [];
   const out = [grid2(cam, opt)];
@@ -173,7 +189,7 @@ export function render2(doc, cam, opt) {
         const B = cam.s({ x: P.x + u.x * big, y: P.y + u.y * big });
         out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" stroke="${mau}" stroke-width="${(o.style.width || 1.8) * (chon ? 1.6 : 1)}"${h.chat ? ' stroke-dasharray="7 5"' : ''} stroke-linecap="round"/>`);
       }
-      if (o.showLabel) {
+      if (nenHienTen(o, opt, false)) {
         const trong = m.rong ? [] : catTheoKhung(m.pts, cam);
         if (trong.length) {
           const c = trong.reduce((a, p) => vAdd(a, p), { x: 0, y: 0 });
@@ -200,7 +216,7 @@ export function render2(doc, cam, opt) {
       const mut = (X, dong) => `<circle cx="${f(X)}" cy="${f(A.y)}" r="5" fill="${dong ? mau : 'var(--panel,#fff)'}" stroke="${mau}" stroke-width="2.2"/>`;
       if (k.a >= tl.x - 1) out.push(mut(cam.s({ x: k.a, y: 0 }).x, k.dongA));
       if (k.b <= br.x + 1) out.push(mut(cam.s({ x: k.b, y: 0 }).x, k.dongB));
-      if (o.showLabel) labels.push(lab(o, { x: (A.x + B.x) / 2, y: A.y }, o.name, mau, 0, -18));
+      if (nenHienTen(o, opt, false)) labels.push(lab(o, { x: (A.x + B.x) / 2, y: A.y }, o.name, mau, 0, -18));
       continue;
     }
   }
@@ -210,7 +226,7 @@ export function render2(doc, cam, opt) {
     if (!o.visible || !o.val || o.type !== 'polygon') continue;
     const pts = o.val.pts.map((p) => cam.s(p)).map((p) => `${f(p.x)},${f(p.y)}`).join(' ');
     out.push(`<polygon points="${pts}" fill="${o.style.fill || 'rgba(67,56,168,.09)'}" ${styleAttr(o, sel.has(o.id))} stroke-linejoin="round"/>`);
-    if (o.showLabel) {
+    if (nenHienTen(o, opt, false)) {
       const c = o.val.pts.reduce((a, p) => vAdd(a, p), { x: 0, y: 0 });
       labels.push(lab(o, cam.s(vMul(c, 1 / o.val.pts.length)), o.name, o.style.color, 0, 0));
     }
@@ -221,14 +237,23 @@ export function render2(doc, cam, opt) {
     if (o.type === 'circle') {
       const c = cam.s(o.val.c);
       out.push(`<circle cx="${f(c.x)}" cy="${f(c.y)}" r="${f(o.val.r * cam.scale)}" fill="none" ${styleAttr(o, sel.has(o.id))}/>`);
-      if (o.showLabel) labels.push(lab(o, { x: c.x, y: c.y - o.val.r * cam.scale }, o.name, o.style.color, 0, -6));
+      if (nenHienTen(o, opt, false)) labels.push(lab(o, { x: c.x, y: c.y - o.val.r * cam.scale }, o.name, o.style.color, 0, -6));
     } else if (o.type === 'line') {
       const [a, b] = lineEndpoints(o.val, cam);
       const A = cam.s(a), B = cam.s(b);
       out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" ${styleAttr(o, sel.has(o.id))} stroke-linecap="round"${o.val.arrow ? ' marker-end="url(#arwr)"' : ''}/>`);
-      if (o.showLabel) {
+      if (nenHienTen(o, opt, false)) {
         const m = { x: A.x + (B.x - A.x) * 0.72, y: A.y + (B.y - A.y) * 0.72 };
         labels.push(lab(o, m, o.name, o.style.color, 8, -6));
+      }
+    } else if (o.type === 'conic') {
+      // elip / parabol / hypebol: chạy tham số ra một dãy điểm rồi nối lại
+      for (const nhanh of nhanhConic(o.val, cam)) {
+        out.push(`<polyline points="${nhanh.map((p) => `${f(p.x)},${f(p.y)}`).join(' ')}" fill="none" ${styleAttr(o, sel.has(o.id))} stroke-linejoin="round" stroke-linecap="round"/>`);
+      }
+      if (nenHienTen(o, opt, false)) {
+        const neo = nhanConic(o.val);
+        if (neo) labels.push(lab(o, cam.s(neo), o.name, o.style.color, 9, -7));
       }
     }
   }
@@ -271,9 +296,39 @@ export function render2(doc, cam, opt) {
     const col = sel.has(o.id) ? '#d98324' : o.style.color;
     if (hl === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
     out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
-    if (o.showLabel) labels.push(lab(o, p, o.name, col, 12, -11));
+    if (nenHienTen(o, opt, true)) labels.push(lab(o, p, o.name, col, 12, -11));
   }
   return out.join('') + labels.join('');
+}
+
+/**
+ * Đổi các nhánh conic sang toạ độ màn hình, ngắt đoạn ở chỗ chạy ra quá xa
+ * khung nhìn. Không ngắt thì hypebol và parabol sinh ra toạ độ khổng lồ,
+ * trình duyệt vẽ vẫn được nhưng nét bị răng cưa và tốn công vô ích.
+ */
+function nhanhConic(K, cam) {
+  const xa = Math.max(cam.w, cam.h) * 4;
+  const ra = [];
+  for (const nhanh of diemConic(K, Math.max(cam.w, cam.h) / cam.scale)) {
+    let doan = [];
+    for (const p of nhanh) {
+      const s = cam.s(p);
+      if (Math.abs(s.x) > xa || Math.abs(s.y) > xa) {
+        if (doan.length > 1) ra.push(doan);
+        doan = [];
+        continue;
+      }
+      doan.push(s);
+    }
+    if (doan.length > 1) ra.push(doan);
+  }
+  return ra;
+}
+/** Chỗ neo nhãn của một conic: mép trục lớn với elip/hypebol, đỉnh với parabol */
+function nhanConic(K) {
+  if (!K || !K.u) return null;
+  if (K.kind === 'parabol') return K.dinh;
+  return { x: K.tam.x + K.u.x * K.A, y: K.tam.y + K.u.y * K.A };
 }
 
 const round3 = (v) => Math.round(v * 1000) / 1000;
@@ -368,11 +423,11 @@ export function render3(doc, cam, opt) {
         c = { x: A.x + dir.x / l * big, y: A.y + dir.y / l * big };
       }
       out.push(`<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(c.x)}" y2="${f(c.y)}" ${styleAttr(o, on)} stroke-linecap="round"/>`);
-      if (o.showLabel) labels.push(lab(o, { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, o.name, o.style.color, 8, -6));
+      if (nenHienTen(o, opt, false)) labels.push(lab(o, { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, o.name, o.style.color, 8, -6));
     } else if (o.val.t === 'f3') {
       const pts = o.val.pts.map(S);
       out.push(`<polygon points="${pts.map((p) => `${f(p.x)},${f(p.y)}`).join(' ')}" fill="none" ${styleAttr(o, on)} stroke-linejoin="round"/>`);
-      if (o.showLabel) {
+      if (nenHienTen(o, opt, false)) {
         const c = pts.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
         labels.push(lab(o, { x: c.x / pts.length, y: c.y / pts.length }, o.name, o.style.color, 0, 0));
       }
@@ -381,7 +436,7 @@ export function render3(doc, cam, opt) {
       out.push(`<circle cx="${f(c.x)}" cy="${f(c.y)}" r="${f(r)}" fill="${o.style.fill}" ${styleAttr(o, on)}/>`);
       const ry = Math.max(3, Math.abs(Math.sin(cam.pitch)) * r);
       out.push(`<ellipse cx="${f(c.x)}" cy="${f(c.y)}" rx="${f(r)}" ry="${f(ry)}" fill="none" stroke="${o.style.color}" stroke-width="1.1" opacity=".55" stroke-dasharray="5 4"/>`);
-      if (o.showLabel) labels.push(lab(o, { x: c.x, y: c.y - r }, o.name, o.style.color, 0, -6));
+      if (nenHienTen(o, opt, false)) labels.push(lab(o, { x: c.x, y: c.y - r }, o.name, o.style.color, 0, -6));
     } else if (o.val.t === 'num' && o.val.anchor3) {
       labels.push(lab(o, S(o.val.anchor3), `${o.name} = ${round3(o.val.v)}`, o.style.color, 0, -8));
     }
@@ -394,7 +449,7 @@ export function render3(doc, cam, opt) {
     const col = sel.has(o.id) ? '#d98324' : o.style.color;
     if (opt.hover === o.id) out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r + 5)}" fill="rgba(34,70,143,.18)"/>`);
     out.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="${col}" stroke="var(--labelhalo,#fff)" stroke-width="1.6"/>`);
-    if (o.showLabel) labels.push(lab(o, p, o.name, col, 12, -11));
+    if (nenHienTen(o, opt, true)) labels.push(lab(o, p, o.name, col, 12, -11));
   }
   return out.join('') + labels.join('');
 }
@@ -437,6 +492,10 @@ export function pick(doc, cam, px, mode, tol = 13) {
     } else if (!is3 && o.val.t === 'mien') {
       if (o.val.pts.length >= 3) {
         d = Math.min(...o.val.pts.map((p, i) => distSegPx(cam.s(p), cam.s(o.val.pts[(i + 1) % o.val.pts.length]), px)));
+      }
+    } else if (!is3 && o.type === 'conic') {
+      for (const nhanh of nhanhConic(o.val, cam)) {
+        for (let i = 0; i + 1 < nhanh.length; i++) d = Math.min(d, distSegPx(nhanh[i], nhanh[i + 1], px));
       }
     } else if (!is3 && o.val.t === 'khoang') {
       d = distSegPx(cam.s({ x: o.val.a, y: 0 }), cam.s({ x: o.val.b, y: 0 }), px);

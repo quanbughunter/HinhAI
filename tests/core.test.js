@@ -3,6 +3,7 @@ import { GeoDoc } from '../src/core/model.js';
 import { runScript } from '../src/core/dsl.js';
 import { phuongTrinh, ptDuongThang, ptThamSo3, theTich, dienTich3, lamDep, soGon } from '../src/core/ptr.js';
 import { docPT, specTuPT, apDungPT } from '../src/core/docpt.js';
+import { chuanHoaConic, diemConic, soLieuConic, loaiConic } from '../src/core/conic.js';
 import { angleABC, vDist } from '../src/core/vec.js';
 import { p3dist } from '../src/core/ops3d.js';
 import { docBPT, mienNghiem, thuocMien, dinhHuuHan, docKhoang } from '../src/core/bpt.js';
@@ -326,9 +327,12 @@ T('Đọc phương trình người gõ', () => {
   ok('mặt phẳng', JSON.stringify(d('2x - y + 3z - 5 = 0')) === JSON.stringify({ loai: 'mp', a: 2, b: -1, c: 3, d: -5 }));
   ok('mặt cầu', d('(x-1)^2+(y-2)^2+(z-3)^2=16').r === 4);
   ok('bất phương trình chuyển sang miền nghiệm', d('x>=0, y>=0, x+y<=4').ds.length === 3);
-  ok('từ chối elip', !!d('x^2/4 + y^2/9 = 1').loi);
-  ok('từ chối parabol', !!d('y = x^2').loi);
-  ok('từ chối số hạng xy', /xy/.test(d('xy = 1').loi));
+  ok('nhận ra elip', d('x^2/4 + y^2/9 = 1').kind === 'elip');
+  ok('nhận ra parabol', d('y = x^2').kind === 'parabol');
+  ok('nhận ra hypebol', d('x^2/9 - y^2/4 = 1').kind === 'hypebol');
+  ok('xy = 1 cũng là hypebol (bị xoay 45°)', d('xy = 1').kind === 'hypebol');
+  ok('từ chối bậc ba', !!d('x^3 + y = 1').loi);
+  ok('không gian: từ chối elipxôit', !!d('x^2+2y^2+3z^2=1', true).loi);
   ok('từ chối bán kính âm', !!d('x^2+y^2=-1').loi);
   ok('từ chối chữ lạ', !!d('2a + 3b = 6').loi);
 });
@@ -365,11 +369,63 @@ T('Gõ phương trình thì hình đổi theo', () => {
   const rs = runScript(e, 'd1 = pt 2x+3y=6\nc1 = pt x^2+y^2=25\nP = pt A(1;2)');
   ok('lệnh pt chạy trong DSL', rs.errors.length === 0, JSON.stringify(rs.errors));
   ok('đặt được tên qua DSL', !!e.byName('d1') && !!e.byName('c1'));
-  ok('lệnh pt báo lỗi tử tế', /elip|parabol/.test(JSON.stringify(runScript(e, 'pt y = x^2').errors)));
+  ok('lệnh pt báo lỗi tử tế', /bậc|hỗ trợ|đọc được/i.test(JSON.stringify(runScript(e, 'pt x^3 + y = 1').errors)), JSON.stringify(runScript(e, 'pt x^3+y=1').errors));
 
   // lưu rồi mở lại vẫn còn
   const e2 = GeoDoc.fromJSON(JSON.parse(JSON.stringify(e.toJSON())));
   ok('mở lại vẫn đúng phương trình', phuongTrinh(e2.byName('d1')).pt === '2x + 3y - 6 = 0');
+});
+
+T('Elip, parabol, hypebol', () => {
+  const F = (hs, p) => hs.a * p.x * p.x + hs.b * p.x * p.y + hs.c * p.y * p.y + hs.d * p.x + hs.e * p.y + hs.f;
+  const thu = (ten, hs, kind) => {
+    const K = chuanHoaConic(hs);
+    ok(ten + ': nhận đúng loại', K.kind === kind, K.kind || K.loi);
+    const ds = diemConic(K, 30).flat();
+    const sai = Math.max(...ds.map((p) => Math.abs(F(hs, p))));
+    ok(ten + ': mọi điểm vẽ ra đều thoả phương trình', sai < 1e-9, 'sai số ' + sai);
+  };
+  thu('elip', { a: 1 / 9, b: 0, c: 1 / 4, d: 0, e: 0, f: -1 }, 'elip');
+  thu('elip bị xoay 45°', { a: 5, b: 4, c: 5, d: 0, e: 0, f: -9 }, 'elip');
+  thu('elip lệch tâm', { a: 1, b: 0, c: 4, d: -4, e: 16, f: 4 }, 'elip');
+  thu('parabol nằm ngang', { a: 0, b: 0, c: 1, d: -4, e: 0, f: 0 }, 'parabol');
+  thu('parabol thẳng đứng', { a: 1, b: 0, c: 0, d: 0, e: -1, f: 0 }, 'parabol');
+  thu('hypebol', { a: 1 / 9, b: 0, c: -1 / 4, d: 0, e: 0, f: -1 }, 'hypebol');
+  thu('hypebol xoay (xy = 1)', { a: 0, b: 1, c: 0, d: 0, e: 0, f: -1 }, 'hypebol');
+
+  const E = chuanHoaConic({ a: 1 / 9, b: 0, c: 1 / 4, d: 0, e: 0, f: -1 });
+  const sE = soLieuConic(E);
+  ok('elip: a = 3, b = 2', E.A === 3 && E.B === 2);
+  ok('elip: c = √5', Math.abs(sE.c - Math.sqrt(5)) < 1e-9, sE.c);
+  ok('elip: tâm sai c/a', Math.abs(sE.e - Math.sqrt(5) / 3) < 1e-9);
+  const H = chuanHoaConic({ a: 1 / 9, b: 0, c: -1 / 4, d: 0, e: 0, f: -1 });
+  ok('hypebol: c = √13', Math.abs(soLieuConic(H).c - Math.sqrt(13)) < 1e-9);
+  ok('hypebol: tiệm cận b/a', Math.abs(soLieuConic(H).hsTiemCan - 2 / 3) < 1e-9);
+  ok('hypebol vẽ đủ hai nhánh', diemConic(H, 20).length === 2);
+  const P = chuanHoaConic({ a: 0, b: 0, c: 1, d: -4, e: 0, f: 0 });
+  ok('parabol y² = 4x: p = 1, tiêu điểm (1;0)', Math.abs(soLieuConic(P).p - 1) < 1e-9 && Math.abs(soLieuConic(P).F[0].x - 1) < 1e-9);
+
+  ok('biệt thức tách tròn khỏi elip', loaiConic({ a: 1, b: 0, c: 1, d: 0, e: 0, f: -4 }) === 'tron');
+  ok('suy biến thì báo lỗi chứ không vẽ bừa', !!chuanHoaConic({ a: 1, b: 0, c: 1, d: 0, e: 0, f: 1 }).loi);
+
+  // qua DSL và bảng phương trình
+  const d = new GeoDoc();
+  const r = runScript(d, 'e = elip(3,2)\nh = hypebol(3,2)\np = parabol(2)');
+  ok('DSL dựng được cả ba', r.errors.length === 0 && d.list().length === 3, JSON.stringify(r.errors));
+  const pe = phuongTrinh(d.byName('e'));
+  ok('elip: phương trình hệ số nguyên', pe.pt === '4x² + 9y² - 36 = 0', pe.pt);
+  ok('elip: kèm dạng chính tắc', pe.phu.split('\n')[0] === 'x²/9 + y²/4 = 1', pe.phu.split('\n')[0]);
+  ok('parabol: dạng chính tắc đúng dấu', phuongTrinh(d.byName('p')).phu.split('\n')[0] === 'y² = 4x', phuongTrinh(d.byName('p')).phu.split('\n')[0]);
+  ok('hypebol: dạng chính tắc có dấu trừ', /−/.test(phuongTrinh(d.byName('h')).phu.split('\n')[0]));
+
+  // sửa phương trình conic
+  ok('sửa được conic', apDungPT(d, d.byName('e'), 'x^2/16 + y^2/4 = 1').ok);
+  d.recompute();
+  ok('elip đổi trục lớn thành 4', Math.abs(d.byName('e').val.A - 4) < 1e-9, d.byName('e').val.A);
+
+  // lưu / mở lại
+  const d2 = GeoDoc.fromJSON(JSON.parse(JSON.stringify(d.toJSON())));
+  ok('mở lại vẫn còn hypebol', d2.byName('h').val.kind === 'hypebol');
 });
 
 console.log(`\n===== ${pass} đạt / ${fail} lỗi =====`);

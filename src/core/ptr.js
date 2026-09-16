@@ -13,6 +13,8 @@
 //   đường trong không gian: phương trình tham số
 // ============================================================================
 
+import { soLieuConic } from './conic.js';
+
 const NHO = 1e-9;   // ngưỡng coi như bằng 0 (đặt tên riêng để bản gộp không đụng EPS của vec.js)
 
 /** Làm tròn gọn: bỏ đuôi 0 thừa, -0 thành 0 */
@@ -135,6 +137,34 @@ const dtGiay = (pts) => {
 };
 
 const TEN_KIND = { seg: 'Đoạn thẳng', ray: 'Tia', vec: 'Vectơ', line: 'Đường thẳng' };
+const TEN_CONIC = { elip: 'Elip', parabol: 'Parabol', hypebol: 'Hypebol' };
+
+/**
+ * Dạng chính tắc, chỉ viết được khi trục của conic song song với Ox / Oy —
+ * đúng gần hết bài tập trong sách. Conic bị xoay thì bỏ qua dòng này.
+ */
+function ptChinhTac(v) {
+  const doc1 = Math.abs(Math.abs(v.u.x) - 1) < 1e-7;   // trục chính nằm ngang
+  const doc2 = Math.abs(Math.abs(v.u.y) - 1) < 1e-7;   // trục chính thẳng đứng
+  if (!doc1 && !doc2) return null;
+  const bien = (ten, g) => (Math.abs(g) < NHO ? `${ten}²` : `(${ten} ${g > 0 ? '-' : '+'} ${soGon(Math.abs(g))})²`);
+  if (v.kind === 'parabol') {
+    // k đo theo vectơ v của hệ trục riêng; đổi về trục Ox/Oy thì phải nhân
+    // với thành phần của v, nếu không thì sai dấu.
+    const he = v.k * (doc1 ? v.v.y : v.v.x);
+    const s = doc1 ? bien('x', v.dinh.x) : bien('y', v.dinh.y);
+    const t = doc1 ? ['y', v.dinh.y] : ['x', v.dinh.x];
+    const ve = Math.abs(t[1]) < NHO ? t[0] : `(${t[0]} ${t[1] > 0 ? '-' : '+'} ${soGon(Math.abs(t[1]))})`;
+    const dau = he < 0 ? '-' : '';
+    const so = Math.abs(Math.abs(he) - 1) < NHO ? '' : soGon(Math.abs(he));
+    return `${s} = ${dau}${so}${ve}`;
+  }
+  const x2 = bien('x', v.tam.x), y2 = bien('y', v.tam.y);
+  const a2 = soGon(v.A * v.A), b2 = soGon(v.B * v.B);
+  // elip viết x trước theo thói quen; hypebol phải để số hạng DƯƠNG trước
+  if (v.kind === 'elip') return doc1 ? `${x2}/${a2} + ${y2}/${b2} = 1` : `${x2}/${b2} + ${y2}/${a2} = 1`;
+  return doc1 ? `${x2}/${a2} − ${y2}/${b2} = 1` : `${y2}/${a2} − ${x2}/${b2} = 1`;
+}
 
 /**
  * Phương trình của một đối tượng.
@@ -181,6 +211,27 @@ export function phuongTrinh(o) {
       pt: `${tx} + ${ty} = ${soGon(v.r * v.r)}`,
       phu: `Tâm (${a}; ${b})   ·   R = ${soGon(v.r)}`,
     };
+  }
+
+  // ---- elip / parabol / hypebol ----
+  if (v.t === 'conic') {
+    const [A2, B2, C2, D2, E2, F2] = lamDep([v.hs.a, v.hs.b, v.hs.c, v.hs.d, v.hs.e, v.hs.f]);
+    const tq = daThuc([[A2, 'x²'], [B2, 'xy'], [C2, 'y²'], [D2, 'x'], [E2, 'y']], F2) + ' = 0';
+    const S = soLieuConic(v);
+    const diem = (p) => `(${soGon(p.x)}; ${soGon(p.y)})`;
+    const ct = ptChinhTac(v);
+    let phu = ct ? ct + '\n' : '';
+    if (v.kind === 'elip') {
+      phu += `Tâm ${diem(v.tam)}   ·   a = ${soGon(v.A)}, b = ${soGon(v.B)}, c = ${soGon(S.c)}`
+        + `\nTâm sai e = ${soGon(S.e)}   ·   Tiêu điểm ${diem(S.F[0])}, ${diem(S.F[1])}`;
+    } else if (v.kind === 'hypebol') {
+      phu += `Tâm ${diem(v.tam)}   ·   a = ${soGon(v.A)}, b = ${soGon(v.B)}, c = ${soGon(S.c)}`
+        + `\nTâm sai e = ${soGon(S.e)}   ·   Tiêu điểm ${diem(S.F[0])}, ${diem(S.F[1])}`
+        + `\nTiệm cận: hệ số góc ±${soGon(S.hsTiemCan)} so với trục thực`;
+    } else {
+      phu += `Đỉnh ${diem(v.dinh)}   ·   Tham số tiêu p = ${soGon(S.p)}   ·   Tiêu điểm ${diem(S.F[0])}`;
+    }
+    return { loai: TEN_CONIC[v.kind] || 'Đường bậc hai', pt: tq, phu };
   }
 
   // ---- mặt cầu ----

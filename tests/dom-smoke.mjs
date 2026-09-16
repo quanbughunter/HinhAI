@@ -87,6 +87,14 @@ await import('file://' + file);
 ok('boot không văng lỗi', !boom, boom ? boom.stack.split('\n')[0] : '');
 
 const app = globalThis.window.geoai;
+// Bấm một mẫu nhanh theo TÊN — dùng số thứ tự thì cứ thêm mẫu là test hỏng.
+const bamMau = (ten) => {
+  const html = q('#quick').innerHTML;
+  const re = new RegExp('data-q="(\\d+)">' + ten + '<');
+  const m = html.match(re);
+  if (!m) { ok('có mẫu nhanh "' + ten + '"', false, html.slice(0, 200)); return; }
+  q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: m[1] } }) } });
+};
 ok('app khởi tạo', !!app && !!app.doc);
 ok('bảng vẽ trống khi mở app', app.doc['2d'].order.length === 0, 'có ' + app.doc['2d'].order.length);
 const svg = q('#svg');
@@ -111,7 +119,7 @@ const created = app.doc['2d'].list().slice(-1)[0];
 ok('đối tượng cuối là đoạn thẳng', created.op === 'segment' && !!created.val, created.op);
 
 // kéo một điểm tự do
-q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: '0' } }) } });   // vẽ tam giác mẫu
+bamMau('Tam giác');   // vẽ tam giác mẫu
 ok('mẫu tam giác tạo được A,B,C', !!app.doc['2d'].byName('A') && !!app.doc['2d'].byName('C'));
 const A = app.doc['2d'].byName('A');
 const before = { ...A.val };
@@ -162,7 +170,10 @@ console.log('\nGõ phương trình ra hình');
   ok('gõ lại tên cũ thì SỬA chứ không thêm', app.doc['2d'].byName('c').params.r === 5 && app.doc['2d'].byName('c').params.x === 0);
 
   gõ('y = x^2');
-  ok('phương trình chưa hỗ trợ thì báo lỗi, không vẽ bừa', /parabol|elip/.test(q('#ptmsg').textContent) && q('#ptmsg').className.includes('err'), q('#ptmsg').textContent);
+  ok('vẽ được parabol', q('#ptlist').innerHTML.includes('Parabol'), q('#ptlist').innerHTML.slice(0, 200));
+
+  gõ('x^3 + y = 1');
+  ok('phương trình bậc ba thì báo lỗi, không vẽ bừa', q('#ptmsg').className.includes('err'), q('#ptmsg').textContent);
 
   gõ('2a + 3b = 6');
   ok('chữ lạ cũng báo lỗi', q('#ptmsg').className.includes('err'));
@@ -172,21 +183,58 @@ console.log('\nGõ phương trình ra hình');
   ok('hoàn tác được thao tác gõ phương trình', app.doc['2d'].order.length <= n);
 }
 
+console.log('\nCụm thao tác, tự về chế độ chọn, ẩn tên');
+{
+  ok('cụm nút nổi có biểu tượng', q('#pickmove').innerHTML.includes('<svg') && q('#pickdel').innerHTML.includes('<svg'));
+  ok('thanh công cụ KHÔNG còn Chọn/Kéo và Xoá', !q('#rail').innerHTML.includes('data-tool="move"') && !q('#rail').innerHTML.includes('data-tool="del"'));
+
+  q('#pickdel').fire('click');
+  ok('bấm nút Xoá thì đổi công cụ', app.tool === 'del');
+  q('#pickmove').fire('click');
+  ok('bấm nút Chọn/Kéo thì về move', app.tool === 'move');
+
+  // vẽ xong tự về chế độ chọn
+  app.opts.tuVeChon = true;
+  q('#rail').fire('click', { target: { closest: () => ({ dataset: { tool: 'seg' } }) } });
+  const svg2 = q('#svg');
+  svg2.fire('pointerdown', { pointerId: 9, clientX: 120, clientY: 120 });
+  svg2.fire('pointerup', { pointerId: 9, clientX: 120, clientY: 120 });
+  svg2.fire('pointerdown', { pointerId: 9, clientX: 260, clientY: 200 });
+  svg2.fire('pointerup', { pointerId: 9, clientX: 260, clientY: 200 });
+  ok('vẽ xong đoạn thì tự về Chọn/Kéo', app.tool === 'move', 'đang là ' + app.tool);
+
+  // nút Tên ba nấc
+  const coTen = () => /class="lbl/.test(q('#svg').innerHTML);
+  app.opts.nhan = 'du';
+  q('#btnNhan').fire('click');
+  ok('nấc 1: chỉ hiện tên điểm', app.opts.nhan === 'diem');
+  q('#btnNhan').fire('click');
+  ok('nấc 2: tắt hết tên', app.opts.nhan === 'tat');
+  ok('tắt rồi thì SVG không còn nhãn tên nào', !coTen(), q('#svg').innerHTML.slice(0, 120));
+  q('#btnNhan').fire('click');
+  ok('nấc 3: quay lại đủ', app.opts.nhan === 'du');
+  ok('bật lại thì tên hiện lại', coTen());
+  ok('bảng phương trình vẫn giữ tên dù bảng vẽ đã ẩn', q('#ptlist').innerHTML.includes('class="nm"'));
+}
+
 ok('chạy lệnh từ thanh lệnh', !!app.doc['2d'].byName('M'), q('#status').textContent);
 
 // hoàn tác / làm lại
-const nBefore = app.doc['2d'].order.length;
+// So bằng nội dung chứ không bằng SỐ đối tượng: có thao tác (sửa phương trình)
+// không thêm bớt đối tượng nào, hoàn tác vẫn phải đưa hình về như cũ.
+const truocUndo = JSON.stringify(app.doc['2d'].toJSON());
 q('#undo').fire('click');
-ok('hoàn tác', app.doc['2d'].order.length < nBefore, `${nBefore} → ${app.doc['2d'].order.length}`);
+const sauUndo = JSON.stringify(app.doc['2d'].toJSON());
+ok('hoàn tác', sauUndo !== truocUndo);
 q('#redo').fire('click');
-ok('làm lại', app.doc['2d'].order.length === nBefore);
+ok('làm lại', JSON.stringify(app.doc['2d'].toJSON()) === truocUndo);
 
 // mẫu nhanh
-q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: '7' } }) } });
+bamMau('3 đường cao');
 ok('mẫu "3 đường cao" chạy được', !!app.doc['2d'].byName('ha') && !!app.doc['2d'].byName('H'));
 
 // mẫu miền nghiệm
-q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: '6' } }) } });
+bamMau('Hệ BPT');
 {
   const mien = app.doc['2d'].list().filter((o) => o.op === 'region').pop();
   ok('mẫu hệ bất phương trình vẽ ra miền', !!mien && mien.val && !mien.val.rong && mien.val.pts.length >= 3,
@@ -198,7 +246,7 @@ q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: '6' } }) }
 q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '3d' } }) } });
 ok('chuyển chế độ 3D', app.mode === '3d');
 ok('thanh công cụ 3D', q('#rail').innerHTML.includes('data-tool="pyr"'));
-q('#quick').fire('click', { target: { closest: () => ({ dataset: { q: '5' } }) } });
+bamMau('Thiết diện mẫu');
 const td = app.doc['3d'].byName('td');
 ok('mẫu thiết diện dựng được', td && td.val && td.val.pts.length >= 3, td ? String(td.val && td.val.pts.length) : 'không có');
 ok('SVG 3D có nét khuất', /stroke-dasharray="6 5"/.test(svg.innerHTML));

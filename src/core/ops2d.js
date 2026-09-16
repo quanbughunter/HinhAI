@@ -10,6 +10,7 @@ import {
   polyArea, angleABC, deg, rad, okPt,
 } from './vec.js';
 import { mienNghiem, docKhoang } from './bpt.js';
+import { chuanHoaConic } from './conic.js';
 
 const PT = { color: '#1f3f8f', size: 4.6 };
 const LN = { color: '#16233d', width: 1.8 };
@@ -220,6 +221,14 @@ export const OPS = {
   circleEq: { // đường tròn tâm (x; y) bán kính r
     type: 'circle', style: CR,
     fn: (_, p) => (+p.r > 0 ? mkCircle(V(+p.x || 0, +p.y || 0), +p.r) : null),
+  },
+  conicEq: { // elip / parabol / hypebol:  a·x² + b·xy + c·y² + d·x + e·y + f = 0
+    type: 'conic', style: { color: '#7a3ea1', width: 1.9 },
+    fn: (_, p) => {
+      const hs = { a: +p.a || 0, b: +p.b || 0, c: +p.c || 0, d: +p.d || 0, e: +p.e || 0, f: +p.f || 0 };
+      const K = chuanHoaConic(hs);
+      return K.loi ? null : { t: 'conic', hs, ...K };
+    },
   },
 
   circleCP: { // tâm O đi qua A
