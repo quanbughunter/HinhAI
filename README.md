@@ -22,7 +22,7 @@ npm run dev          # mở http://localhost:5173
 ```bash
 npm run bundle       # sinh dist/geoai.html
 npm test             # 140 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 57 bài kiểm thử giao diện
+node tests/dom-smoke.mjs   # 64 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
 ```
@@ -129,6 +129,13 @@ góc trái dưới trên điện thoại).
 
 Mặc định **vẽ xong là con trỏ tự về Chọn/Kéo**. Muốn vẽ liên tiếp nhiều hình cùng loại thì
 tắt trong ⚙ Cài đặt.
+
+### Lưới và trục toạ độ
+
+Hai nút riêng trên thanh trên (trong menu **⋯** khi dùng điện thoại): **▦ Lưới** và
+**✛ Trục toạ độ**. Nút sáng lên là đang bật. Tắt trục dùng được cho cả hình phẳng lẫn hình
+không gian — nhiều bài hình học thuần tuý (tam giác, đường tròn, hình chóp) không cần hệ
+trục, bỏ đi thì hình sạch hẳn. Lựa chọn được nhớ cho lần mở sau.
 
 ### Ẩn tên cho đỡ rối
 

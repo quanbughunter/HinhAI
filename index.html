@@ -71,6 +71,7 @@ input,textarea,select{font:inherit;color:inherit}
 .seg button.on{background:var(--panel);color:var(--accent);box-shadow:var(--shadow)}
 .tbtn{padding:6px 10px;border-radius:8px;border:1px solid transparent;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .tbtn:hover{background:var(--bg);color:var(--ink)}
+.tbtn.on{background:var(--accent-soft);color:var(--accent)}   /* đang bật */
 .spacer{flex:1}
 /* Trên máy tính: nhóm này tan ra, các nút nằm thẳng trên thanh như cũ.
    Trên điện thoại: nó thành một menu ⋯ đổ xuống (xem khối @media bên dưới). */
@@ -363,6 +364,7 @@ input,textarea,select{font:inherit;color:inherit}
     <div class="more" id="more">
       <button class="tbtn" id="btnNhan" title="Hiện / ẩn tên trên bảng vẽ">Tên: đủ</button>
       <button class="tbtn" id="btnGrid">▦ Lưới</button>
+      <button class="tbtn" id="btnAxes">✛ Trục toạ độ</button>
       <button class="tbtn" id="btnLabels" title="Trả mọi tên đỉnh về vị trí mặc định">⤺ Nhãn</button>
       <button class="tbtn" id="btnOpen">Mở</button>
       <button class="tbtn" id="btnSave">Lưu</button>

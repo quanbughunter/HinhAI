@@ -25,7 +25,7 @@ const app = {
   sel: new Set(),
   hover: null,
   opts: {
-    grid: LS.get('grid', true), axes: true,
+    grid: LS.get('grid', true), axes: LS.get('axes', true),
     tuVeChon: LS.get('tuVeChon', true),   // vẽ xong tự về Chọn/Kéo
     nhan: LS.get('nhan', 'du'),           // 'du' | 'diem' | 'tat' — hiện tên tới mức nào
   },
@@ -1084,7 +1084,20 @@ function bind() {
   cumThaoTacKeoDuoc();
   $('#pickdel').addEventListener('click', () => setTool('del'));
 
-  $('#btnGrid').addEventListener('click', () => { app.opts.grid = !app.opts.grid; LS.set('grid', app.opts.grid); render(); });
+  // Lưới và trục toạ độ bật/tắt riêng: nhiều bài hình học thuần tuý không cần
+  // hệ trục, để nguyên thì hình trông rối.
+  function veNutNen() {
+    const g = $('#btnGrid'), t = $('#btnAxes');
+    if (g) g.classList.toggle('on', !!app.opts.grid);
+    if (t) t.classList.toggle('on', !!app.opts.axes);
+  }
+  $('#btnGrid').addEventListener('click', () => {
+    app.opts.grid = !app.opts.grid; LS.set('grid', app.opts.grid); veNutNen(); render();
+  });
+  $('#btnAxes').addEventListener('click', () => {
+    app.opts.axes = !app.opts.axes; LS.set('axes', app.opts.axes); veNutNen(); render();
+  });
+  veNutNen();
   $('#btnSave').addEventListener('click', saveFile);
   $('#btnOpen').addEventListener('click', () => $('#fileopen').click());
   $('#fileopen').addEventListener('change', (e) => { if (e.target.files[0]) openFile(e.target.files[0]); e.target.value = ''; });

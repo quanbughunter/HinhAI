@@ -262,9 +262,27 @@ const td = app.doc['3d'].byName('td');
 ok('mẫu thiết diện dựng được', td && td.val && td.val.pts.length >= 3, td ? String(td.val && td.val.pts.length) : 'không có');
 ok('SVG 3D có nét khuất', /stroke-dasharray="6 5"/.test(svg.innerHTML));
 
-// zoom / lưới / theme
+// zoom / lưới / trục / theme
 q('#zin').fire('click'); q('#zout').fire('click'); q('#zfit').fire('click');
-q('#btnGrid').fire('click'); q('#btnTheme').fire('click');
+
+// ẩn / hiện trục toạ độ — thử ở CẢ hình không gian lẫn hình phẳng
+const coTruc3 = () => /marker-end="url\(#arwg\)"/.test(q("#svg").innerHTML);   // mũi tên trục y, chỉ trục mới có
+ok('hình không gian đang có trục', coTruc3());
+q('#btnAxes').fire('click');
+ok('tắt trục ở hình không gian', !app.opts.axes && !coTruc3());
+q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '2d' } }) } });
+const coTruc2 = () => /class="axis"/.test(q('#svg').innerHTML);
+ok('tắt trục ăn sang cả hình phẳng', !coTruc2());
+q('#btnAxes').fire('click');
+ok('bật lại thì hình phẳng có trục', app.opts.axes && coTruc2());
+ok('nút Trục sáng lên khi đang bật', q('#btnAxes').classList.contains('on'));
+q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '3d' } }) } });
+ok('quay lại không gian cũng có trục', coTruc3());
+
+q('#btnGrid').fire('click');
+ok('tắt lưới được', !app.opts.grid && !/class="grid"/.test(q('#svg').innerHTML));
+q('#btnGrid').fire('click');
+q('#btnTheme').fire('click');
 ok('nút zoom/lưới/giao diện không lỗi', true);
 ok('đổi giao diện tối', document.documentElement.getAttribute('data-theme') === 'dark');
 
