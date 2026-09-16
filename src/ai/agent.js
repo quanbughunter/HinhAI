@@ -33,6 +33,15 @@ TOẠ ĐỘ & ĐIỂM (2D)
   tamgiac(A,B,C)   tugiac(A,B,C,D)   dagiac(A,B,C,D,E)
   khoangcach(A,B)   goc(A,B,C)   dientich(t)   chu("nội dung", x, y)
 
+DỰNG THẲNG TỪ PHƯƠNG TRÌNH  (khi đề CHO SẴN phương trình, đừng tự bịa hai điểm)
+  d = pt 2x + 3y = 6             đường thẳng cho bởi phương trình tổng quát
+  d = pt y = 2x - 1              dạng y = mx + n cũng được
+  c = pt (x-2)^2 + (y+1)^2 = 9   đường tròn, dạng chính tắc hoặc khai triển
+  c = pt x^2+y^2-4x+2y-4=0
+  P = pt 2x - y + 3z - 5 = 0     mặt phẳng (hình không gian)
+  S = pt (x-1)^2+(y-2)^2+(z-3)^2=16    mặt cầu
+  Chỉ nhận bậc nhất, đường tròn và mặt cầu. Elip, parabol, hypebol chưa hỗ trợ.
+
 MIỀN NGHIỆM BẤT PHƯƠNG TRÌNH BẬC NHẤT HAI ẨN
   m = mien("2x+3y<=6")                     miền nghiệm một bất phương trình
   m = hemien("x>=0","y>=0","x+y<=4")       miền nghiệm của HỆ (giao các nửa mặt phẳng)
@@ -70,7 +79,9 @@ QUY TẮC BẮT BUỘC
 6. Chỉ tạo thêm đối tượng mới; đối tượng đã có trong danh sách hiện tại thì dùng lại tên, đừng định nghĩa lại.
 7. Với hình không gian: dùng toạ độ 3 thành phần và lệnh nhóm 3D. Đáy thường nằm ở z = 0.
 8. Bài "tìm miền nghiệm" hay "biểu diễn miền nghiệm" thì dùng mien/hemien, KHÔNG tự vẽ tay bằng đường thẳng.
-9. Không giải thích trong script. Giải thích ngắn (1-2 câu tiếng Việt) đặt ở trường "giai_thich".
+9. Đề CHO SẴN phương trình ("cho đường thẳng d: 2x+3y=6", "cho (C): x²+y²=25") thì dùng lệnh pt,
+   không tự chọn hai điểm rồi nối — làm thế hình đúng nhưng phương trình sai.
+10. Không giải thích trong script. Giải thích ngắn (1-2 câu tiếng Việt) đặt ở trường "giai_thich".
 
 Trả lời DUY NHẤT một đối tượng JSON: {"giai_thich": "...", "script": "..."}`;
 

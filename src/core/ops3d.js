@@ -168,6 +168,22 @@ export const OPS3 = {
     },
   },
   plane3: { type: 'plane', style: { color: '#1f7a5a' }, fn: ([a, b, c]) => (isP3(a) && isP3(b) && isP3(c) ? planeFrom3(a, b, c) : null) },
+
+  // --- Dựng thẳng từ phương trình (xem docpt.js) ---
+  planeEq: { // mặt phẳng  a·x + b·y + c·z + d = 0
+    type: 'plane', style: { color: '#1f7a5a' },
+    fn: (_, p) => {
+      const n = P3(+p.a || 0, +p.b || 0, +p.c || 0);
+      const n2 = p3dot(n, n);
+      if (n2 < 1e-12) return null;
+      const k = -(+p.d || 0) / n2;
+      return { t: 'plane', p: p3mul(n, k), n: p3norm(n) };
+    },
+  },
+  sphereEq: { // mặt cầu tâm (x; y; z) bán kính r
+    type: 'sph', style: { color: '#2b6a8c', width: 1.7, fill: 'rgba(43,106,140,.08)' },
+    fn: (_, p) => (+p.r > 0 ? { t: 'sph', c: P3(+p.x || 0, +p.y || 0, +p.z || 0), r: +p.r } : null),
+  },
   section: { // thiết diện của khối cắt bởi mặt phẳng (hoặc bởi 3 điểm)
     type: 'f3', style: { color: '#c0271c', width: 2.1, fill: 'rgba(192,39,28,.14)' },
     fn: ([s, a, b, c]) => {

@@ -205,6 +205,23 @@ export const OPS = {
   },
 
   // ---------------- Đường tròn ----------------
+  // --- Hai phép dựng thẳng từ phương trình: không có cha, nên sửa phương
+  //     trình là sửa được ngay chính nó (xem docpt.js và bảng Phương trình). ---
+  lineEq: { // đường thẳng  a·x + b·y + c = 0
+    type: 'line', style: LN,
+    fn: (_, p) => {
+      const a = +p.a || 0, b = +p.b || 0, c = +p.c || 0;
+      const n2 = a * a + b * b;
+      if (n2 < EPS) return null;
+      const k = -c / n2;                       // chân đường vuông góc hạ từ gốc toạ độ
+      return mkLineDir(V(a * k, b * k), V(-b, a), 'line');
+    },
+  },
+  circleEq: { // đường tròn tâm (x; y) bán kính r
+    type: 'circle', style: CR,
+    fn: (_, p) => (+p.r > 0 ? mkCircle(V(+p.x || 0, +p.y || 0), +p.r) : null),
+  },
+
   circleCP: { // tâm O đi qua A
     type: 'circle', style: CR,
     fn: ([o, a]) => (okPt(o) && okPt(a) ? mkCircle(o, vDist(o, a)) : null),

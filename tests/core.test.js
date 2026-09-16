@@ -2,6 +2,7 @@
 import { GeoDoc } from '../src/core/model.js';
 import { runScript } from '../src/core/dsl.js';
 import { phuongTrinh, ptDuongThang, ptThamSo3, theTich, dienTich3, lamDep, soGon } from '../src/core/ptr.js';
+import { docPT, specTuPT, apDungPT } from '../src/core/docpt.js';
 import { angleABC, vDist } from '../src/core/vec.js';
 import { p3dist } from '../src/core/ops3d.js';
 import { docBPT, mienNghiem, thuocMien, dinhHuuHan, docKhoang } from '../src/core/bpt.js';
@@ -309,6 +310,66 @@ T('Phương trình trong không gian, thể tích và diện tích', () => {
   const m = phuongTrinh(d.byName('mp1'));
   ok('mặt phẳng dạng ax+by+cz+d=0', /= 0$/.test(m.pt) && m.pt.indexOf('y') >= 0, m.pt);
   ok('điểm không gian viết đủ ba toạ độ', phuongTrinh(d.byName('S')).pt === 'S(3; 2.5; 7)');
+});
+
+T('Đọc phương trình người gõ', () => {
+  const d = (s, kg) => docPT(s, kg);
+  ok('tổng quát', JSON.stringify(d('2x+3y=6')) === JSON.stringify({ loai: 'duong', a: 2, b: 3, c: -6 }));
+  ok('dạng y = mx + n', d('y = 2x - 1').a === -2 && d('y = 2x - 1').b === 1);
+  ok('đường thẳng đứng', d('x = 3').a === 1 && d('x = 3').c === -3);
+  ok('nhân ngầm có ngoặc', JSON.stringify(d('3(x-1) + 2(y+2) = 0')) === JSON.stringify({ loai: 'duong', a: 3, b: 2, c: 1 }));
+  const c1 = d('(x-2)^2 + (y+1)^2 = 9'), c2 = d('x^2+y^2-4x+2y-4=0');
+  ok('đường tròn chính tắc', c1.loai === 'tron' && c1.x === 2 && c1.y === -1 && Math.abs(c1.r - 3) < 1e-9);
+  ok('đường tròn khai triển ra cùng kết quả', Math.abs(c2.x - c1.x) < 1e-9 && Math.abs(c2.r - c1.r) < 1e-9);
+  ok('ký hiệu ² cũng đọc được', d('(x−2)² + (y+1)² = 9').loai === 'tron');
+  ok('điểm', d('A(2;3)').ten === 'A' && d('A = (2,3)').x === 2);
+  ok('mặt phẳng', JSON.stringify(d('2x - y + 3z - 5 = 0')) === JSON.stringify({ loai: 'mp', a: 2, b: -1, c: 3, d: -5 }));
+  ok('mặt cầu', d('(x-1)^2+(y-2)^2+(z-3)^2=16').r === 4);
+  ok('bất phương trình chuyển sang miền nghiệm', d('x>=0, y>=0, x+y<=4').ds.length === 3);
+  ok('từ chối elip', !!d('x^2/4 + y^2/9 = 1').loi);
+  ok('từ chối parabol', !!d('y = x^2').loi);
+  ok('từ chối số hạng xy', /xy/.test(d('xy = 1').loi));
+  ok('từ chối bán kính âm', !!d('x^2+y^2=-1').loi);
+  ok('từ chối chữ lạ', !!d('2a + 3b = 6').loi);
+});
+
+T('Gõ phương trình thì hình đổi theo', () => {
+  const d = new GeoDoc();
+  const them = (s) => d.add(specTuPT(docPT(s)));
+
+  const L = them('2x+3y=6');
+  ok('dựng được đường thẳng từ phương trình', phuongTrinh(L).pt === '2x + 3y - 6 = 0', phuongTrinh(L).pt);
+  ok('sửa phương trình thì đổi', apDungPT(d, L, 'x - y + 1 = 0').ok);
+  d.recompute();
+  ok('đường thẳng đúng phương trình mới', phuongTrinh(L).pt === 'x - y + 1 = 0', phuongTrinh(L).pt);
+
+  const C = them('(x-2)^2+(y+1)^2=9');
+  apDungPT(d, C, 'x^2+y^2=25'); d.recompute();
+  ok('đường tròn đổi theo', phuongTrinh(C).pt === 'x² + y² = 25', phuongTrinh(C).pt);
+
+  // đoạn dựng từ hai điểm tự do: chiếu hai đầu xuống đường mới
+  runScript(d, 'A=(0,0)\nB=(4,0)\ns=doan(A,B)');
+  const r = apDungPT(d, d.byName('s'), 'y = x');
+  d.recompute();
+  ok('chiếu được hai đầu lên đường thẳng mới', r.ok && phuongTrinh(d.byName('s')).pt === 'x - y = 0', phuongTrinh(d.byName('s')).pt);
+  ok('hai đầu vẫn nằm trên đường', Math.abs(d.byName('B').val.x - d.byName('B').val.y) < 1e-9);
+
+  // hình là hệ quả thì từ chối, kèm lời giải thích
+  runScript(d, 'C=(1,4)\nha=duongcao(A,B,C)');
+  const t = apDungPT(d, d.byName('ha'), 'y = 3');
+  ok('từ chối sửa hình dẫn xuất', !t.ok && /hệ quả/.test(t.msg), t.msg);
+  ok('nói rõ nên kéo cái gì', /A, B, C/.test(t.msg), t.msg);
+
+  // qua DSL
+  const e = new GeoDoc();
+  const rs = runScript(e, 'd1 = pt 2x+3y=6\nc1 = pt x^2+y^2=25\nP = pt A(1;2)');
+  ok('lệnh pt chạy trong DSL', rs.errors.length === 0, JSON.stringify(rs.errors));
+  ok('đặt được tên qua DSL', !!e.byName('d1') && !!e.byName('c1'));
+  ok('lệnh pt báo lỗi tử tế', /elip|parabol/.test(JSON.stringify(runScript(e, 'pt y = x^2').errors)));
+
+  // lưu rồi mở lại vẫn còn
+  const e2 = GeoDoc.fromJSON(JSON.parse(JSON.stringify(e.toJSON())));
+  ok('mở lại vẫn đúng phương trình', phuongTrinh(e2.byName('d1')).pt === '2x + 3y - 6 = 0');
 });
 
 console.log(`\n===== ${pass} đạt / ${fail} lỗi =====`);

@@ -138,7 +138,21 @@ input,textarea,select{font:inherit;color:inherit}
 .chips button:hover{color:var(--accent);border-color:var(--accent)}
 
 /* ---- Bảng phương trình ---- */
+.ptnew{flex:0 0 auto;padding:9px;border-bottom:1px solid var(--line)}
+.ptnew input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);
+  font-family:var(--font-math);font-size:15px;outline:none}
+.ptnew input:focus{border-color:var(--accent)}
+.pthint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.65}
+.pthint b{font-family:var(--font-math);font-weight:600;color:var(--ink)}
+.ptmsg{font-size:12px;margin-top:7px;padding:7px 9px;border-radius:8px;display:none;line-height:1.5}
+.ptmsg.on{display:block}
+.ptmsg.ok{background:var(--accent-soft);color:var(--accent)}
+.ptmsg.err{background:var(--errbg);border:1px solid var(--errline);color:var(--errink)}
 #ptlist{flex:1;overflow-y:auto;padding:8px}
+.pt .eq{cursor:text}
+.eqin{width:100%;font-family:var(--font-math);font-size:15.5px;padding:5px 8px;border:1px solid var(--accent);
+  border-radius:7px;background:var(--panel);color:var(--ink);outline:none}
+.pt .khoa{cursor:default}
 .pt{border:1px solid var(--line);border-radius:11px;padding:8px 11px;margin-bottom:7px;background:var(--bg);
   border-left:3px solid var(--accent);cursor:pointer}
 .pt:hover{border-color:var(--accent)}
@@ -148,7 +162,11 @@ input,textarea,select{font:inherit;color:inherit}
 .pt .ty{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 .pt .eq{font-family:var(--font-math);font-size:15.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .pt .ex{font-size:11.5px;color:var(--muted);margin-top:3px;white-space:pre-wrap}
-.ptempty{padding:18px;color:var(--muted);font-size:13px;line-height:1.6}
+.ptempty{padding:16px;color:var(--muted);font-size:12.5px;line-height:1.65}
+.ptempty b{font-family:var(--font-math);font-weight:600;color:var(--ink);white-space:nowrap}
+.ptbang{width:100%;border-collapse:collapse;margin:11px 0;font-size:12px}
+.ptbang td{padding:4px 0;vertical-align:top;border-bottom:1px solid var(--line)}
+.ptbang td:last-child{text-align:right;padding-left:10px;opacity:.85}
 
 #objlist{flex:1;overflow-y:auto;padding:6px}
 .obj{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:13px}
@@ -368,7 +386,14 @@ input,textarea,select{font:inherit;color:inherit}
         </div>
       </section>
 
-      <section class="pane" id="pane-pt"><div id="ptlist"></div></section>
+      <section class="pane" id="pane-pt">
+        <div class="ptnew">
+          <input id="ptin" placeholder="Gõ phương trình rồi Enter…" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <div class="pthint">Ví dụ: <b>2x + 3y = 6</b> · <b>y = 2x − 1</b> · <b>(x−2)² + (y+1)² = 9</b> · <b>A(2; 3)</b></div>
+          <div class="ptmsg" id="ptmsg"></div>
+        </div>
+        <div id="ptlist"></div>
+      </section>
 
       <section class="pane" id="pane-obj"><div id="objlist"></div></section>
 
@@ -936,6 +961,23 @@ const OPS = {
   },
 
   // ---------------- Đường tròn ----------------
+  // --- Hai phép dựng thẳng từ phương trình: không có cha, nên sửa phương
+  //     trình là sửa được ngay chính nó (xem docpt.js và bảng Phương trình). ---
+  lineEq: { // đường thẳng  a·x + b·y + c = 0
+    type: 'line', style: LN,
+    fn: (_, p) => {
+      const a = +p.a || 0, b = +p.b || 0, c = +p.c || 0;
+      const n2 = a * a + b * b;
+      if (n2 < EPS) return null;
+      const k = -c / n2;                       // chân đường vuông góc hạ từ gốc toạ độ
+      return mkLineDir(V(a * k, b * k), V(-b, a), 'line');
+    },
+  },
+  circleEq: { // đường tròn tâm (x; y) bán kính r
+    type: 'circle', style: CR,
+    fn: (_, p) => (+p.r > 0 ? mkCircle(V(+p.x || 0, +p.y || 0), +p.r) : null),
+  },
+
   circleCP: { // tâm O đi qua A
     type: 'circle', style: CR,
     fn: ([o, a]) => (okPt(o) && okPt(a) ? mkCircle(o, vDist(o, a)) : null),
@@ -1194,6 +1236,22 @@ const OPS3 = {
     },
   },
   plane3: { type: 'plane', style: { color: '#1f7a5a' }, fn: ([a, b, c]) => (isP3(a) && isP3(b) && isP3(c) ? planeFrom3(a, b, c) : null) },
+
+  // --- Dựng thẳng từ phương trình (xem docpt.js) ---
+  planeEq: { // mặt phẳng  a·x + b·y + c·z + d = 0
+    type: 'plane', style: { color: '#1f7a5a' },
+    fn: (_, p) => {
+      const n = P3(+p.a || 0, +p.b || 0, +p.c || 0);
+      const n2 = p3dot(n, n);
+      if (n2 < 1e-12) return null;
+      const k = -(+p.d || 0) / n2;
+      return { t: 'plane', p: p3mul(n, k), n: p3norm(n) };
+    },
+  },
+  sphereEq: { // mặt cầu tâm (x; y; z) bán kính r
+    type: 'sph', style: { color: '#2b6a8c', width: 1.7, fill: 'rgba(43,106,140,.08)' },
+    fn: (_, p) => (+p.r > 0 ? { t: 'sph', c: P3(+p.x || 0, +p.y || 0, +p.z || 0), r: +p.r } : null),
+  },
   section: { // thiết diện của khối cắt bởi mặt phẳng (hoặc bởi 3 điểm)
     type: 'f3', style: { color: '#c0271c', width: 2.1, fill: 'rgba(192,39,28,.14)' },
     fn: ([s, a, b, c]) => {
@@ -1399,11 +1457,257 @@ class GeoDoc {
   }
 }
 
+/* ==== /src/core/docpt.js ==== */
+// ============================================================================
+// docpt.js — ĐỌC một phương trình do người dùng gõ và hiểu nó là hình gì.
+//
+// Ngược chiều với ptr.js: ptr.js nhìn hình viết ra phương trình, tệp này nhìn
+// phương trình dựng lại hình.
+//
+// Cách làm: không viết bộ khai triển đa thức (dài và dễ sai), mà THỬ SỐ.
+// Chuyển chuỗi thành một hàm f(x,y,z) = vế trái - vế phải, rồi tính giá trị ở
+// vài điểm đã chọn sẵn để rút ra từng hệ số. Vì phương trình trong chương trình
+// phổ thông cao nhất là bậc hai, mười phép thử là đủ. Cuối cùng kiểm tra lại ở
+// hai điểm ngẫu nhiên — không khớp nghĩa là biểu thức không phải bậc hai, báo
+// lỗi thay vì dựng bừa.
+// ============================================================================
+
+const XIU = 1e-7;
+const LA_DIEM = { point: 1, point3: 1 };                       // điểm tự do, dời được thoải mái
+const HAI_DAU = { segment: 1, line: 1, ray: 1, vector: 1 };    // đường xác định bởi đúng hai điểm
+
+/** Đổi cách viết của người thành biểu thức JavaScript chạy được */
+function sangJS(bt) {
+  let s = String(bt || '')
+    .replace(/\s+/g, '')
+    .replace(/[−–—]/g, '-')
+    .replace(/[×·]/g, '*')
+    .replace(/²/g, '^2').replace(/³/g, '^3')
+    .replace(/[XYZ]/g, (c) => c.toLowerCase());
+  // nhân ngầm: 2x → 2*x, 3(x-1) → 3*(x-1), xy → x*y, )(→)*(, 2( → 2*(
+  s = s.replace(/(\d)([xyz(])/g, '$1*$2')
+    .replace(/([xyz)])([xyz(])/g, '$1*$2')
+    .replace(/([xyz)])(\d)/g, '$1*$2');
+  s = s.replace(/\^/g, '**');
+  if (!/^[0-9xyz+\-*/(). ]*$/.test(s)) return null;   // chỉ cho đúng bấy nhiêu ký tự
+  return s;
+}
+
+/** Biến chuỗi "vế trái = vế phải" thành hàm f(x,y,z) = trái - phải */
+function thanhHam(chuoi) {
+  const ve = String(chuoi).split('=');
+  if (ve.length > 2) return null;
+  const trai = sangJS(ve[0]);
+  const phai = ve.length === 2 ? sangJS(ve[1]) : '0';
+  if (trai === null || phai === null || !trai.trim()) return null;
+  try {
+    // eslint-disable-next-line no-new-func
+    const f = new Function('x', 'y', 'z', `return (${trai}) - (${phai || 0});`);
+    if (!Number.isFinite(f(0.3, 0.7, 1.1))) return null;
+    return f;
+  } catch (_) { return null; }
+}
+
+/**
+ * Rút hệ số của dạng tổng quát bậc hai:
+ *   A·x² + B·y² + C·z² + D·xy + E·yz + F·zx + G·x + H·y + I·z + K
+ * Trả về null nếu biểu thức không phải bậc hai.
+ */
+function heSo(f) {
+  const t = (a, b, c) => f(a, b, c);
+  const K = t(0, 0, 0);
+  const bac1 = (i) => {
+    const d = [0, 0, 0]; d[i] = 1;
+    const p = t(...d); d[i] = -1;
+    const m = t(...d);
+    return { vuong: (p + m) / 2 - K, thang: (p - m) / 2 };
+  };
+  const X = bac1(0), Y = bac1(1), Z = bac1(2);
+  const cheo = (i, j) => {
+    const d = [0, 0, 0]; d[i] = 1; d[j] = 1;
+    const v = [X, Y, Z];
+    return t(...d) - v[i].vuong - v[j].vuong - v[i].thang - v[j].thang - K;
+  };
+  const hs = {
+    A: X.vuong, B: Y.vuong, C: Z.vuong,
+    D: cheo(0, 1), E: cheo(1, 2), F: cheo(2, 0),
+    G: X.thang, H: Y.thang, I: Z.thang, K,
+  };
+  // kiểm tra lại: nếu biểu thức thật sự bậc hai thì công thức phải khớp mọi nơi
+  for (const [x, y, z] of [[2.3, -1.7, 0.9], [-0.6, 3.1, -2.4]]) {
+    const du = hs.A * x * x + hs.B * y * y + hs.C * z * z
+      + hs.D * x * y + hs.E * y * z + hs.F * z * x
+      + hs.G * x + hs.H * y + hs.I * z + hs.K;
+    if (!Number.isFinite(du) || Math.abs(du - f(x, y, z)) > 1e-6 * (1 + Math.abs(du))) return null;
+  }
+  return hs;
+}
+
+const gan = (a, b = 0) => Math.abs(a - b) < XIU;
+
+/**
+ * Đọc một phương trình.
+ * Trả về { loai, ... } hoặc { loi: 'câu giải thích' }.
+ *   diem  → { x, y, z?, ten? }
+ *   duong → { a, b, c }            đường thẳng phẳng  a·x + b·y + c = 0
+ *   tron  → { x, y, r }            đường tròn
+ *   mp    → { a, b, c, d }         mặt phẳng
+ *   cau   → { x, y, z, r }         mặt cầu
+ *   bpt   → { ds: [...] }          bất phương trình / hệ, để chuyển sang miền nghiệm
+ */
+function docPT(chuoi, khongGian = false) {
+  const s = String(chuoi || '').trim();
+  if (!s) return { loi: 'Chưa nhập gì.' };
+
+  // --- bất phương trình thì để phần miền nghiệm lo ---
+  if (/[<>≤≥]/.test(s)) {
+    return { loai: 'bpt', ds: s.split(/[;,]| và /i).map((x) => x.trim()).filter(Boolean) };
+  }
+
+  // --- điểm: A(2;3)  ·  A = (2,3)  ·  (2; 3; 4) ---
+  const md = s.match(/^([A-Za-zÀ-ỹ][\wÀ-ỹ']*)?\s*=?\s*\(([^)]+)\)$/);
+  if (md) {
+    const so = md[2].split(/[;,]/).map((v) => Number(v.trim().replace(',', '.')));
+    if (so.length >= 2 && so.length <= 3 && so.every(Number.isFinite)) {
+      return { loai: 'diem', ten: md[1] || null, x: so[0], y: so[1], z: so.length === 3 ? so[2] : 0, ba: so.length === 3 };
+    }
+  }
+
+  // --- còn lại: đưa về f(x,y,z) = 0 rồi đọc hệ số ---
+  const f = thanhHam(s);
+  if (!f) return { loi: 'Không đọc được. Chỉ dùng x, y, z, số và các dấu + - * / ( ) ^.' };
+  const h = heSo(f);
+  if (!h) return { loi: 'Mới hỗ trợ phương trình bậc nhất và đường tròn / mặt cầu.' };
+
+  const coCheo = !gan(h.D) || !gan(h.E) || !gan(h.F);
+  const coVuong = !gan(h.A) || !gan(h.B) || !gan(h.C);
+  const coZ = !gan(h.C) || !gan(h.I) || !gan(h.E) || !gan(h.F);
+
+  // ---- bậc nhất ----
+  if (!coVuong && !coCheo) {
+    if (gan(h.G) && gan(h.H) && gan(h.I)) return { loi: 'Phương trình không có x, y hay z nên không vẽ được.' };
+    if (khongGian || coZ) return { loai: 'mp', a: h.G, b: h.H, c: h.I, d: h.K };
+    return { loai: 'duong', a: h.G, b: h.H, c: h.K };
+  }
+
+  // ---- bậc hai: chỉ nhận đường tròn / mặt cầu (hệ số các bình phương bằng nhau) ----
+  if (coCheo) return { loi: 'Có số hạng xy, yz hoặc zx — chưa vẽ được loại đường này.' };
+  const trongKG = khongGian || !gan(h.C);
+  const ds = trongKG ? [h.A, h.B, h.C] : [h.A, h.B];
+  const k = ds.find((v) => !gan(v));
+  if (ds.some((v) => !gan(v - k))) {
+    return { loi: trongKG ? 'Hệ số x², y², z² phải bằng nhau mới là mặt cầu.' : 'Hệ số x² và y² phải bằng nhau mới là đường tròn (elip, parabol chưa hỗ trợ).' };
+  }
+  const D = h.G / k, E = h.H / k, F = h.I / k, G = h.K / k;
+  const cx = -D / 2, cy = -E / 2, cz = trongKG ? -F / 2 : 0;
+  const r2 = cx * cx + cy * cy + cz * cz - G;
+  if (r2 <= XIU) {
+    return { loi: r2 > -XIU ? 'Chỉ là một điểm, bán kính bằng 0.' : 'Vế phải âm — không có hình nào thoả.' };
+  }
+  const r = Math.sqrt(r2);
+  return trongKG ? { loai: 'cau', x: cx, y: cy, z: cz, r } : { loai: 'tron', x: cx, y: cy, r };
+}
+
+// ============================================================================
+// Từ phương trình → dựng hình mới, hoặc sửa một hình đã có.
+// ============================================================================
+
+/** Dựng một đối tượng mới từ kết quả đọc được. Trả về { op, args, params } */
+function specTuPT(kq) {
+  switch (kq.loai) {
+    case 'diem': return kq.ba
+      ? { op: 'point3', args: [], params: { x: kq.x, y: kq.y, z: kq.z } }
+      : { op: 'point', args: [], params: { x: kq.x, y: kq.y } };
+    case 'duong': return { op: 'lineEq', args: [], params: { a: kq.a, b: kq.b, c: kq.c } };
+    case 'tron': return { op: 'circleEq', args: [], params: { x: kq.x, y: kq.y, r: kq.r } };
+    case 'mp': return { op: 'planeEq', args: [], params: { a: kq.a, b: kq.b, c: kq.c, d: kq.d } };
+    case 'cau': return { op: 'sphereEq', args: [], params: { x: kq.x, y: kq.y, z: kq.z, r: kq.r } };
+    case 'bpt': return { op: 'region', args: [], params: { bpt: kq.ds } };
+    default: return null;
+  }
+}
+
+/** Chiếu vuông góc một điểm xuống đường thẳng a·x + b·y + c = 0 */
+function chieuLen(p, a, b, c) {
+  const n2 = a * a + b * b;
+  const t = (a * p.x + b * p.y + c) / n2;
+  return { x: p.x - a * t, y: p.y - b * t };
+}
+
+const dinhDangCha = (doc, o) => o.args.map((id) => { const p = doc.get(id); return p ? p.name : '?'; }).join(', ');
+
+/**
+ * Sửa một đối tượng đã có theo phương trình mới.
+ *
+ * Sửa được thẳng: điểm tự do, và những hình vốn sinh ra TỪ phương trình.
+ * Đoạn / đường / tia / vectơ dựng từ hai điểm tự do thì chiếu hai điểm đó
+ * xuống đường thẳng mới — cách đổi ít nhất mà vẫn đúng phương trình.
+ * Còn lại thì từ chối và nói rõ nên kéo cái gì, vì hình đó là HỆ QUẢ của
+ * những hình khác, sửa nó mà không sửa cha thì lần tính lại sau là mất.
+ */
+function apDungPT(doc, o, chuoi) {
+  if (!o) return { ok: false, msg: 'Không tìm thấy đối tượng.' };
+  const kq = docPT(chuoi, !!(o.val && /^(p3|s3|plane|sph|f3|solid)$/.test(o.val.t)));
+  if (kq.loi) return { ok: false, msg: kq.loi };
+  const P = o.params;
+
+  // --- điểm tự do ---
+  if (LA_DIEM[o.op] && kq.loai === 'diem') {
+    P.x = kq.x; P.y = kq.y;
+    if (o.op === 'point3') P.z = kq.z;
+    return { ok: true, msg: `Đã dời ${o.name}.` };
+  }
+
+  // --- hình vốn định nghĩa bằng phương trình ---
+  if (o.op === 'lineEq' && kq.loai === 'duong') { P.a = kq.a; P.b = kq.b; P.c = kq.c; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
+  if (o.op === 'circleEq' && kq.loai === 'tron') { P.x = kq.x; P.y = kq.y; P.r = kq.r; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
+  if (o.op === 'planeEq' && kq.loai === 'mp') { P.a = kq.a; P.b = kq.b; P.c = kq.c; P.d = kq.d; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
+  if (o.op === 'sphereEq' && kq.loai === 'cau') { P.x = kq.x; P.y = kq.y; P.z = kq.z; P.r = kq.r; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
+  if (o.op === 'region' && kq.loai === 'bpt') { P.bpt = kq.ds; return { ok: true, msg: `Đã đổi ${o.name}.` }; }
+
+  // --- đường thẳng qua hai điểm tự do: chiếu hai điểm xuống đường mới ---
+  if (HAI_DAU[o.op] && kq.loai === 'duong') {
+    const ds = o.args.map((id) => doc.get(id));
+    if (ds.length !== 2 || ds.some((p) => !p || !LA_DIEM[p.op] || p.fixed)) {
+      return { ok: false, msg: `${o.name} dựng từ ${dinhDangCha(doc, o)}; hai đầu đó không phải điểm tự do nên không dời được.` };
+    }
+    const m = ds.map((p) => chieuLen(p.val, kq.a, kq.b, kq.c));
+    if (Math.hypot(m[0].x - m[1].x, m[0].y - m[1].y) < 1e-6) {
+      return { ok: false, msg: `${ds[0].name} và ${ds[1].name} chiếu xuống trùng nhau. Hãy dời một điểm ra chỗ khác rồi thử lại.` };
+    }
+    ds.forEach((p, i) => { p.params.x = m[i].x; p.params.y = m[i].y; });
+    return { ok: true, msg: `Đã dời ${ds[0].name} và ${ds[1].name} lên đường thẳng mới.` };
+  }
+
+  // --- đường tròn tâm O bán kính r ---
+  if (o.op === 'circleR' && kq.loai === 'tron') {
+    const O = doc.get(o.args[0]);
+    if (!O || !LA_DIEM[O.op] || O.fixed) return { ok: false, msg: `Tâm ${O ? O.name : '?'} không phải điểm tự do nên không dời được.` };
+    O.params.x = kq.x; O.params.y = kq.y; P.r = kq.r;
+    return { ok: true, msg: `Đã dời tâm ${O.name} và đổi bán kính.` };
+  }
+  if (o.op === 'sphere' && kq.loai === 'cau') {
+    const O = doc.get(o.args[0]);
+    if (!O || !LA_DIEM[O.op] || O.fixed || o.args[1]) return { ok: false, msg: `${o.name} phụ thuộc hình khác nên không sửa thẳng được.` };
+    O.params.x = kq.x; O.params.y = kq.y; O.params.z = kq.z; P.r = kq.r;
+    return { ok: true, msg: `Đã dời tâm ${O.name} và đổi bán kính.` };
+  }
+
+  const cha = dinhDangCha(doc, o);
+  return {
+    ok: false,
+    msg: cha
+      ? `${o.name} là hệ quả của ${cha} nên phương trình của nó không sửa thẳng được. Hãy kéo ${cha}, hoặc gõ phương trình vào ô trên cùng để dựng một hình mới.`
+      : `Chưa sửa được phương trình của ${o.name} theo cách này.`,
+  };
+}
+
 /* ==== /src/core/dsl.js ==== */
 // ============================================================================
 // dsl.js — Ngôn ngữ lệnh dựng hình (tiếng Việt không dấu + alias tiếng Anh).
 // Đây vừa là "command line" cho người dùng, vừa là API mà AI agent sinh ra.
 // ============================================================================
+
 
 // ---- Tokenizer -------------------------------------------------------------
 function lex(src) {
@@ -1678,6 +1982,19 @@ function runScript(doc, src, opts = {}) {
           });
         }
         if (eq.name) o.name = eq.name;
+        created.push(o); ok++; continue;
+      }
+
+      // Dựng thẳng từ một phương trình:  pt 2x+3y=6   ·   c = pt (x-2)^2+(y+1)^2=9
+      const raPT = eq.body.match(/^(pt|phuongtrinh|phuong_trinh)\s+(.+)$/i);
+      if (raPT) {
+        const kq = docPT(raPT[2].trim(), ctx && ctx.khongGian);
+        if (kq.loi) { errors.push(line + '  →  ' + kq.loi); continue; }
+        const spec = specTuPT(kq);
+        if (!spec) { errors.push(line + '  →  Chưa dựng được hình từ phương trình này.'); continue; }
+        const o = doc.add(spec);
+        const ten = eq.name || kq.ten;
+        if (ten && !doc.list().some((z) => z !== o && z.name === ten)) o.name = ten;
         created.push(o); ok++; continue;
       }
 
@@ -2620,6 +2937,15 @@ TOẠ ĐỘ & ĐIỂM (2D)
   tamgiac(A,B,C)   tugiac(A,B,C,D)   dagiac(A,B,C,D,E)
   khoangcach(A,B)   goc(A,B,C)   dientich(t)   chu("nội dung", x, y)
 
+DỰNG THẲNG TỪ PHƯƠNG TRÌNH  (khi đề CHO SẴN phương trình, đừng tự bịa hai điểm)
+  d = pt 2x + 3y = 6             đường thẳng cho bởi phương trình tổng quát
+  d = pt y = 2x - 1              dạng y = mx + n cũng được
+  c = pt (x-2)^2 + (y+1)^2 = 9   đường tròn, dạng chính tắc hoặc khai triển
+  c = pt x^2+y^2-4x+2y-4=0
+  P = pt 2x - y + 3z - 5 = 0     mặt phẳng (hình không gian)
+  S = pt (x-1)^2+(y-2)^2+(z-3)^2=16    mặt cầu
+  Chỉ nhận bậc nhất, đường tròn và mặt cầu. Elip, parabol, hypebol chưa hỗ trợ.
+
 MIỀN NGHIỆM BẤT PHƯƠNG TRÌNH BẬC NHẤT HAI ẨN
   m = mien("2x+3y<=6")                     miền nghiệm một bất phương trình
   m = hemien("x>=0","y>=0","x+y<=4")       miền nghiệm của HỆ (giao các nửa mặt phẳng)
@@ -2657,7 +2983,9 @@ QUY TẮC BẮT BUỘC
 6. Chỉ tạo thêm đối tượng mới; đối tượng đã có trong danh sách hiện tại thì dùng lại tên, đừng định nghĩa lại.
 7. Với hình không gian: dùng toạ độ 3 thành phần và lệnh nhóm 3D. Đáy thường nằm ở z = 0.
 8. Bài "tìm miền nghiệm" hay "biểu diễn miền nghiệm" thì dùng mien/hemien, KHÔNG tự vẽ tay bằng đường thẳng.
-9. Không giải thích trong script. Giải thích ngắn (1-2 câu tiếng Việt) đặt ở trường "giai_thich".
+9. Đề CHO SẴN phương trình ("cho đường thẳng d: 2x+3y=6", "cho (C): x²+y²=25") thì dùng lệnh pt,
+   không tự chọn hai điểm rồi nối — làm thế hình đúng nhưng phương trình sai.
+10. Không giải thích trong script. Giải thích ngắn (1-2 câu tiếng Việt) đặt ở trường "giai_thich".
 
 Trả lời DUY NHẤT một đối tượng JSON: {"giai_thich": "...", "script": "..."}`;
 
@@ -2886,6 +3214,7 @@ function localParse(text, doc) {
 
 
 
+
 const $ = (s) => document.querySelector(s);
 const LS = {
   get: (k, d) => { try { const v = localStorage.getItem('geoai.' + k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
@@ -2932,6 +3261,88 @@ function render() {
   updateHint();
 }
 
+// ------------------------------------------------- Gõ phương trình → ra hình
+function baoPT(chu, hong) {
+  const el = $('#ptmsg');
+  if (!el) return;
+  el.textContent = chu || '';
+  el.className = 'ptmsg' + (chu ? ' on ' + (hong ? 'err' : 'ok') : '');
+}
+
+/**
+ * Thêm một hình mới từ phương trình gõ trong ô trên cùng.
+ * Cho phép đặt tên bằng "d: 2x+3y=6"; nếu tên đó đã có sẵn thì hiểu là SỬA
+ * hình đang mang tên ấy, khỏi phải tìm đúng thẻ để bấm.
+ */
+function themPT(chuoi) {
+  const raw = String(chuoi || '').trim();
+  if (!raw) return false;
+  const m = raw.match(/^([A-Za-z][\w']*)\s*:\s*(.+)$/);
+  const ten = m ? m[1] : null;
+  const than = m ? m[2] : raw;
+
+  // Tên đã có sẵn thì hiểu là SỬA hình mang tên đó, khỏi phải đi tìm đúng thẻ.
+  const cu = ten ? D().byName(ten) : null;
+  if (cu) {
+    const truoc = chupHinh();
+    const r = apDungPT(D(), cu, than);
+    if (r.ok) { luuChup(truoc); D().recompute(); render(); }
+    baoPT(r.msg, !r.ok);
+    return r.ok;
+  }
+
+  const kq = docPT(than, is3());
+  if (kq.loi) { baoPT(kq.loi, true); return false; }
+  const spec = specTuPT(kq);
+  if (!spec) { baoPT('Chưa dựng được hình từ phương trình này.', true); return false; }
+
+  const truoc = chupHinh();
+  let o;
+  try { o = D().add(spec); } catch (err) { baoPT('Không dựng được: ' + err.message, true); return false; }
+  if (!o.val) {
+    D().remove(o.id);
+    baoPT('Phương trình đúng cú pháp nhưng không vẽ ra hình nào.', true);
+    return false;
+  }
+  const dat = ten || kq.ten;
+  if (dat && !D().byName(dat)) o.name = dat;
+  luuChup(truoc);
+  app.sel = new Set([o.id]);
+  render();
+  baoPT(`Đã vẽ ${o.name}.`, false);
+  return true;
+}
+
+/** Biến dòng phương trình trong một thẻ thành ô nhập để sửa tại chỗ */
+function moO(the, o, dong) {
+  if (app.ptSua) return;
+  // hệ bất phương trình hiện mỗi dòng một cái, nhưng sửa thì gom về một hàng
+  const cu = o.op === 'region' ? ((o.params.bpt || []).join(', ')) : dong.textContent;
+  if (cu.indexOf('\n') >= 0) { baoPT(`${o.name} viết trên nhiều dòng nên chưa sửa tại chỗ được.`, true); return; }
+  app.ptSua = o.id;
+  const inp = document.createElement('input');
+  inp.className = 'eqin';
+  inp.value = cu;
+  inp.setAttribute('autocomplete', 'off');
+  inp.setAttribute('spellcheck', 'false');
+  dong.replaceWith(inp);
+  inp.focus();
+  if (inp.select) inp.select();
+  let xong = false;
+  const dongO = () => { if (xong) return; xong = true; app.ptSua = null; render(); };
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); baoPT('', false); dongO(); return; }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const truoc = chupHinh();
+    const r = apDungPT(D(), o, inp.value);
+    if (r.ok) { luuChup(truoc); D().recompute(); }
+    baoPT(r.msg, !r.ok);
+    if (r.ok) dongO(); else inp.focus();   // sai thì giữ nguyên ô để sửa tiếp
+  });
+  inp.addEventListener('blur', () => { setTimeout(dongO, 120); });
+}
+
 /** Chuyển thẻ trong cột bên phải (Trợ lý AI · Phương trình · Đối tượng · Lệnh) */
 function chonThe(ten) {
   document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x.dataset.pane === ten));
@@ -2946,15 +3357,30 @@ function chonThe(ten) {
 function renderPT() {
   const box = $('#ptlist');
   if (!box) return;
+  if (app.ptSua) return;   // đang gõ dở trong một ô: đừng dựng lại kẻo mất chữ
   const ds = [];
   for (const o of D().list()) {
     const e = phuongTrinh(o);
     if (e && e.pt) ds.push([o, e]);
   }
   if (!ds.length) {
-    box.innerHTML = `<div class="ptempty">Chưa có gì để viết phương trình.<br><br>
-      Vẽ một điểm, một đường thẳng hay một đường tròn — phương trình sẽ hiện ngay ở đây và
-      tự đổi theo mỗi khi bạn kéo hình.</div>`;
+    // Bảng trống là lúc rộng chỗ nhất để chỉ cách dùng; vẽ vào một cái là nó biến mất.
+    box.innerHTML = `<div class="ptempty">Vẽ một hình bất kỳ — phương trình hiện ngay ở đây và
+      tự đổi theo mỗi khi bạn kéo hình. Hoặc gõ thẳng phương trình vào ô trên:
+      <table class="ptbang">
+        <tr><td><b>2x + 3y = 6</b></td><td>đường thẳng</td></tr>
+        <tr><td><b>y = 2x - 1</b></td><td>dạng y = mx + n</td></tr>
+        <tr><td><b>x = 3</b></td><td>đường thẳng đứng</td></tr>
+        <tr><td><b>(x-2)² + (y+1)² = 9</b></td><td>đường tròn</td></tr>
+        <tr><td><b>x² + y² - 4x + 2y - 4 = 0</b></td><td>đường tròn, dạng khai triển</td></tr>
+        <tr><td><b>A(2; 3)</b></td><td>điểm, kèm luôn tên</td></tr>
+        <tr><td><b>2x + 3y ≤ 6</b></td><td>miền nghiệm</td></tr>
+        <tr><td><b>2x - y + 3z - 5 = 0</b></td><td>mặt phẳng — ở chế độ Không gian</td></tr>
+        <tr><td><b>(x-1)²+(y-2)²+(z-3)²=16</b></td><td>mặt cầu</td></tr>
+        <tr><td><b>d: 2x + 3y = 6</b></td><td>đặt tên bằng dấu hai chấm</td></tr>
+      </table>
+      Gõ lại một tên đã có thì hiểu là <b>sửa</b> hình đó. Bấm vào một phương trình trong
+      danh sách cũng sửa được tại chỗ — Enter để áp dụng, Esc để bỏ.</div>`;
     return;
   }
   box.innerHTML = ds.map(([o, e]) => {
@@ -3010,6 +3436,7 @@ const VN = {
   point: 'điểm', point3: 'điểm', pointOn: 'điểm thuộc', intersect: 'giao điểm', midpoint: 'trung điểm',
   mid3: 'trung điểm', segment: 'đoạn', segment3: 'đoạn', line: 'đường thẳng', line3: 'đường thẳng',
   ray: 'tia', vector: 'vectơ', polygon: 'đa giác', circleCP: 'đường tròn', circleR: 'đường tròn',
+  lineEq: 'đường thẳng (pt)', circleEq: 'đường tròn (pt)', planeEq: 'mặt phẳng (pt)', sphereEq: 'mặt cầu (pt)',
   circle3: 'đường tròn qua', incircle: 'đtr nội tiếp', perpLine: 'đường ⟂', paraLine: 'đường //',
   perpBisector: 'trung trực', bisector: 'phân giác', altitude: 'đường cao', median: 'trung tuyến',
   tangent: 'tiếp tuyến', distance: 'khoảng cách', dist3: 'độ dài', angleM: 'góc', areaM: 'diện tích',
@@ -3020,12 +3447,16 @@ const VN = {
 };
 
 // ---------------------------------------------------------------- Undo
-function snap() {
+const chupHinh = () => JSON.stringify(D().toJSON());
+/** Cất một bản chụp vào ngăn hoàn tác. Tách riêng để chỗ nào lỡ thao tác
+ *  hỏng thì khỏi phải cất bản chụp thừa. */
+function luuChup(json) {
   const m = app.mode;
-  app.hist[m].push(JSON.stringify(D().toJSON()));
+  app.hist[m].push(json);
   if (app.hist[m].length > 80) app.hist[m].shift();
   app.future[m] = [];
 }
+function snap() { luuChup(chupHinh()); }
 function undo() {
   const m = app.mode;
   if (!app.hist[m].length) return;
@@ -3669,15 +4100,27 @@ function bind() {
   // mở lại đúng thẻ lần trước đang xem — ai hay nhìn phương trình thì lần sau vào là thấy ngay
   const theCu = LS.get('pane', '');
   if (theCu && theCu !== 'chat') chonThe(theCu);
-  // bấm một phương trình → chọn luôn hình tương ứng trên bảng
+  // Bấm vào dòng phương trình → sửa tại chỗ. Bấm chỗ khác trong thẻ → chọn hình.
   $('#ptlist').addEventListener('click', (e) => {
     const b = e.target.closest('.pt');
     if (!b) return;
     const o = D().get(b.dataset.id);
     if (!o) return;
+    if (e.target.classList.contains('eq')) { moO(b, o, e.target); return; }
+    if (e.target.classList.contains('eqin')) return;
     app.sel = app.sel.has(o.id) && app.sel.size === 1 ? new Set() : new Set([o.id]);
     render();
   });
+
+  // Ô gõ phương trình mới
+  const oMoi = $('#ptin');
+  if (oMoi) {
+    oMoi.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (themPT(oMoi.value)) oMoi.value = '';
+    });
+  }
   $('#objlist').addEventListener('click', (e) => {
     const row = e.target.closest('.obj'); if (!row) return;
     const o = D().get(row.dataset.id); if (!o) return;

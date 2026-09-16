@@ -28,6 +28,7 @@ class El {
   removeEventListener() { }
   fire(t, ev = {}) { (this._h[t] || []).forEach((f) => f({ preventDefault() { }, stopPropagation() { }, target: this, currentTarget: this, ...ev })); }
   appendChild(c) { this.children.push(c); return c; }
+  replaceWith(c) { this.thayBoi = c; }
   remove() { this.isConnected = false; }
   setPointerCapture() { }
   releasePointerCapture() { }
@@ -93,7 +94,7 @@ ok('SVG có nội dung', svg.innerHTML.length > 500, svg.innerHTML.length + ' k�
 ok('SVG vẽ được lưới toạ độ', /class="grid"|class="axis"/.test(svg.innerHTML));
 ok('thanh công cụ đã dựng', q('#rail').innerHTML.includes('data-tool="seg"'));
 ok('danh sách đối tượng báo trống', q('#objlist').innerHTML.includes('Chưa có đối tượng'));
-ok('bảng phương trình báo trống', q('#ptlist').innerHTML.includes('Chưa có gì để viết'));
+ok('bảng phương trình chỉ cách dùng khi còn trống', q('#ptlist').innerHTML.includes('ptbang') && q('#ptlist').innerHTML.includes('miền nghiệm'));
 
 console.log('\nTương tác');
 // vẽ bằng chuột: chọn công cụ đoạn thẳng rồi bấm 2 lần lên bảng
@@ -145,6 +146,32 @@ cmd.fire('keydown', { key: 'Enter' });
   ok('viết được phương trình tổng quát', /[xy].*= 0/.test(pt), pt.slice(0, 200));
   ok('kèm dòng phụ (dạng y = mx và độ dài)', /class="ex">y = /.test(pt), pt.slice(0, 300));
 }
+console.log('\nGõ phương trình ra hình');
+{
+  const gõ = (v) => { q('#ptin').value = v; q('#ptin').fire('keydown', { key: 'Enter' }); };
+  const truoc = app.doc['2d'].order.length;
+  gõ('2x + 3y = 6');
+  ok('gõ phương trình thì thêm được hình', app.doc['2d'].order.length === truoc + 1);
+  ok('bảng phương trình hiện đúng dạng tổng quát', q('#ptlist').innerHTML.includes('2x + 3y - 6 = 0'), q('#ptlist').innerHTML.slice(0, 200));
+
+  gõ('c: (x-2)^2 + (y+1)^2 = 9');
+  ok('đặt được tên bằng dấu hai chấm', !!app.doc['2d'].byName('c'));
+  ok('vẽ ra đường tròn', q('#ptlist').innerHTML.includes('(x - 2)² + (y + 1)² = 9'));
+
+  gõ('c: x^2 + y^2 = 25');
+  ok('gõ lại tên cũ thì SỬA chứ không thêm', app.doc['2d'].byName('c').params.r === 5 && app.doc['2d'].byName('c').params.x === 0);
+
+  gõ('y = x^2');
+  ok('phương trình chưa hỗ trợ thì báo lỗi, không vẽ bừa', /parabol|elip/.test(q('#ptmsg').textContent) && q('#ptmsg').className.includes('err'), q('#ptmsg').textContent);
+
+  gõ('2a + 3b = 6');
+  ok('chữ lạ cũng báo lỗi', q('#ptmsg').className.includes('err'));
+
+  const n = app.doc['2d'].order.length;
+  q('#undo').fire('click');
+  ok('hoàn tác được thao tác gõ phương trình', app.doc['2d'].order.length <= n);
+}
+
 ok('chạy lệnh từ thanh lệnh', !!app.doc['2d'].byName('M'), q('#status').textContent);
 
 // hoàn tác / làm lại

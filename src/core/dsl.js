@@ -3,6 +3,8 @@
 // Đây vừa là "command line" cho người dùng, vừa là API mà AI agent sinh ra.
 // ============================================================================
 
+import { docPT, specTuPT } from './docpt.js';
+
 // ---- Tokenizer -------------------------------------------------------------
 function lex(src) {
   const ts = [];
@@ -276,6 +278,19 @@ export function runScript(doc, src, opts = {}) {
           });
         }
         if (eq.name) o.name = eq.name;
+        created.push(o); ok++; continue;
+      }
+
+      // Dựng thẳng từ một phương trình:  pt 2x+3y=6   ·   c = pt (x-2)^2+(y+1)^2=9
+      const raPT = eq.body.match(/^(pt|phuongtrinh|phuong_trinh)\s+(.+)$/i);
+      if (raPT) {
+        const kq = docPT(raPT[2].trim(), ctx && ctx.khongGian);
+        if (kq.loi) { errors.push(line + '  →  ' + kq.loi); continue; }
+        const spec = specTuPT(kq);
+        if (!spec) { errors.push(line + '  →  Chưa dựng được hình từ phương trình này.'); continue; }
+        const o = doc.add(spec);
+        const ten = eq.name || kq.ten;
+        if (ten && !doc.list().some((z) => z !== o && z.name === ten)) o.name = ten;
         created.push(o); ok++; continue;
       }
 

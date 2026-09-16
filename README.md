@@ -2,7 +2,7 @@
 
 Bảng vẽ hình học phẳng và hình không gian cho học sinh cấp 2 – cấp 3, có trợ lý AI nhận lệnh bằng tiếng Việt.
 
-Không thư viện ngoài · một tệp HTML 177 KB · mở bằng trình duyệt là chạy.
+Không thư viện ngoài · một tệp HTML 197 KB · mở bằng trình duyệt là chạy.
 
 ---
 
@@ -21,8 +21,8 @@ npm run dev          # mở http://localhost:5173
 
 ```bash
 npm run bundle       # sinh dist/geoai.html
-npm test             # 78 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 34 bài kiểm thử giao diện
+npm test             # 106 bài kiểm thử toán học
+node tests/dom-smoke.mjs   # 42 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
 ```
@@ -72,6 +72,47 @@ Thẻ **Phương trình** ở cột phải viết ra phương trình của mọi
 
 Trên điện thoại bảng này nằm trong tấm trượt kéo lên từ dưới — bấm bong bóng **ƒ** là mở,
 bấm ✕ hoặc ra ngoài là thu lại.
+
+### Gõ phương trình → ra hình
+
+Chiều ngược lại cũng chạy. Ô trên cùng của thẻ **Phương trình**: gõ rồi Enter.
+
+```
+2x + 3y = 6                     đường thẳng
+y = 2x - 1                      dạng y = mx + n
+x = 3                           đường thẳng đứng
+(x-2)^2 + (y+1)^2 = 9           đường tròn, viết ² cũng được
+x^2 + y^2 - 4x + 2y - 4 = 0     đường tròn dạng khai triển
+A(2; 3)                         điểm, có luôn tên
+2x + 3y <= 6                    miền nghiệm
+2x - y + 3z - 5 = 0             mặt phẳng (ở chế độ Không gian)
+(x-1)^2+(y-2)^2+(z-3)^2 = 16    mặt cầu
+d: 2x + 3y = 6                  đặt tên bằng dấu hai chấm
+```
+
+Gõ lại một cái tên đã có thì hiểu là **sửa** hình đó chứ không thêm hình mới.
+
+**Bấm vào một phương trình trong danh sách để sửa tại chỗ**, Enter là hình nhảy theo,
+Esc là bỏ. Sửa được:
+
+- điểm tự do → dời điểm
+- hình vốn dựng từ phương trình → đổi thẳng hệ số
+- đoạn / đường / tia / vectơ qua hai điểm tự do → **chiếu vuông góc hai đầu xuống đường mới**
+- đường tròn tâm O bán kính r → dời O và đổi r
+
+Hình là *hệ quả* của hình khác (đường cao, trung tuyến, giao điểm…) thì không sửa thẳng
+được — app nói rõ nó dựng từ đâu và nên kéo cái gì. Đây là chủ ý: sửa con mà không sửa
+cha thì lần tính lại sau là mất.
+
+Trong thanh lệnh và với trợ lý AI thì dùng `pt`:
+
+```
+d = pt 2x + 3y = 6
+c = pt x^2 + y^2 = 25
+```
+
+Mới nhận bậc nhất, đường tròn và mặt cầu. Elip, parabol, hypebol chưa hỗ trợ — gõ vào thì
+app báo rõ chứ không vẽ bừa.
 
 ### Phím tắt
 
@@ -171,7 +212,7 @@ td=thietdien(K,M,N,P)
 ## Cấu trúc mã
 
 ```
-src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  ptr.js  dsl.js   ← lõi toán, chạy được trong Node
+src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  ptr.js  docpt.js  dsl.js  ← lõi toán
 src/ui/     render.js  tools.js                            ← camera, vẽ SVG, công cụ
 src/ai/     agent.js                                       ← prompt + Gemini + luật offline
 src/main.js                                                ← điều phối

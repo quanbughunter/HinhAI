@@ -5,6 +5,7 @@
 import { GeoDoc } from './core/model.js';
 import { runScript } from './core/dsl.js';
 import { phuongTrinh } from './core/ptr.js';
+import { docPT, specTuPT, apDungPT } from './core/docpt.js';
 import { Cam2, Cam3, render2, render3, pick, labelBoxes, esc } from './ui/render.js';
 import { TOOLS_2D, TOOLS_3D, QUICK_2D, QUICK_3D, CHIPS } from './ui/tools.js';
 import { askGemini, askViaProxy, askClaudeRuntime, getClaudeCapability, localParse, describeDoc, DSL_REFERENCE, DEFAULT_PROXY } from './ai/agent.js';
@@ -55,6 +56,88 @@ function render() {
   updateHint();
 }
 
+// ------------------------------------------------- Gõ phương trình → ra hình
+function baoPT(chu, hong) {
+  const el = $('#ptmsg');
+  if (!el) return;
+  el.textContent = chu || '';
+  el.className = 'ptmsg' + (chu ? ' on ' + (hong ? 'err' : 'ok') : '');
+}
+
+/**
+ * Thêm một hình mới từ phương trình gõ trong ô trên cùng.
+ * Cho phép đặt tên bằng "d: 2x+3y=6"; nếu tên đó đã có sẵn thì hiểu là SỬA
+ * hình đang mang tên ấy, khỏi phải tìm đúng thẻ để bấm.
+ */
+function themPT(chuoi) {
+  const raw = String(chuoi || '').trim();
+  if (!raw) return false;
+  const m = raw.match(/^([A-Za-z][\w']*)\s*:\s*(.+)$/);
+  const ten = m ? m[1] : null;
+  const than = m ? m[2] : raw;
+
+  // Tên đã có sẵn thì hiểu là SỬA hình mang tên đó, khỏi phải đi tìm đúng thẻ.
+  const cu = ten ? D().byName(ten) : null;
+  if (cu) {
+    const truoc = chupHinh();
+    const r = apDungPT(D(), cu, than);
+    if (r.ok) { luuChup(truoc); D().recompute(); render(); }
+    baoPT(r.msg, !r.ok);
+    return r.ok;
+  }
+
+  const kq = docPT(than, is3());
+  if (kq.loi) { baoPT(kq.loi, true); return false; }
+  const spec = specTuPT(kq);
+  if (!spec) { baoPT('Chưa dựng được hình từ phương trình này.', true); return false; }
+
+  const truoc = chupHinh();
+  let o;
+  try { o = D().add(spec); } catch (err) { baoPT('Không dựng được: ' + err.message, true); return false; }
+  if (!o.val) {
+    D().remove(o.id);
+    baoPT('Phương trình đúng cú pháp nhưng không vẽ ra hình nào.', true);
+    return false;
+  }
+  const dat = ten || kq.ten;
+  if (dat && !D().byName(dat)) o.name = dat;
+  luuChup(truoc);
+  app.sel = new Set([o.id]);
+  render();
+  baoPT(`Đã vẽ ${o.name}.`, false);
+  return true;
+}
+
+/** Biến dòng phương trình trong một thẻ thành ô nhập để sửa tại chỗ */
+function moO(the, o, dong) {
+  if (app.ptSua) return;
+  // hệ bất phương trình hiện mỗi dòng một cái, nhưng sửa thì gom về một hàng
+  const cu = o.op === 'region' ? ((o.params.bpt || []).join(', ')) : dong.textContent;
+  if (cu.indexOf('\n') >= 0) { baoPT(`${o.name} viết trên nhiều dòng nên chưa sửa tại chỗ được.`, true); return; }
+  app.ptSua = o.id;
+  const inp = document.createElement('input');
+  inp.className = 'eqin';
+  inp.value = cu;
+  inp.setAttribute('autocomplete', 'off');
+  inp.setAttribute('spellcheck', 'false');
+  dong.replaceWith(inp);
+  inp.focus();
+  if (inp.select) inp.select();
+  let xong = false;
+  const dongO = () => { if (xong) return; xong = true; app.ptSua = null; render(); };
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); baoPT('', false); dongO(); return; }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const truoc = chupHinh();
+    const r = apDungPT(D(), o, inp.value);
+    if (r.ok) { luuChup(truoc); D().recompute(); }
+    baoPT(r.msg, !r.ok);
+    if (r.ok) dongO(); else inp.focus();   // sai thì giữ nguyên ô để sửa tiếp
+  });
+  inp.addEventListener('blur', () => { setTimeout(dongO, 120); });
+}
+
 /** Chuyển thẻ trong cột bên phải (Trợ lý AI · Phương trình · Đối tượng · Lệnh) */
 function chonThe(ten) {
   document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x.dataset.pane === ten));
@@ -69,15 +152,30 @@ function chonThe(ten) {
 function renderPT() {
   const box = $('#ptlist');
   if (!box) return;
+  if (app.ptSua) return;   // đang gõ dở trong một ô: đừng dựng lại kẻo mất chữ
   const ds = [];
   for (const o of D().list()) {
     const e = phuongTrinh(o);
     if (e && e.pt) ds.push([o, e]);
   }
   if (!ds.length) {
-    box.innerHTML = `<div class="ptempty">Chưa có gì để viết phương trình.<br><br>
-      Vẽ một điểm, một đường thẳng hay một đường tròn — phương trình sẽ hiện ngay ở đây và
-      tự đổi theo mỗi khi bạn kéo hình.</div>`;
+    // Bảng trống là lúc rộng chỗ nhất để chỉ cách dùng; vẽ vào một cái là nó biến mất.
+    box.innerHTML = `<div class="ptempty">Vẽ một hình bất kỳ — phương trình hiện ngay ở đây và
+      tự đổi theo mỗi khi bạn kéo hình. Hoặc gõ thẳng phương trình vào ô trên:
+      <table class="ptbang">
+        <tr><td><b>2x + 3y = 6</b></td><td>đường thẳng</td></tr>
+        <tr><td><b>y = 2x - 1</b></td><td>dạng y = mx + n</td></tr>
+        <tr><td><b>x = 3</b></td><td>đường thẳng đứng</td></tr>
+        <tr><td><b>(x-2)² + (y+1)² = 9</b></td><td>đường tròn</td></tr>
+        <tr><td><b>x² + y² - 4x + 2y - 4 = 0</b></td><td>đường tròn, dạng khai triển</td></tr>
+        <tr><td><b>A(2; 3)</b></td><td>điểm, kèm luôn tên</td></tr>
+        <tr><td><b>2x + 3y ≤ 6</b></td><td>miền nghiệm</td></tr>
+        <tr><td><b>2x - y + 3z - 5 = 0</b></td><td>mặt phẳng — ở chế độ Không gian</td></tr>
+        <tr><td><b>(x-1)²+(y-2)²+(z-3)²=16</b></td><td>mặt cầu</td></tr>
+        <tr><td><b>d: 2x + 3y = 6</b></td><td>đặt tên bằng dấu hai chấm</td></tr>
+      </table>
+      Gõ lại một tên đã có thì hiểu là <b>sửa</b> hình đó. Bấm vào một phương trình trong
+      danh sách cũng sửa được tại chỗ — Enter để áp dụng, Esc để bỏ.</div>`;
     return;
   }
   box.innerHTML = ds.map(([o, e]) => {
@@ -133,6 +231,7 @@ const VN = {
   point: 'điểm', point3: 'điểm', pointOn: 'điểm thuộc', intersect: 'giao điểm', midpoint: 'trung điểm',
   mid3: 'trung điểm', segment: 'đoạn', segment3: 'đoạn', line: 'đường thẳng', line3: 'đường thẳng',
   ray: 'tia', vector: 'vectơ', polygon: 'đa giác', circleCP: 'đường tròn', circleR: 'đường tròn',
+  lineEq: 'đường thẳng (pt)', circleEq: 'đường tròn (pt)', planeEq: 'mặt phẳng (pt)', sphereEq: 'mặt cầu (pt)',
   circle3: 'đường tròn qua', incircle: 'đtr nội tiếp', perpLine: 'đường ⟂', paraLine: 'đường //',
   perpBisector: 'trung trực', bisector: 'phân giác', altitude: 'đường cao', median: 'trung tuyến',
   tangent: 'tiếp tuyến', distance: 'khoảng cách', dist3: 'độ dài', angleM: 'góc', areaM: 'diện tích',
@@ -143,12 +242,16 @@ const VN = {
 };
 
 // ---------------------------------------------------------------- Undo
-function snap() {
+const chupHinh = () => JSON.stringify(D().toJSON());
+/** Cất một bản chụp vào ngăn hoàn tác. Tách riêng để chỗ nào lỡ thao tác
+ *  hỏng thì khỏi phải cất bản chụp thừa. */
+function luuChup(json) {
   const m = app.mode;
-  app.hist[m].push(JSON.stringify(D().toJSON()));
+  app.hist[m].push(json);
   if (app.hist[m].length > 80) app.hist[m].shift();
   app.future[m] = [];
 }
+function snap() { luuChup(chupHinh()); }
 function undo() {
   const m = app.mode;
   if (!app.hist[m].length) return;
@@ -792,15 +895,27 @@ function bind() {
   // mở lại đúng thẻ lần trước đang xem — ai hay nhìn phương trình thì lần sau vào là thấy ngay
   const theCu = LS.get('pane', '');
   if (theCu && theCu !== 'chat') chonThe(theCu);
-  // bấm một phương trình → chọn luôn hình tương ứng trên bảng
+  // Bấm vào dòng phương trình → sửa tại chỗ. Bấm chỗ khác trong thẻ → chọn hình.
   $('#ptlist').addEventListener('click', (e) => {
     const b = e.target.closest('.pt');
     if (!b) return;
     const o = D().get(b.dataset.id);
     if (!o) return;
+    if (e.target.classList.contains('eq')) { moO(b, o, e.target); return; }
+    if (e.target.classList.contains('eqin')) return;
     app.sel = app.sel.has(o.id) && app.sel.size === 1 ? new Set() : new Set([o.id]);
     render();
   });
+
+  // Ô gõ phương trình mới
+  const oMoi = $('#ptin');
+  if (oMoi) {
+    oMoi.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (themPT(oMoi.value)) oMoi.value = '';
+    });
+  }
   $('#objlist').addEventListener('click', (e) => {
     const row = e.target.closest('.obj'); if (!row) return;
     const o = D().get(row.dataset.id); if (!o) return;
