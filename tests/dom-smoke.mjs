@@ -280,12 +280,28 @@ console.log('\nBấm đúp trên bảng vẽ và đổi màu');
     q('#tenMoi').value = tenCu;
     q('#tenMauRieng').value = '#1f7a5a';
     q('#tenDay').value = '3.5';
-    q('#tenDut').checked = true;
+    // DOM giả lập không dựng cây từ chuỗi HTML nên không bấm được nút kiểu nét;
+    // ở đây kiểm bảng kiểu nét được sinh ra đúng, còn phần áp dụng thử qua lệnh.
+    ok('hộp thoại liệt kê đủ sáu kiểu nét', (q('#tenKieu').innerHTML.match(/data-kieu=/g) || []).length === 6,
+      q('#tenKieu').innerHTML.slice(0, 200));
+    ok('kiểu nét có bản xem thử bằng SVG', q('#tenKieu').innerHTML.includes('stroke-dasharray="7 5"'));
     q('#tenLuu').fire('click');
     const t = doc.byName('t');
     ok('đổi được độ dày nét', t && t.style.width === 3.5, JSON.stringify(t && t.style));
-    ok('bật được nét đứt', t && t.style.dash === '6 5');
-    ok('nét đứt hiện lên SVG', /stroke-dasharray="6 5"/.test(q('#svg').innerHTML));
+  }
+
+  // đổi kiểu nét bằng lệnh
+  {
+    const doc2 = app.doc['2d'];
+    const chay = (v) => { q('#cmd').value = v; q('#cmd').fire('keydown', { key: 'Enter' }); };
+    const ten = doc2.byName('t') ? 't' : (doc2.list().find((o) => o.type === 'polygon') || {}).name;
+    chay(`net ${ten} cham`);
+    ok('lệnh net ... cham đặt được nét chấm', doc2.byName(ten).style.dash === '0.01 6', JSON.stringify(doc2.byName(ten).style));
+    ok('nét chấm hiện lên SVG với đầu bo tròn', /stroke-linecap="round"/.test(q('#svg').innerHTML) && q('#svg').innerHTML.includes('0.01 6'));
+    chay(`net ${ten} dutcham`);
+    ok('đặt được nét đứt chấm', doc2.byName(ten).style.dash === '11 4 0.01 4');
+    chay(`net ${ten} lien`);
+    ok('trả về nét liền', !doc2.byName(ten).style.dash);
   }
 
   // hai lần bấm CÁCH XA nhau thì không tính là bấm đúp

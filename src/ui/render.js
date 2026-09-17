@@ -72,14 +72,9 @@ function grid2(cam, opt) {
     for (let y = Math.ceil(br.y / step) * step; y < tl.y; y += step) {
       const sy = f(cam.s({ x: 0, y }).y); g.push(`M0 ${sy}H${cam.w}`);
     }
+    // Chỉ kẻ đúng ở những vạch CÓ SỐ trên trục — lưới phụ chia nhỏ hơn nữa làm
+    // hình rối mà chẳng giúp đọc toạ độ.
     out.push(`<path d="${g.join('')}" class="grid"/>`);
-    const g2 = [];
-    const s2 = step / 5;
-    if (cam.scale * s2 > 7) {
-      for (let x = Math.ceil(tl.x / s2) * s2; x < br.x; x += s2) { const sx = f(cam.s({ x, y: 0 }).x); g2.push(`M${sx} 0V${cam.h}`); }
-      for (let y = Math.ceil(br.y / s2) * s2; y < tl.y; y += s2) { const sy = f(cam.s({ x: 0, y }).y); g2.push(`M0 ${sy}H${cam.w}`); }
-      out.unshift(`<path d="${g2.join('')}" class="grid2"/>`);
-    }
   }
   if (opt.axes) {
     const o = cam.s({ x: 0, y: 0 });
@@ -141,7 +136,8 @@ function styleAttr(o, sel) {
   const st = o.style || {};
   const c = sel ? '#d98324' : (st.color || '#16233d');
   const w = (st.width || 1.8) * (sel ? 1.7 : 1);
-  return `stroke="${c}" stroke-width="${w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}`;
+  // linecap tròn: cần cho kiểu "chấm" (đoạn dài 0 mới hiện thành chấm tròn)
+  return `stroke="${c}" stroke-width="${w}" stroke-linecap="round"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}`;
 }
 
 
@@ -255,7 +251,7 @@ export function render2(doc, cam, opt) {
     } else if (o.type === 'line') {
       const [a, b] = lineEndpoints(o.val, cam);
       const A = cam.s(a), B = cam.s(b);
-      out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" ${styleAttr(o, sel.has(o.id))} stroke-linecap="round"${o.val.arrow ? ' marker-end="url(#arwr)"' : ''}/>`);
+      out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" ${styleAttr(o, sel.has(o.id))}${o.val.arrow ? ' marker-end="url(#arwr)"' : ''}/>`);
       if (nenHienTen(o, opt, false)) {
         const m = { x: A.x + (B.x - A.x) * 0.72, y: A.y + (B.y - A.y) * 0.72 };
         labels.push(lab(o, m, o.name, o.style.color, 8, -6));

@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { docPT, specTuPT } from './docpt.js';
+import { dashCuaKieu } from './net.js';
 
 // ---- Tokenizer -------------------------------------------------------------
 function lex(src) {
@@ -229,7 +230,8 @@ const STMT = {
   an: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.visible = false; doc.touch(); } },
   hien: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.visible = true; doc.touch(); } },
   mau: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, color: a[1] }; doc.touch(); } },
-  net: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, dash: a[1] === 'dut' || a[1] === 'dash' ? '6 5' : null }; doc.touch(); } },
+  // net d lien | dut | cham | dutcham | dutdai | dutngan
+  net: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, dash: dashCuaKieu(a[1]) }; doc.touch(); } },
   to: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, width: parseFloat(a[1]) || 2 }; doc.touch(); } },
   doiten: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.name = a[1]; doc.touch(); } },
   xoahet: (doc) => doc.clear(),

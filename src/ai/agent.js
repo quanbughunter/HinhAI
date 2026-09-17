@@ -71,7 +71,8 @@ HÌNH KHÔNG GIAN (3D)
   trungdiem3(A,B)   chia3(A,B,t)   kc3(A,B)
 
 LỆNH KHÁC
-  an X | hien X | xoa X | mau X #ff0000 | net X dut | doiten X Y | xoahet
+  an X | hien X | xoa X | mau X #ff0000 | to X 3 | doiten X Y | xoahet
+  net X lien|dut|cham|dutcham|dutdai|dutngan   — đường phụ, đường khuất thì để nét đứt
 `.trim();
 
 export const SYSTEM_PROMPT = `Bạn là trợ lý dựng hình cho học sinh Việt Nam cấp 2 - cấp 3.

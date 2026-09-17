@@ -9,7 +9,7 @@
   --bg:#f4f5f9; --panel:#ffffff; --ink:#16233d; --muted:#6b7794; --line:#dfe3f0;
   --accent:#22468f; --accent-soft:#e9eefb; --warn:#d98324; --ok:#1f7a5a; --danger:#b3261e;
   --rail:64px; --side:400px; --radius:12px;
-  --grid:#e3e7f4; --grid2:#eef0f8; --axis:#8c96b2; --labelhalo:#ffffff;
+  --grid:#e3e7f4; --axis:#8c96b2; --labelhalo:#ffffff;
   --errbg:#fdf1f0; --errline:#f0c4bf; --errink:#8f2018;
   --shadow:0 1px 2px rgba(22,35,61,.06),0 8px 24px -12px rgba(22,35,61,.20);
   --font-ui:'Be Vietnam Pro',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
@@ -20,7 +20,7 @@
   :root:not([data-theme="light"]){
     --bg:#0d1424; --panel:#141c2e; --ink:#e6eaf4; --muted:#8f9cbb; --line:#243048;
     --accent:#7ba3f0; --accent-soft:#1a2745; --warn:#e0a458; --danger:#e8776b;
-    --grid:#1e2942; --grid2:#182135; --axis:#5b688a; --labelhalo:#141c2e;
+    --grid:#1e2942; --axis:#5b688a; --labelhalo:#141c2e;
     --errbg:#2b1614; --errline:#5c2a25; --errink:#f0a79e;
     --shadow:0 1px 2px rgba(0,0,0,.55);
   }
@@ -28,7 +28,7 @@
 :root[data-theme="dark"]{
   --bg:#0d1424; --panel:#141c2e; --ink:#e6eaf4; --muted:#8f9cbb; --line:#243048;
   --accent:#7ba3f0; --accent-soft:#1a2745; --warn:#e0a458; --danger:#e8776b;
-  --grid:#1e2942; --grid2:#182135; --axis:#5b688a; --labelhalo:#141c2e;
+  --grid:#1e2942; --axis:#5b688a; --labelhalo:#141c2e;
     --errbg:#2b1614; --errline:#5c2a25; --errink:#f0a79e;
   --shadow:0 1px 2px rgba(0,0,0,.55);
 }
@@ -92,7 +92,6 @@ input,textarea,select{font:inherit;color:inherit}
 #svg{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #svg .grid{stroke:var(--grid);stroke-width:1;fill:none}
-#svg .grid2{stroke:var(--grid2);stroke-width:.7;fill:none}
 #svg .axis{stroke:var(--axis);stroke-width:1.2;fill:none}
 #svg .tick{font-size:10.5px;fill:var(--muted);text-anchor:middle;font-family:var(--font-ui);font-variant-numeric:tabular-nums}
 #svg .lbl{font-size:15px;font-weight:600;font-family:var(--font-math);font-style:italic;paint-order:stroke;stroke:var(--labelhalo);stroke-width:3.5px;stroke-linejoin:round}
@@ -172,6 +171,12 @@ input,textarea,select{font:inherit;color:inherit}
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
 .mau button.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),0 0 0 2px var(--panel) inset}
 .net{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.kieunet{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:9px}
+.kieunet button{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;
+  padding:7px 10px;font-size:12.5px;color:var(--muted);text-align:left}
+.kieunet button svg{width:52px;height:10px;flex:0 0 auto}
+.kieunet button:hover{border-color:var(--accent);color:var(--ink)}
+.kieunet button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
 .net b{font-variant-numeric:tabular-nums;color:var(--ink);min-width:26px;text-align:right}
 .ptmsg.on{display:block}
 .ptmsg.ok{background:var(--accent-soft);color:var(--accent)}
@@ -514,10 +519,7 @@ input,textarea,select{font:inherit;color:inherit}
         <input id="tenDay" type="range" min="1" max="6" step="0.5" style="flex:1">
         <b id="tenDaySo">1.8</b>
       </div>
-      <label style="display:flex;align-items:center;gap:9px;margin-top:8px;font-weight:500;color:var(--ink);cursor:pointer">
-        <input id="tenDut" type="checkbox" style="width:auto;margin:0">
-        <span style="font-size:13.5px">Nét đứt</span>
-      </label>
+      <div class="kieunet" id="tenKieu"></div>
     </div>
     <div class="ptmsg" id="tenLoi"></div>
     <div class="row">
@@ -2142,11 +2144,53 @@ function apDungPT(doc, o, chuoi) {
   };
 }
 
+/* ==== /src/core/net.js ==== */
+// ============================================================================
+// net.js — Các kiểu nét vẽ.
+//
+// Để riêng một tệp vì cả ba nơi đều cần dùng chung một bảng: hộp thoại sửa đối
+// tượng, lệnh `net d cham` trong thanh lệnh, và trợ lý AI.
+//
+// Giá trị là chuỗi stroke-dasharray của SVG. Nét "chấm" dựa vào đầu nét bo tròn
+// (stroke-linecap="round") để đoạn dài 0 hiện ra thành một chấm tròn.
+// ============================================================================
+
+const KIEU_NET = [
+  { id: 'lien', ten: 'Liền', dash: null },
+  { id: 'dut', ten: 'Đứt', dash: '7 5' },
+  { id: 'cham', ten: 'Chấm', dash: '0.01 6' },
+  { id: 'dutcham', ten: 'Đứt chấm', dash: '11 4 0.01 4' },
+  { id: 'dutdai', ten: 'Đứt dài', dash: '16 7' },
+  { id: 'dutngan', ten: 'Đứt ngắn', dash: '3 3' },
+];
+
+/** Tên kiểu (hoặc alias tiếng Anh) → chuỗi dasharray */
+function dashCuaKieu(ten) {
+  const k = String(ten || '').toLowerCase().trim();
+  const alias = {
+    solid: 'lien', none: 'lien', dash: 'dut', dashed: 'dut',
+    dot: 'cham', dotted: 'cham', chamcham: 'cham',
+    dashdot: 'dutcham', chamgach: 'dutcham', gachcham: 'dutcham',
+    longdash: 'dutdai', dai: 'dutdai', ngan: 'dutngan', short: 'dutngan',
+  };
+  const id = alias[k] || k;
+  const m = KIEU_NET.find((x) => x.id === id);
+  return m ? m.dash : null;
+}
+
+/** Ngược lại: nhìn dasharray đoán ra đang là kiểu nào (để tô sáng nút đang chọn) */
+function kieuCuaDash(dash) {
+  if (!dash) return 'lien';
+  const m = KIEU_NET.find((x) => x.dash === dash);
+  return m ? m.id : 'dut';       // kiểu lạ (từ bản cũ) thì coi như nét đứt
+}
+
 /* ==== /src/core/dsl.js ==== */
 // ============================================================================
 // dsl.js — Ngôn ngữ lệnh dựng hình (tiếng Việt không dấu + alias tiếng Anh).
 // Đây vừa là "command line" cho người dùng, vừa là API mà AI agent sinh ra.
 // ============================================================================
+
 
 
 // ---- Tokenizer -------------------------------------------------------------
@@ -2373,7 +2417,8 @@ const STMT = {
   an: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.visible = false; doc.touch(); } },
   hien: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.visible = true; doc.touch(); } },
   mau: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, color: a[1] }; doc.touch(); } },
-  net: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, dash: a[1] === 'dut' || a[1] === 'dash' ? '6 5' : null }; doc.touch(); } },
+  // net d lien | dut | cham | dutcham | dutdai | dutngan
+  net: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, dash: dashCuaKieu(a[1]) }; doc.touch(); } },
   to: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.style = { ...o.style, width: parseFloat(a[1]) || 2 }; doc.touch(); } },
   doiten: (doc, a) => { const o = doc.byName(a[0]); if (o) { o.name = a[1]; doc.touch(); } },
   xoahet: (doc) => doc.clear(),
@@ -2888,14 +2933,9 @@ function grid2(cam, opt) {
     for (let y = Math.ceil(br.y / step) * step; y < tl.y; y += step) {
       const sy = f(cam.s({ x: 0, y }).y); g.push(`M0 ${sy}H${cam.w}`);
     }
+    // Chỉ kẻ đúng ở những vạch CÓ SỐ trên trục — lưới phụ chia nhỏ hơn nữa làm
+    // hình rối mà chẳng giúp đọc toạ độ.
     out.push(`<path d="${g.join('')}" class="grid"/>`);
-    const g2 = [];
-    const s2 = step / 5;
-    if (cam.scale * s2 > 7) {
-      for (let x = Math.ceil(tl.x / s2) * s2; x < br.x; x += s2) { const sx = f(cam.s({ x, y: 0 }).x); g2.push(`M${sx} 0V${cam.h}`); }
-      for (let y = Math.ceil(br.y / s2) * s2; y < tl.y; y += s2) { const sy = f(cam.s({ x: 0, y }).y); g2.push(`M0 ${sy}H${cam.w}`); }
-      out.unshift(`<path d="${g2.join('')}" class="grid2"/>`);
-    }
   }
   if (opt.axes) {
     const o = cam.s({ x: 0, y: 0 });
@@ -2957,7 +2997,8 @@ function styleAttr(o, sel) {
   const st = o.style || {};
   const c = sel ? '#d98324' : (st.color || '#16233d');
   const w = (st.width || 1.8) * (sel ? 1.7 : 1);
-  return `stroke="${c}" stroke-width="${w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}`;
+  // linecap tròn: cần cho kiểu "chấm" (đoạn dài 0 mới hiện thành chấm tròn)
+  return `stroke="${c}" stroke-width="${w}" stroke-linecap="round"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}`;
 }
 
 
@@ -3071,7 +3112,7 @@ function render2(doc, cam, opt) {
     } else if (o.type === 'line') {
       const [a, b] = lineEndpoints(o.val, cam);
       const A = cam.s(a), B = cam.s(b);
-      out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" ${styleAttr(o, sel.has(o.id))} stroke-linecap="round"${o.val.arrow ? ' marker-end="url(#arwr)"' : ''}/>`);
+      out.push(`<line x1="${f(A.x)}" y1="${f(A.y)}" x2="${f(B.x)}" y2="${f(B.y)}" ${styleAttr(o, sel.has(o.id))}${o.val.arrow ? ' marker-end="url(#arwr)"' : ''}/>`);
       if (nenHienTen(o, opt, false)) {
         const m = { x: A.x + (B.x - A.x) * 0.72, y: A.y + (B.y - A.y) * 0.72 };
         labels.push(lab(o, m, o.name, o.style.color, 8, -6));
@@ -3581,7 +3622,8 @@ HÌNH KHÔNG GIAN (3D)
   trungdiem3(A,B)   chia3(A,B,t)   kc3(A,B)
 
 LỆNH KHÁC
-  an X | hien X | xoa X | mau X #ff0000 | net X dut | doiten X Y | xoahet
+  an X | hien X | xoa X | mau X #ff0000 | to X 3 | doiten X Y | xoahet
+  net X lien|dut|cham|dutcham|dutdai|dutngan   — đường phụ, đường khuất thì để nét đứt
 `.trim();
 
 const SYSTEM_PROMPT = `Bạn là trợ lý dựng hình cho học sinh Việt Nam cấp 2 - cấp 3.
@@ -3823,6 +3865,7 @@ function localParse(text, doc) {
 // ============================================================================
 // main.js — Bộ điều khiển ứng dụng: công cụ, tương tác chuột/chạm, chat AI.
 // ============================================================================
+
 
 
 
@@ -4338,7 +4381,12 @@ function doiTen(o) {
   $('#tenNetO').hidden = !coNet;
   $('#tenDay').value = st.width == null ? 1.8 : st.width;
   $('#tenDaySo').textContent = String(st.width == null ? 1.8 : st.width);
-  $('#tenDut').checked = !!st.dash;
+  const kieu = kieuCuaDash(st.dash);
+  $('#tenKieu').innerHTML = KIEU_NET.map((k) =>
+    `<button data-kieu="${k.id}"${k.id === kieu ? ' class="on"' : ''}>`
+    + `<svg viewBox="0 0 52 10"><line x1="2" y1="5" x2="50" y2="5" stroke="currentColor" stroke-width="2.2"`
+    + ` stroke-linecap="round"${k.dash ? ` stroke-dasharray="${k.dash}"` : ''}/></svg>`
+    + `<span>${k.ten}</span></button>`).join('');
 
   baoTen('');
   hop.classList.add('on');
@@ -4351,6 +4399,13 @@ function doiTen(o) {
 function mauDangChon() {
   const b = $('#tenMau').querySelector ? $('#tenMau').querySelector('button.on') : null;
   return b ? b.dataset.mau : $('#tenMauRieng').value;
+}
+
+/** Kiểu nét đang chọn trong hộp thoại */
+function kieuDangChon() {
+  const o = $('#tenKieu');
+  const b = o && o.querySelector ? o.querySelector('button.on') : null;
+  return b ? b.dataset.kieu : 'lien';
 }
 
 function baoTen(chu, hong) {
@@ -4390,7 +4445,7 @@ function luuTen() {
   st.color = mauDangChon();
   if (!$('#tenNetO').hidden) {
     st.width = parseFloat($('#tenDay').value) || 1.8;
-    st.dash = $('#tenDut').checked ? '6 5' : null;
+    st.dash = dashCuaKieu(kieuDangChon());
   }
   o.style = st;
   $('#tenmodal').classList.remove('on');
@@ -5227,6 +5282,12 @@ function bind() {
     $('#tenMau').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
   });
   $('#tenDay').addEventListener('input', (e) => { $('#tenDaySo').textContent = e.target.value; });
+  $('#tenKieu').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-kieu]');
+    if (!b) return;
+    $('#tenKieu').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+    b.classList.add('on');
+  });
 
   $('#tenPhim').addEventListener('click', (e) => {
     const b = e.target.closest('[data-them]');

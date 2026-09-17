@@ -22,7 +22,7 @@ npm run dev          # mở http://localhost:5173
 ```bash
 npm run bundle       # sinh dist/geoai.html
 npm test             # 157 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 116 bài kiểm thử giao diện
+node tests/dom-smoke.mjs   # 120 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
 ```
@@ -161,11 +161,23 @@ Trùng tên hoặc cho thiếu tên đỉnh thì app báo lỗi và **không đ�
 đổi được nửa chừng rồi bỏ dở.
 
 Cùng hộp thoại đó còn đổi được **màu** (12 màu vở học trò, hoặc chọn màu bất kỳ),
-**độ dày nét** và bật **nét đứt** — tiện cho đường phụ, đường khuất.
+**độ dày nét** và **kiểu nét**:
 
-Trong thanh lệnh thì dùng `doiten A M`, `mau d #b3261e`, `net d dut`, `to d 3`.
+| Kiểu | Dùng cho |
+|---|---|
+| Liền | hình chính |
+| Đứt | đường phụ, đường khuất |
+| Chấm | đường dựng hình, đường bỏ đi |
+| Đứt chấm | trục đối xứng |
+| Đứt dài · Đứt ngắn | phân biệt nhiều đường phụ trong cùng một hình |
+
+Trong thanh lệnh: `doiten A M` · `mau d #b3261e` · `to d 3` ·
+`net d lien|dut|cham|dutcham|dutdai|dutngan`.
 
 ### Lưới và trục toạ độ
+
+Lưới **chỉ kẻ đúng ở những vạch có số** trên hai trục — không có lưới phụ chia nhỏ hơn nữa,
+vì nó làm hình rối mà không giúp đọc toạ độ dễ hơn.
 
 Hai nút riêng trên thanh trên (trong menu **⋯** khi dùng điện thoại): **▦ Lưới** và
 **✛ Trục toạ độ**. Nút sáng lên là đang bật. Tắt trục dùng được cho cả hình phẳng lẫn hình
@@ -261,7 +273,8 @@ trungdiem3(A,B)        chia3(A,B,t)      doan3(A,B)      kc3(A,B)
 ### Lệnh chỉnh sửa
 ```
 an A        hien A       xoa A        xoahet
-mau d #b3261e            net d dut    to d 3       doiten A M
+mau d #b3261e            to d 3       doiten A M
+net d lien | dut | cham | dutcham | dutdai | dutngan
 ```
 
 Các hàm lồng nhau được: `I = giao(duongthang(A,B), duongtron(O,3))`.
@@ -291,7 +304,7 @@ td=thietdien(K,M,N,P)
 ## Cấu trúc mã
 
 ```
-src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  conic.js  giao.js  ptr.js  docpt.js  dsl.js
+src/core/   vec.js  model.js  ops2d.js  ops3d.js  bpt.js  conic.js  giao.js  net.js  ptr.js  docpt.js  dsl.js
 src/ui/     render.js  tools.js                            ← camera, vẽ SVG, công cụ
 src/ai/     agent.js                                       ← prompt + Gemini + luật offline
 src/main.js                                                ← điều phối

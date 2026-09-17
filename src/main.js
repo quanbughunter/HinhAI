@@ -7,6 +7,7 @@ import { runScript } from './core/dsl.js';
 import { phuongTrinh } from './core/ptr.js';
 import { docPT, specTuPT, apDungPT } from './core/docpt.js';
 import { timGiao } from './core/giao.js';
+import { KIEU_NET, kieuCuaDash, dashCuaKieu } from './core/net.js';
 import { Cam2, Cam3, render2, render3, pick, labelBoxes, esc } from './ui/render.js';
 import { TOOLS_2D, TOOLS_3D, TOOLS_THAOTAC, QUICK_2D, QUICK_3D, CHIPS } from './ui/tools.js';
 import { askGemini, askViaProxy, askClaudeRuntime, getClaudeCapability, localParse, describeDoc, DSL_REFERENCE, DEFAULT_PROXY } from './ai/agent.js';
@@ -517,7 +518,12 @@ function doiTen(o) {
   $('#tenNetO').hidden = !coNet;
   $('#tenDay').value = st.width == null ? 1.8 : st.width;
   $('#tenDaySo').textContent = String(st.width == null ? 1.8 : st.width);
-  $('#tenDut').checked = !!st.dash;
+  const kieu = kieuCuaDash(st.dash);
+  $('#tenKieu').innerHTML = KIEU_NET.map((k) =>
+    `<button data-kieu="${k.id}"${k.id === kieu ? ' class="on"' : ''}>`
+    + `<svg viewBox="0 0 52 10"><line x1="2" y1="5" x2="50" y2="5" stroke="currentColor" stroke-width="2.2"`
+    + ` stroke-linecap="round"${k.dash ? ` stroke-dasharray="${k.dash}"` : ''}/></svg>`
+    + `<span>${k.ten}</span></button>`).join('');
 
   baoTen('');
   hop.classList.add('on');
@@ -530,6 +536,13 @@ function doiTen(o) {
 function mauDangChon() {
   const b = $('#tenMau').querySelector ? $('#tenMau').querySelector('button.on') : null;
   return b ? b.dataset.mau : $('#tenMauRieng').value;
+}
+
+/** Kiểu nét đang chọn trong hộp thoại */
+function kieuDangChon() {
+  const o = $('#tenKieu');
+  const b = o && o.querySelector ? o.querySelector('button.on') : null;
+  return b ? b.dataset.kieu : 'lien';
 }
 
 function baoTen(chu, hong) {
@@ -569,7 +582,7 @@ function luuTen() {
   st.color = mauDangChon();
   if (!$('#tenNetO').hidden) {
     st.width = parseFloat($('#tenDay').value) || 1.8;
-    st.dash = $('#tenDut').checked ? '6 5' : null;
+    st.dash = dashCuaKieu(kieuDangChon());
   }
   o.style = st;
   $('#tenmodal').classList.remove('on');
@@ -1406,6 +1419,12 @@ function bind() {
     $('#tenMau').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
   });
   $('#tenDay').addEventListener('input', (e) => { $('#tenDaySo').textContent = e.target.value; });
+  $('#tenKieu').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-kieu]');
+    if (!b) return;
+    $('#tenKieu').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+    b.classList.add('on');
+  });
 
   $('#tenPhim').addEventListener('click', (e) => {
     const b = e.target.closest('[data-them]');
