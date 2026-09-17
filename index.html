@@ -106,8 +106,21 @@ input,textarea,select{font:inherit;color:inherit}
 #svg .lbl{font-size:15px;font-weight:600;font-family:var(--font-math);font-style:italic;paint-order:stroke;stroke:var(--labelhalo);stroke-width:3.5px;stroke-linejoin:round}
 #svg .lbl.plain{font-style:normal;font-family:var(--font-ui);font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums}
 
-.hud{position:absolute;left:12px;top:12px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-size:12.5px;color:var(--muted);box-shadow:var(--shadow);max-width:60%;pointer-events:none}
+/* Hướng dẫn và hàng vẽ nhanh đều thu gọn được — hai thứ này hữu ích lúc mới
+   dùng nhưng về sau chỉ che mất bảng vẽ. */
+.hud{position:absolute;left:12px;top:12px;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  padding:6px 8px 6px 11px;font-size:12.5px;color:var(--muted);box-shadow:var(--shadow);max-width:60%;
+  display:flex;align-items:flex-start;gap:8px;pointer-events:none}
 .hud b{color:var(--accent)}
+.hud.thu{display:none}
+.hudx{pointer-events:auto;flex:0 0 auto;width:20px;height:20px;border-radius:6px;color:var(--muted);
+  font-size:12px;display:grid;place-items:center;margin-top:-1px}
+.hudx:hover{background:var(--bg);color:var(--ink)}
+.hudmo{display:none;position:absolute;left:12px;top:12px;width:28px;height:28px;border-radius:9px;
+  background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);color:var(--muted);
+  font-weight:700;font-size:14px;place-items:center}
+.hudmo.hien{display:grid}
+.hudmo:hover{color:var(--accent);border-color:var(--accent)}
 .zoombar{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:var(--shadow)}
 .zoombar button{width:30px;height:28px;border-radius:7px;color:var(--muted);font-size:15px;display:grid;place-items:center}
 .zoombar button:hover{background:var(--bg);color:var(--ink)}
@@ -128,9 +141,16 @@ input,textarea,select{font:inherit;color:inherit}
 .dock button:hover{background:var(--bg);color:var(--ink)}
 .dock button.on{background:var(--accent-soft);color:var(--accent)}
 .dock .vach{width:1px;height:20px;background:var(--line);margin:0 3px}
-.quick{position:absolute;left:12px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap;max-width:70%}
+.quick{position:absolute;left:12px;bottom:12px;display:flex;align-items:flex-end;gap:6px;max-width:74%}
+.qchips{display:flex;gap:6px;flex-wrap:wrap}
 .quick button{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12.5px;color:var(--muted);box-shadow:var(--shadow)}
 .quick button:hover{color:var(--accent);border-color:var(--accent)}
+.qtog{flex:0 0 auto;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.qtog .mui{display:inline-block;transition:transform .18s ease;font-size:11px}
+.qtog .chu{display:none}
+.quick.thu .qchips{display:none}
+.quick.thu .qtog .mui{transform:rotate(-90deg)}
+.quick.thu .qtog .chu{display:inline}
 
 /* ===================== Panel phải ===================== */
 .resizer{width:7px;flex:0 0 auto;cursor:col-resize;position:relative;background:var(--panel);border-left:1px solid var(--line)}
@@ -301,9 +321,11 @@ input,textarea,select{font:inherit;color:inherit}
   /* thanh lệnh gõ tay: ẩn đi, đã có tab "Lệnh" trong tấm trượt */
   .cmdbar{display:none}
   /* dừng trước bong bóng chat, không để nó che mất nút cuối */
-  .quick{display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:none;left:8px;right:78px;bottom:9px;
-    scrollbar-width:none;padding-bottom:2px}
-  .quick::-webkit-scrollbar{display:none}
+  /* Nút thu gọn đứng yên, chỉ hàng chip trượt ngang — không thì vuốt một cái là
+     mất luôn chỗ bấm để thu lại. */
+  .quick{display:flex;align-items:center;max-width:none;left:8px;right:78px;bottom:9px}
+  .qchips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;min-width:0}
+  .qchips::-webkit-scrollbar{display:none}
   .quick button{flex:0 0 auto;font-size:12px;padding:7px 12px}
   /* Góc trái dưới xếp hai tầng: cụm thao tác trên, cụm phóng to dưới.
      Đây là vùng ngón cái với tới dễ nhất, và không đụng hai bong bóng bên phải. */
@@ -313,8 +335,9 @@ input,textarea,select{font:inherit;color:inherit}
   .dock button{width:38px;height:34px;font-size:17px}
   .dock button svg{width:21px;height:21px}
   .dock .keo{width:18px;height:32px;font-size:15px}
-  .hud{max-width:calc(100% - 24px);font-size:11.5px;padding:5px 9px;line-height:1.35;
-    max-height:44px;overflow:hidden}
+  .hud{max-width:calc(100% - 24px);font-size:11.5px;padding:5px 7px 5px 9px;line-height:1.35;
+    max-height:48px;overflow:hidden}
+  .qtog .chu{display:inline}
 
   /* ---- bong bóng nổi ---- */
   .fab{display:grid;position:fixed;right:14px;bottom:calc(64px + env(safe-area-inset-bottom,0px));
@@ -413,8 +436,12 @@ input,textarea,select{font:inherit;color:inherit}
 
     <main class="stage">
       <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
-      <div class="hud" id="hint">Chọn công cụ rồi bấm lên bảng vẽ</div>
-      <div class="quick" id="quick"></div>
+      <div class="hud" id="hud"><span id="hint">Chọn công cụ rồi bấm lên bảng vẽ</span><button class="hudx" id="hintx" title="Thu gọn hướng dẫn">✕</button></div>
+      <button class="hudmo" id="hintmo" title="Hiện lại hướng dẫn">?</button>
+      <div class="quick" id="quick">
+        <button class="qtog" id="qtog" title="Thu gọn / mở hàng vẽ nhanh"><span class="mui">▾</span><span class="chu">Vẽ nhanh</span></button>
+        <div class="qchips" id="qchips"></div>
+      </div>
       <div class="zoombar">
         <button id="zin">+</button><button id="zout">−</button><button id="zfit" title="Vừa khung">⤢</button>
       </div>

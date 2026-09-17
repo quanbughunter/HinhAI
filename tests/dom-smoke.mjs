@@ -91,7 +91,7 @@ ok('boot không văng lỗi', !boom, boom ? boom.stack.split('\n')[0] : '');
 const app = globalThis.window.geoai;
 // Bấm một mẫu nhanh theo TÊN — dùng số thứ tự thì cứ thêm mẫu là test hỏng.
 const bamMau = (ten) => {
-  const html = q('#quick').innerHTML;
+  const html = q('#qchips').innerHTML;
   const re = new RegExp('data-q="(\\d+)">' + ten + '<');
   const m = html.match(re);
   if (!m) { ok('có mẫu nhanh "' + ten + '"', false, html.slice(0, 200)); return; }
@@ -237,6 +237,52 @@ function doiTenQua(tenHinh, moi, dinh) {
   q('#tenMoi').value = moi;
   q('#tenDinh').value = dinh;
   q('#tenLuu').fire('click');
+}
+
+console.log('\nThu gọn hướng dẫn và hàng vẽ nhanh');
+{
+  ok('ban đầu hướng dẫn đang mở', !q('#hud').classList.contains('thu'));
+  q('#hintx').fire('click');
+  ok('bấm ✕ thì hướng dẫn thu lại', q('#hud').classList.contains('thu'));
+  ok('hiện nút ? để mở lại', q('#hintmo').classList.contains('hien'));
+  ok('nhớ lựa chọn cho lần sau', globalThis.localStorage.getItem('geoai.thuHud') === 'true');
+  q('#hintmo').fire('click');
+  ok('bấm ? thì hướng dẫn mở lại', !q('#hud').classList.contains('thu') && !q('#hintmo').classList.contains('hien'));
+
+  ok('ban đầu hàng vẽ nhanh đang mở', !q('#quick').classList.contains('thu'));
+  q('#qtog').fire('click');
+  ok('thu được hàng vẽ nhanh', q('#quick').classList.contains('thu'));
+  q('#qtog').fire('click');
+  ok('mở lại được', !q('#quick').classList.contains('thu'));
+}
+
+console.log('\nLưới không gian tự nới rộng');
+{
+  const cam = app.cam['3d'];
+  const doHep = () => {
+    const sv = app.doc['3d'];
+    return null;
+  };
+  const demNet = () => (q('#svg').innerHTML.match(/M-?[\d.]+ -?[\d.]+L/g) || []).length;
+  q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '3d' } }) } });
+  const goc = { sc: cam.scale, ox: cam.ox, oy: cam.oy };
+  const n0 = demNet();
+  ok('chế độ không gian có lưới', n0 > 10, String(n0));
+
+  // kéo hình lệch hẳn ra một góc: lưới vẫn phải phủ kín khung nhìn
+  cam.ox = -520; cam.oy = -330;
+  q('#zin').fire('click'); q('#zout').fire('click');   // ép vẽ lại
+  ok('kéo lệch đi thì lưới vẫn kín khung', demNet() > 10, String(demNet()));
+
+  // thu nhỏ hết cỡ: bước chia phải giãn ra chứ không đẻ ra hàng nghìn nét
+  cam.ox = 0; cam.oy = 0; cam.scale = 5;
+  q('#zin').fire('click'); q('#zout').fire('click');
+  const nNho = demNet();
+  ok('thu nhỏ vẫn có lưới', nNho > 10, String(nNho));
+  ok('số nét lưới có chặn trên', nNho < 400, String(nNho));
+
+  cam.scale = goc.sc; cam.ox = goc.ox; cam.oy = goc.oy;
+  q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '2d' } }) } });
 }
 
 console.log('\nBấm đúp trên bảng vẽ và đổi màu');

@@ -365,6 +365,34 @@ function lab(o, p, text, color, dx = 0, dy = 0, plain = false) {
 }
 
 // ---------------------------------------------------------------- Vẽ 3D
+/**
+ * Phần mặt phẳng z = 0 đang lọt vào khung nhìn, cùng bước chia lưới hợp lý.
+ *
+ * Chiếu bốn góc màn hình xuống mặt z = 0 là ra vùng cần kẻ. Nhìn gần như ngang
+ * mặt phẳng thì phép chiếu ngược vọt ra vô cực, nên có chặn trên; và số đường
+ * kẻ cũng bị chặn để không bao giờ phải vẽ hàng nghìn nét.
+ */
+function khungZ0(cam) {
+  const g = [{ x: 0, y: 0 }, { x: cam.w, y: 0 }, { x: 0, y: cam.h }, { x: cam.w, y: cam.h }]
+    .map((p) => cam.u(p, 0));
+  let x0 = Math.min(...g.map((p) => p.x)), x1 = Math.max(...g.map((p) => p.x));
+  let y0 = Math.min(...g.map((p) => p.y)), y1 = Math.max(...g.map((p) => p.y));
+  const rong = Math.max(x1 - x0, y1 - y0);
+  if (!Number.isFinite(rong) || rong <= 0 || rong > 4000) { x0 = y0 = -8; x1 = y1 = 8; }
+
+  // bước chia: chọn 1 / 2 / 5 / 10 sao cho mỗi ô rộng ít nhất ~34px trên màn
+  const tho = 34 / Math.max(1e-6, cam.scale);
+  const p10 = Math.pow(10, Math.floor(Math.log10(Math.max(1e-9, tho))));
+  const buoc = [1, 2, 5, 10].map((m) => m * p10).find((v) => v >= tho) || p10 * 10;
+
+  x0 = Math.floor(x0 / buoc) * buoc; x1 = Math.ceil(x1 / buoc) * buoc;
+  y0 = Math.floor(y0 / buoc) * buoc; y1 = Math.ceil(y1 / buoc) * buoc;
+  const CHAN = 70;                       // tối đa bấy nhiêu đường mỗi chiều
+  if ((x1 - x0) / buoc > CHAN) { const m = (x0 + x1) / 2; x0 = m - CHAN / 2 * buoc; x1 = m + CHAN / 2 * buoc; }
+  if ((y1 - y0) / buoc > CHAN) { const m = (y0 + y1) / 2; y0 = m - CHAN / 2 * buoc; y1 = m + CHAN / 2 * buoc; }
+  return { x0, x1, y0, y1, buoc };
+}
+
 export function render3(doc, cam, opt) {
   NHAN = [];
   const b = cam.basis();
@@ -373,23 +401,30 @@ export function render3(doc, cam, opt) {
   const sel = opt.selected || new Set();
   const S = (p) => cam.s(p);
 
+  // Lưới nền và trục tự co giãn theo khung nhìn: kéo hình ra ngoài vùng đã kẻ
+  // thì lưới tự mọc thêm, phóng to thu nhỏ thì bước chia đổi cho vừa mắt.
+  const kh = khungZ0(cam);
+  if (opt.grid) {
+    const g = [];
+    for (let x = kh.x0; x <= kh.x1 + 1e-9; x += kh.buoc) {
+      const a = S(P3(x, kh.y0, 0)), c = S(P3(x, kh.y1, 0));
+      g.push(`M${f(a.x)} ${f(a.y)}L${f(c.x)} ${f(c.y)}`);
+    }
+    for (let y = kh.y0; y <= kh.y1 + 1e-9; y += kh.buoc) {
+      const a = S(P3(kh.x0, y, 0)), c = S(P3(kh.x1, y, 0));
+      g.push(`M${f(a.x)} ${f(a.y)}L${f(c.x)} ${f(c.y)}`);
+    }
+    out.unshift(`<path d="${g.join('')}" class="grid"/>`);
+  }
   if (opt.axes) {
-    const L = 6;
+    // trục dài hơn lưới một bước để mũi tên không bị lẫn vào lưới
+    const L = Math.max(4, Math.max(Math.abs(kh.x0), kh.x1, Math.abs(kh.y0), kh.y1) + kh.buoc);
     const O = S(P3(0, 0, 0));
     for (const [v, name, col, mk] of [[P3(L, 0, 0), 'x', '#c0271c', 'arwr'], [P3(0, L, 0), 'y', '#1f7a5a', 'arwg'], [P3(0, 0, L), 'z', '#22468f', 'arwb']]) {
       const e = S(v);
       out.push(`<line x1="${f(O.x)}" y1="${f(O.y)}" x2="${f(e.x)}" y2="${f(e.y)}" stroke="${col}" stroke-width="1.3" opacity=".7" marker-end="url(#${mk})"/>`);
       labels.push(lab(null, e, name, col, 7, -5));
     }
-  }
-  if (opt.grid) {
-    const g = [];
-    for (let i = -6; i <= 6; i++) {
-      const a = S(P3(i, -6, 0)), c = S(P3(i, 6, 0));
-      const d = S(P3(-6, i, 0)), e = S(P3(6, i, 0));
-      g.push(`M${f(a.x)} ${f(a.y)}L${f(c.x)} ${f(c.y)}M${f(d.x)} ${f(d.y)}L${f(e.x)} ${f(e.y)}`);
-    }
-    out.unshift(`<path d="${g.join('')}" class="grid"/>`);
   }
 
   // các mặt của khối: sắp theo độ sâu (thuật toán hoạ sĩ)

@@ -390,7 +390,7 @@ function buildRail() {
     if (b) { b.innerHTML = t.icon; b.title = t.name; }
   }
   const q = is3() ? QUICK_3D : QUICK_2D;
-  $('#quick').innerHTML = q.map((x, i) => `<button data-q="${i}">${esc(x[0])}</button>`).join('');
+  $('#qchips').innerHTML = q.map((x, i) => `<button data-q="${i}">${esc(x[0])}</button>`).join('');
 }
 function setTool(id) {
   app.tool = id; app.picks = []; app.sel.clear(); app.giao = null;
@@ -1314,6 +1314,20 @@ function bind() {
   });
   veNutNhan();
   $('#logo').addEventListener('click', () => lamMoi(true));
+
+  // --- thu gọn / mở hướng dẫn và hàng vẽ nhanh ---
+  const veHuongDan = () => {
+    const thu = !!LS.get('thuHud', false);
+    $('#hud').classList.toggle('thu', thu);
+    $('#hintmo').classList.toggle('hien', thu);
+  };
+  $('#hintx').addEventListener('click', () => { LS.set('thuHud', true); veHuongDan(); });
+  $('#hintmo').addEventListener('click', () => { LS.set('thuHud', false); veHuongDan(); });
+  veHuongDan();
+
+  const veVeNhanh = () => $('#quick').classList.toggle('thu', !!LS.get('thuQuick', false));
+  $('#qtog').addEventListener('click', () => { LS.set('thuQuick', !LS.get('thuQuick', false)); veVeNhanh(); });
+  veVeNhanh();
   $('#pickmove').addEventListener('click', () => setTool('move'));
   cumThaoTacKeoDuoc();
   $('#pickdel').addEventListener('click', () => setTool('del'));
