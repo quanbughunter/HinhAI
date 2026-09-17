@@ -387,10 +387,48 @@ function khungZ0(cam) {
 
   x0 = Math.floor(x0 / buoc) * buoc; x1 = Math.ceil(x1 / buoc) * buoc;
   y0 = Math.floor(y0 / buoc) * buoc; y1 = Math.ceil(y1 / buoc) * buoc;
+
+  // Tối thiểu 30 ô mỗi chiều: khung nhìn hẹp thì lưới vẫn trải rộng ra xung
+  // quanh, nhìn mới ra mặt phẳng nền chứ không phải một mảnh vá.
+  const TOITHIEU = 30;
+  const noiRong = (a, b) => {
+    if ((b - a) / buoc >= TOITHIEU) return [a, b];
+    const giua = Math.round((a + b) / 2 / buoc) * buoc;
+    return [giua - (TOITHIEU / 2) * buoc, giua + (TOITHIEU / 2) * buoc];
+  };
+  [x0, x1] = noiRong(x0, x1);
+  [y0, y1] = noiRong(y0, y1);
+
   const CHAN = 70;                       // tối đa bấy nhiêu đường mỗi chiều
   if ((x1 - x0) / buoc > CHAN) { const m = (x0 + x1) / 2; x0 = m - CHAN / 2 * buoc; x1 = m + CHAN / 2 * buoc; }
   if ((y1 - y0) / buoc > CHAN) { const m = (y0 + y1) / 2; y0 = m - CHAN / 2 * buoc; y1 = m + CHAN / 2 * buoc; }
   return { x0, x1, y0, y1, buoc };
+}
+
+const TRUC_TOITHIEU = 8;        // độ dài trục lúc bảng còn trống
+
+/**
+ * Ba trục nên dài bao nhiêu: đủ vươn qua điểm xa nhất của hình theo từng
+ * hướng, và không bao giờ ngắn hơn mức tối thiểu. Tính riêng từng trục nên
+ * hình dẹt (dài theo x, mỏng theo z) không làm trục z dài vô cớ.
+ */
+function daiTruc(doc) {
+  let mx = 0, my = 0, mz = 0;
+  const xet = (p) => {
+    if (!p || !Number.isFinite(p.x)) return;
+    mx = Math.max(mx, p.x); my = Math.max(my, p.y); mz = Math.max(mz, p.z || 0);
+  };
+  for (const o of doc.list()) {
+    const v = o.val;
+    if (!o.visible || !v) continue;
+    if (v.t === 'p3') xet(v);
+    else if (v.t === 's3') { xet(v.a); xet(v.b); }
+    else if (v.t === 'f3') v.pts.forEach(xet);
+    else if (v.t === 'solid') v.v.forEach(xet);
+    else if (v.t === 'sph') xet({ x: v.c.x + v.r, y: v.c.y + v.r, z: v.c.z + v.r });
+  }
+  const lam = (m) => Math.max(TRUC_TOITHIEU, Math.ceil(m + 1.5));
+  return { x: lam(mx), y: lam(my), z: lam(mz) };
 }
 
 export function render3(doc, cam, opt) {
@@ -417,10 +455,11 @@ export function render3(doc, cam, opt) {
     out.unshift(`<path d="${g.join('')}" class="grid"/>`);
   }
   if (opt.axes) {
-    // trục dài hơn lưới một bước để mũi tên không bị lẫn vào lưới
-    const L = Math.max(4, Math.max(Math.abs(kh.x0), kh.x1, Math.abs(kh.y0), kh.y1) + kh.buoc);
+    // Trục KHÔNG bám lưới mà bám hình: mặc định ngắn gọn, bài nào vẽ xa thì
+    // trục tự vươn tới đó. Lưới trải rộng bao nhiêu cũng mặc lưới.
+    const L3 = daiTruc(doc);
     const O = S(P3(0, 0, 0));
-    for (const [v, name, col, mk] of [[P3(L, 0, 0), 'x', '#c0271c', 'arwr'], [P3(0, L, 0), 'y', '#1f7a5a', 'arwg'], [P3(0, 0, L), 'z', '#22468f', 'arwb']]) {
+    for (const [v, name, col, mk] of [[P3(L3.x, 0, 0), 'x', '#c0271c', 'arwr'], [P3(0, L3.y, 0), 'y', '#1f7a5a', 'arwg'], [P3(0, 0, L3.z), 'z', '#22468f', 'arwb']]) {
       const e = S(v);
       out.push(`<line x1="${f(O.x)}" y1="${f(O.y)}" x2="${f(e.x)}" y2="${f(e.y)}" stroke="${col}" stroke-width="1.3" opacity=".7" marker-end="url(#${mk})"/>`);
       labels.push(lab(null, e, name, col, 7, -5));

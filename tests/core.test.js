@@ -5,6 +5,7 @@ import { phuongTrinh, ptDuongThang, ptThamSo3, theTich, dienTich3, lamDep, soGon
 import { docPT, specTuPT, apDungPT } from '../src/core/docpt.js';
 import { chuanHoaConic, diemConic, soLieuConic, loaiConic } from '../src/core/conic.js';
 import { timGiao, giaoHai, giaoBienVoiTruc, namTren, TRUC } from '../src/core/giao.js';
+import { Cam3, render3 } from '../src/ui/render.js';
 import { angleABC, vDist } from '../src/core/vec.js';
 import { p3dist } from '../src/core/ops3d.js';
 import { docBPT, mienNghiem, thuocMien, dinhHuuHan, docKhoang } from '../src/core/bpt.js';
@@ -488,6 +489,52 @@ T('Miền nghiệm cho biết biên cắt trục ở đâu', () => {
   ok('biên 2x+3y=12 cắt Oy tại (0; 4)', co(0, 4));
   const e = phuongTrinh(d.byName('M'));
   ok('bảng phương trình liệt kê giao với trục', /Biên cắt trục tại/.test(e.phu) && /\(6; 0\)/.test(e.phu), e.phu);
+});
+
+T('Lưới không gian bám khung nhìn, trục bám hình vẽ', () => {
+  const cam = () => { const c = new Cam3(); c.w = 900; c.h = 620; c.scale = 34; return c; };
+  const ve = (lenh) => {
+    const d = new GeoDoc();
+    if (lenh) runScript(d, lenh);
+    return render3(d, cam(), { grid: true, axes: true, selected: new Set(), nhan: 'du' });
+  };
+  const demNet = (svg) => ((svg.match(/class="grid"/) ? svg : '').match(/M-?[\d.]+ -?[\d.]+L/g) || []).length;
+  // đầu mút trục: lấy từ ba đoạn thẳng có màu riêng của Ox, Oy, Oz
+  const dauTruc = (svg, mau) => {
+    const m = svg.match(new RegExp('<line x1="[\\d.-]+" y1="[\\d.-]+" x2="([\\d.-]+)" y2="([\\d.-]+)" stroke="' + mau + '"'));
+    return m ? { x: +m[1], y: +m[2] } : null;
+  };
+  const XANH = '#22468f', DO = '#c0271c';
+
+  const trong = ve('');
+  ok('bảng trống vẫn có lưới rộng', demNet(trong) >= 60, String(demNet(trong)));
+
+  // trục KHÔNG dài theo lưới: bảng trống thì đúng bằng mức tối thiểu
+  const c = cam();
+  const mongDoi = c.s({ t: 'p3', x: 8, y: 0, z: 0 });
+  const thuc = dauTruc(trong, DO);
+  ok('bảng trống: trục Ox dài đúng 8', thuc && Math.abs(thuc.x - mongDoi.x) < 0.6 && Math.abs(thuc.y - mongDoi.y) < 0.6,
+    JSON.stringify({ thuc, mongDoi }));
+
+  // hình vẽ xa hơn thì trục tự vươn theo
+  const xa = ve('A=(0,0,0)\nB=(25,0,0)\ns=doan3(A,B)');
+  const xaOx = dauTruc(xa, DO);
+  ok('hình xa thì trục Ox dài ra', xaOx.x > thuc.x + 100, JSON.stringify({ xaOx, thuc }));
+  ok('nhưng trục Oz vẫn ngắn', Math.abs(dauTruc(xa, XANH).y - dauTruc(trong, XANH).y) < 0.6);
+
+  const cao = ve('A=(0,0,0)\nB=(0,0,20)\ns=doan3(A,B)');
+  ok('hình cao thì trục Oz dài ra', dauTruc(cao, XANH).y < dauTruc(trong, XANH).y - 100);
+  ok('còn trục Ox giữ nguyên', Math.abs(dauTruc(cao, DO).x - thuc.x) < 0.6);
+
+  // lưới không đổi theo hình, chỉ theo khung nhìn
+  ok('lưới không phình theo hình vẽ', demNet(xa) === demNet(trong), demNet(xa) + ' vs ' + demNet(trong));
+
+  // thu nhỏ: bước chia giãn ra, số nét vẫn trong tầm kiểm soát
+  const cNho = cam(); cNho.scale = 6;
+  const d0 = new GeoDoc();
+  const nho = render3(d0, cNho, { grid: true, axes: true, selected: new Set(), nhan: 'du' });
+  ok('thu nhỏ vẫn còn lưới', demNet(nho) >= 40, String(demNet(nho)));
+  ok('số nét lưới có chặn trên', demNet(nho) <= 300, String(demNet(nho)));
 });
 
 console.log(`\n===== ${pass} đạt / ${fail} lỗi =====`);

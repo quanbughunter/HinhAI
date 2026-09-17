@@ -21,7 +21,7 @@ npm run dev          # mở http://localhost:5173
 
 ```bash
 npm run bundle       # sinh dist/geoai.html
-npm test             # 157 bài kiểm thử toán học
+npm test             # 166 bài kiểm thử toán học
 node tests/dom-smoke.mjs   # 132 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
@@ -186,9 +186,16 @@ Lưới **chỉ kẻ đúng ở những vạch có số** trên hai trục — k
 vì nó làm hình rối mà không giúp đọc toạ độ dễ hơn.
 
 Hai nút riêng trên thanh trên (trong menu **⋯** khi dùng điện thoại): **▦ Lưới** và
-**✛ Trục toạ độ**. Ở hình không gian, lưới nền và ba trục **tự nới rộng theo khung nhìn**:
-kéo hình ra ngoài vùng đã kẻ thì lưới mọc thêm, thu nhỏ thì bước chia giãn ra cho khỏi rối
-(có chặn trên 70 đường mỗi chiều nên không bao giờ giật). Nút sáng lên là đang bật. Tắt trục dùng được cho cả hình phẳng lẫn hình
+**✛ Trục toạ độ**.
+
+Ở hình không gian, lưới và trục co giãn theo hai quy tắc **khác nhau**:
+
+- **Lưới bám khung nhìn** — rộng ít nhất 30 × 30 ô, kéo hình ra tới rìa thì lưới mọc thêm,
+  thu nhỏ thì bước chia giãn từ 1 sang 2, 5, 10 cho khỏi đặc lại thành mảng xám. Chặn trên
+  70 đường mỗi chiều nên không bao giờ giật.
+- **Trục bám hình vẽ** — mặc định dài 8 đơn vị, đủ ngắn để thấy rõ ba mũi tên Ox, Oy, Oz.
+  Bài nào vẽ xa hơn thì đúng trục đó tự vươn tới. Tính riêng từng trục, nên hình dẹt (dài
+  theo x, mỏng theo z) không làm trục z dài vô cớ. Nút sáng lên là đang bật. Tắt trục dùng được cho cả hình phẳng lẫn hình
 không gian — nhiều bài hình học thuần tuý (tam giác, đường tròn, hình chóp) không cần hệ
 trục, bỏ đi thì hình sạch hẳn. Lựa chọn được nhớ cho lần mở sau.
 

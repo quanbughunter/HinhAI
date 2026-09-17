@@ -113,9 +113,9 @@ Bản chạy trên claude.ai dùng khả năng `sample` của Artifact nên **kh
 Lõi dựng hình 2D/3D · 26 công cụ · DSL tiếng Việt · chat AI qua proxy dùng chung ·
 thiết diện · **miền nghiệm bất phương trình** · **bảng phương trình hai chiều** (vẽ ra phương trình, gõ phương trình ra hình) ·
 **elip · parabol · hypebol** kể cả khi bị xoay ·
-kéo nhãn tự do · chụm hai ngón để phóng to · cụm nút thao tác kéo đi được · **bắt dính giao điểm** · đặt tên cả loạt đỉnh và đổi màu và sáu kiểu nét · lưới không gian tự nới theo khung nhìn · giao diện điện thoại với chat và bảng
+kéo nhãn tự do · chụm hai ngón để phóng to · cụm nút thao tác kéo đi được · **bắt dính giao điểm** · đặt tên cả loạt đỉnh và đổi màu và sáu kiểu nét · lưới không gian tự nới theo khung nhìn, trục tự dài theo hình · giao diện điện thoại với chat và bảng
 phương trình dạng bong bóng thu gọn được · hoàn tác · lưu/mở/xuất PNG ·
-289 bài kiểm thử tự động · đóng gói APK tự động bằng GitHub Actions.
+298 bài kiểm thử tự động · đóng gói APK tự động bằng GitHub Actions.
 
 ### Nên làm tiếp (theo thứ tự đáng giá / công sức)
 
