@@ -22,7 +22,7 @@ npm run dev          # mở http://localhost:5173
 ```bash
 npm run bundle       # sinh dist/geoai.html
 npm test             # 166 bài kiểm thử toán học
-node tests/dom-smoke.mjs   # 132 bài kiểm thử giao diện
+node tests/dom-smoke.mjs   # 138 bài kiểm thử giao diện
 node tests/snapshot.mjs    # xuất dist/shot-*.svg để xem lại
 npm run www          # gộp vào www/ để đóng gói APK
 ```
@@ -208,6 +208,19 @@ Muốn ẩn tên đúng một hình thì vào tab **Đối tượng**, bấm ch�
 
 Ẩn tên trên bảng vẽ **không ảnh hưởng bảng Phương trình** — ở đó tên vẫn đầy đủ.
 
+### Dời bảng, phóng to
+
+| Muốn gì | Trên máy tính | Trên điện thoại |
+|---|---|---|
+| Dời cả bảng | giữ **Space** rồi kéo · **Ctrl + kéo** · **chuột giữa + kéo** · vuốt hai ngón trên bàn di | chạm **hai ngón** rồi kéo |
+| Phóng to / thu nhỏ | **con lăn chuột** · nút **+ −** | **chụm hai ngón** · nút **+ −** |
+| Xoay góc nhìn (hình không gian) | **kéo nền** | kéo một ngón trên nền |
+| Vừa khung | nút **⤢** | nút **⤢** |
+
+Trong hình phẳng, kéo nền cũng dời bảng luôn nên ít khi cần tới Space. Nhưng ở hình không
+gian thì kéo nền là *xoay góc nhìn*, nên muốn dời bảng bắt buộc phải dùng một trong bốn
+cách ở trên.
+
 ### Phím tắt
 
 | Phím | Việc |
@@ -218,6 +231,7 @@ Muốn ẩn tên đúng một hình thì vào tab **Đối tượng**, bấm ch�
 | `F2` | Đổi tên đối tượng đang chọn |
 | `Delete` | Xoá đối tượng đang chọn |
 | `Shift` khi kéo | Bám vào lưới |
+| `Space` khi kéo | Dời cả bảng |
 | Lăn chuột | Phóng to / thu nhỏ |
 
 ---

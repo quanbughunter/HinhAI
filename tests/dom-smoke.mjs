@@ -285,6 +285,54 @@ console.log('\nLưới không gian tự nới rộng');
   q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '2d' } }) } });
 }
 
+console.log('\nDời bảng bằng chuột và bàn phím');
+{
+  const svg5 = q('#svg');
+  q('#pickmove').fire('click');
+
+  // --- hình phẳng ---
+  q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '2d' } }) } });
+  const c2 = app.cam['2d'];
+  const g2 = { cx: c2.cx, cy: c2.cy };
+  svg5.fire('pointerdown', { pointerId: 50, clientX: 400, clientY: 300, ctrlKey: true, button: 0 });
+  svg5.fire('pointermove', { pointerId: 50, clientX: 480, clientY: 360, ctrlKey: true });
+  svg5.fire('pointerup', { pointerId: 50, clientX: 480, clientY: 360 });
+  ok('Ctrl + kéo dời được bảng phẳng', c2.cx !== g2.cx && c2.cy !== g2.cy, JSON.stringify({ truoc: g2, sau: { cx: c2.cx, cy: c2.cy } }));
+
+  // chuột giữa
+  const g2b = { cx: c2.cx, cy: c2.cy };
+  svg5.fire('pointerdown', { pointerId: 51, clientX: 400, clientY: 300, button: 1 });
+  svg5.fire('pointermove', { pointerId: 51, clientX: 330, clientY: 300 });
+  svg5.fire('pointerup', { pointerId: 51, clientX: 330, clientY: 300 });
+  ok('chuột giữa cũng dời được', c2.cx !== g2b.cx);
+
+  // --- hình không gian: kéo nền là XOAY, có Ctrl mới là DỜI ---
+  q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '3d' } }) } });
+  const c3 = app.cam['3d'];
+  const g3 = { yaw: c3.yaw, ox: c3.ox, oy: c3.oy };
+  svg5.fire('pointerdown', { pointerId: 52, clientX: 400, clientY: 300, button: 0 });
+  svg5.fire('pointermove', { pointerId: 52, clientX: 470, clientY: 300 });
+  svg5.fire('pointerup', { pointerId: 52, clientX: 470, clientY: 300 });
+  ok('kéo nền trong không gian là xoay góc nhìn', c3.yaw !== g3.yaw && c3.ox === g3.ox);
+
+  const g3b = { yaw: c3.yaw, ox: c3.ox, oy: c3.oy };
+  svg5.fire('pointerdown', { pointerId: 53, clientX: 400, clientY: 300, ctrlKey: true, button: 0 });
+  svg5.fire('pointermove', { pointerId: 53, clientX: 470, clientY: 340, ctrlKey: true });
+  svg5.fire('pointerup', { pointerId: 53, clientX: 470, clientY: 340 });
+  ok('Ctrl + kéo trong không gian là DỜI, không xoay', c3.ox !== g3b.ox && c3.oy !== g3b.oy && c3.yaw === g3b.yaw,
+    JSON.stringify({ truoc: g3b, sau: { yaw: c3.yaw, ox: c3.ox, oy: c3.oy } }));
+
+  // --- con lăn: cuộn có thành phần ngang thì dời, chỉ dọc thì phóng to ---
+  const sc = c3.scale;
+  svg5.fire('wheel', { deltaX: 0, deltaY: -100, clientX: 400, clientY: 300 });
+  ok('cuộn dọc là phóng to', c3.scale > sc, c3.scale + ' vs ' + sc);
+  const g3c = { ox: c3.ox, sc: c3.scale };
+  svg5.fire('wheel', { deltaX: 40, deltaY: 6, clientX: 400, clientY: 300 });
+  ok('vuốt hai ngón bàn di (có deltaX) là dời bảng', c3.ox !== g3c.ox && c3.scale === g3c.sc);
+
+  q('#modeseg').fire('click', { target: { closest: () => ({ dataset: { mode: '2d' } }) } });
+}
+
 console.log('\nBấm đúp trên bảng vẽ và đổi màu');
 {
   q('#scriptbox').value = 'xoahet\nA=(0,0)\nB=(4,0)\nC=(2,3)\nt=tamgiac(A,B,C)';

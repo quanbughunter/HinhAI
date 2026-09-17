@@ -800,6 +800,17 @@ function onDown(e) {
   }
   if (NGON.size > 2) return;  // ba ngón trở lên: lờ đi
   const px = pxOf(e);
+
+  // Dời bảng bằng chuột giữa, Ctrl+kéo hoặc giữ Space rồi kéo — ba cách quen
+  // tay của mọi phần mềm vẽ. Cần có vì trong hình không gian, kéo nền là XOAY
+  // góc nhìn chứ không phải dời, nên nếu không có lối riêng thì trên máy tính
+  // không dời bảng được (điện thoại thì đã có hai ngón).
+  if (e.button === 1 || e.ctrlKey || e.metaKey || dangGiuCach) {
+    if (e.preventDefault) e.preventDefault();
+    drag = { kind: 'doi', last: px };
+    return;
+  }
+
   const t = curTool();
   if (t && (t.id === 'move' || t.id === 'rot')) {
     const hit = t.id === 'rot' ? null : pick(D(), C(), px, app.mode);
@@ -894,6 +905,11 @@ function onMove(e) {
     for (const t of drag.ds) { t.o.params.x = t.x + dx; t.o.params.y = t.y + dy; }
     D().recompute();
     render();
+  } else if (drag.kind === 'doi') {
+    const dx = px.x - drag.last.x, dy = px.y - drag.last.y;
+    drag.last = px;
+    if (is3()) { C().ox += dx; C().oy += dy; } else C().panPx(dx, dy);
+    render();
   } else if (drag.kind === 'view') {
     const dx = px.x - drag.last.x, dy = px.y - drag.last.y;
     drag.last = px;
@@ -911,6 +927,7 @@ function onMove(e) {
  * dblclick nữa. Tự đếm hai lần nhấc ngón gần nhau thì chắc ăn, và chạm hai lần
  * trên điện thoại cũng ăn theo luôn.
  */
+let dangGiuCach = false;      // giữ Space để dời bảng, như mọi phần mềm vẽ
 let bamTruoc = { t: 0, x: 0, y: 0 };
 function laBamDup(px) {
   const gio = Date.now();
@@ -1180,6 +1197,7 @@ function bind() {
   svg.addEventListener('pointerdown', onDown);
   svg.addEventListener('pointermove', onMove);
   svg.addEventListener('pointerup', onUp);
+  svg.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
   svg.addEventListener('pointercancel', (e) => {
     NGON.delete(e.pointerId);
     if (NGON.size < 2) veo = null;
@@ -1191,6 +1209,14 @@ function bind() {
   window.addEventListener('blur', () => { NGON.clear(); veo = null; vuaVeo = false; drag = null; });
   svg.addEventListener('wheel', (e) => {
     e.preventDefault();
+    // Vuốt hai ngón trên bàn di chuột có thành phần ngang → hiểu là DỜI BẢNG,
+    // đúng thói quen của bản đồ và phần mềm thiết kế. Con lăn chuột thường chỉ
+    // có thành phần dọc nên vẫn là phóng to / thu nhỏ.
+    if (Math.abs(e.deltaX) > 0.5 && !e.ctrlKey) {
+      if (is3()) { C().ox -= e.deltaX; C().oy -= e.deltaY; } else C().panPx(-e.deltaX, -e.deltaY);
+      render();
+      return;
+    }
     const k = e.deltaY < 0 ? 1.12 : 1 / 1.12;
     if (is3()) C().zoom(k); else C().zoomAt(pxOf(e), k);
     render();
@@ -1460,8 +1486,11 @@ function bind() {
   });
   $('#setmodal').addEventListener('click', (e) => { if (e.target.id === 'setmodal') e.currentTarget.classList.remove('on'); });
 
+  window.addEventListener('keyup', (e) => { if (e.key === ' ') dangGiuCach = false; });
+  window.addEventListener('blur', () => { dangGiuCach = false; });
   window.addEventListener('keydown', (e) => {
     const inField = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+    if (e.key === ' ' && !inField) { dangGiuCach = true; e.preventDefault(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
     if (inField) return;

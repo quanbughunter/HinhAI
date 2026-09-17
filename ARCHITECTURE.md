@@ -115,7 +115,7 @@ thiết diện · **miền nghiệm bất phương trình** · **bảng phương
 **elip · parabol · hypebol** kể cả khi bị xoay ·
 kéo nhãn tự do · chụm hai ngón để phóng to · cụm nút thao tác kéo đi được · **bắt dính giao điểm** · đặt tên cả loạt đỉnh và đổi màu và sáu kiểu nét · lưới không gian tự nới theo khung nhìn, trục tự dài theo hình · giao diện điện thoại với chat và bảng
 phương trình dạng bong bóng thu gọn được · hoàn tác · lưu/mở/xuất PNG ·
-298 bài kiểm thử tự động · đóng gói APK tự động bằng GitHub Actions.
+304 bài kiểm thử tự động · đóng gói APK tự động bằng GitHub Actions.
 
 ### Nên làm tiếp (theo thứ tự đáng giá / công sức)
 
